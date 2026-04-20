@@ -1,0 +1,264 @@
+<p>The Ceph Dashboard has a frustrating quirk — it runs on whichever node is the active ceph-mgr, and that can change during failovers. One day it’s on <code class="language-plaintext highlighter-rouge">https://192.168.86.12:8443</code>, the next it’s on <code class="language-plaintext highlighter-rouge">.13</code>. Since I already have a Caddy reverse proxy LXC handling Proxmox Web UI access, adding the Ceph Dashboard as a second site block is straightforward and solves the floating-IP problem.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="the-problem">The Problem</h2>
+
+<p>As covered in <a href="/proxmox-add-ceph-dashboard/">Adding Ceph Dashboard to Your Proxmox Cluster</a>, the dashboard follows the active ceph-mgr service. In my cluster, all six nodes run ceph-mgr, and the dashboard is only accessible on the currently active manager. When a failover happens, your bookmark breaks.</p>
+
+<p>The fix: proxy through Caddy with health checks across all mgr nodes. Caddy automatically detects which node is serving the dashboard and routes traffic there.</p>
+
+<h2 id="prerequisites">Prerequisites</h2>
+
+<ul>
+  <li>Ceph Dashboard already configured and working (see <a href="/proxmox-add-ceph-dashboard/">the setup article</a>)</li>
+  <li>Caddy LXC already deployed (see <a href="/caddy-reverse-proxy-proxmox-web-ui/">Caddy Reverse Proxy for Proxmox Web UI</a>)</li>
+  <li>Know which nodes run ceph-mgr (in my cluster: all six nodes — .11 through .16)</li>
+</ul>
+
+<h2 id="current-state">Current State</h2>
+
+<p>Before this change, the Ceph Dashboard is accessible at whichever mgr node is active:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check which node has the active dashboard</span>
+ceph mgr services
+</code></pre></div></div>
+
+<p>Output shows something like:</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+    </span><span class="nl">"dashboard"</span><span class="p">:</span><span class="w"> </span><span class="s2">"https://192.168.86.12:8443/"</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>The dashboard uses HTTPS on port 8443 with self-signed certificates.</p>
+
+<h2 id="adding-ceph-dashboard-to-the-caddyfile">Adding Ceph Dashboard to the Caddyfile</h2>
+
+<p>SSH into the Caddy LXC (192.168.86.30) and edit <code class="language-plaintext highlighter-rouge">/etc/caddy/Caddyfile</code> to add a second site block. The Ceph Dashboard will listen on port 8443 on the proxy, keeping the same port convention:</p>
+
+<pre><code class="language-caddyfile"># Proxmox Web UI (existing)
+https://192.168.86.30 {
+	reverse_proxy * {
+		to 192.168.86.11:8006
+		to 192.168.86.12:8006
+		to 192.168.86.13:8006
+		to 192.168.86.14:8006
+		to 192.168.86.15:8006
+		to 192.168.86.16:8006
+
+		lb_policy ip_hash
+		health_uri /
+		health_interval 10s
+		health_timeout 2s
+		health_status 200
+
+		transport http {
+			tls_insecure_skip_verify
+		}
+
+		header_up Upgrade {http.request.header.Upgrade}
+		header_up Connection {http.request.header.Connection}
+	}
+}
+
+# Ceph Dashboard
+https://192.168.86.30:8443 {
+	reverse_proxy * {
+		# All nodes run ceph-mgr
+		to 192.168.86.11:8443
+		to 192.168.86.12:8443
+		to 192.168.86.13:8443
+		to 192.168.86.14:8443
+		to 192.168.86.15:8443
+		to 192.168.86.16:8443
+
+		lb_policy first
+		health_uri /api/health
+		health_interval 10s
+		health_timeout 3s
+		health_status 200
+
+		transport http {
+			tls_insecure_skip_verify
+		}
+	}
+}
+</code></pre>
+
+<h3 id="why-this-configuration-works">Why This Configuration Works</h3>
+
+<ul>
+  <li><strong>All nodes listed</strong> — All six nodes run ceph-mgr, so all are included. The health check naturally finds whichever one is currently active.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">lb_policy first</code></strong> — Routes to the first healthy upstream. Inactive mgr nodes still have port 8443 open, but they return errors — the health check is what distinguishes the active node from the standby ones.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">health_uri /api/health</code></strong> — The Ceph Dashboard’s <code class="language-plaintext highlighter-rouge">/api/health</code> endpoint returns HTTP 200 without requiring authentication, making it reliable for health checks. The root path <code class="language-plaintext highlighter-rouge">/</code> redirects unauthenticated requests (HTTP 302), which would cause all nodes to fail the <code class="language-plaintext highlighter-rouge">health_status 200</code> check.</li>
+  <li><strong>Port 8443 on the proxy</strong> — Keeps the familiar Ceph Dashboard port. You access <code class="language-plaintext highlighter-rouge">https://192.168.86.30:8443/</code> instead of guessing which node is active.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">tls_insecure_skip_verify</code></strong> — Same rationale as the Proxmox proxy — Ceph uses self-signed certificates.</li>
+  <li><strong>3-second health timeout</strong> — Slightly longer than the Proxmox proxy because the Ceph Dashboard can be slower to respond under load.</li>
+</ul>
+
+<h2 id="apply-the-configuration">Apply the Configuration</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Validate the config first</span>
+caddy validate <span class="nt">--config</span> /etc/caddy/Caddyfile
+
+<span class="c"># Reload without downtime</span>
+caddy reload <span class="nt">--config</span> /etc/caddy/Caddyfile
+
+<span class="c"># Or restart the service</span>
+systemctl restart caddy
+</code></pre></div></div>
+
+<p>Verify it’s listening on both ports:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ss <span class="nt">-tlnp</span> | <span class="nb">grep </span>caddy
+</code></pre></div></div>
+
+<p>Expected output:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>LISTEN 0  4096  127.0.0.1:2019  0.0.0.0:*  users:(("caddy",pid=133,fd=16))
+LISTEN 0  4096          *:8443      *:*  users:(("caddy",pid=133,fd=17))
+LISTEN 0  4096          *:443       *:*  users:(("caddy",pid=133,fd=20))
+LISTEN 0  4096          *:80        *:*  users:(("caddy",pid=133,fd=19))
+</code></pre></div></div>
+
+<p>You’ll see listeners on <code class="language-plaintext highlighter-rouge">:443</code> (Proxmox UI), <code class="language-plaintext highlighter-rouge">:8443</code> (Ceph Dashboard), and <code class="language-plaintext highlighter-rouge">127.0.0.1:2019</code> — that last one is the Caddy Admin API, which is enabled by default and useful for future config management.</p>
+
+<h2 id="verify-it-works">Verify It Works</h2>
+
+<ol>
+  <li>Open <code class="language-plaintext highlighter-rouge">https://192.168.86.30:8443/</code> in your browser</li>
+  <li>Accept the self-signed certificate warning</li>
+  <li>You should see the Ceph Dashboard login page</li>
+  <li>Log in with your Ceph Dashboard credentials</li>
+</ol>
+
+<p>This is what you’ve been working toward — a stable, single URL for the full Ceph cluster overview, regardless of which node is currently the active ceph-mgr:</p>
+
+<p><img src="/assets/images/ceph-dashboard-overview.png" alt="Ceph Dashboard Overview showing cluster health, OSD status, and storage utilization" /></p>
+
+<p>The dashboard shows cluster health, OSD status, pool utilization, and active alerts — everything you need to know about your Ceph cluster at a glance, now accessible from one bookmark that never breaks.</p>
+
+<h3 id="test-failover">Test Failover</h3>
+
+<p>To verify the proxy handles mgr failovers correctly:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check current active mgr</span>
+ceph mgr <span class="nb">stat</span>
+
+<span class="c"># Force a failover</span>
+ceph mgr fail <span class="si">$(</span>ceph mgr <span class="nb">stat</span> | jq <span class="nt">-r</span> <span class="s1">'.active_name'</span><span class="si">)</span>
+
+<span class="c"># Wait 10-15 seconds for health checks, then reload the dashboard</span>
+<span class="c"># It should still work through the proxy</span>
+</code></pre></div></div>
+
+<h2 id="troubleshooting">Troubleshooting</h2>
+
+<h3 id="dashboard-returns-503">Dashboard Returns 503</h3>
+
+<p>All mgr nodes are failing health checks. Verify the dashboard is actually running:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph mgr services
+</code></pre></div></div>
+
+<p>If the dashboard key is missing, the module may need to be re-enabled:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph mgr module disable dashboard
+ceph mgr module <span class="nb">enable </span>dashboard
+</code></pre></div></div>
+
+<h3 id="slow-dashboard-loading">Slow Dashboard Loading</h3>
+
+<p>The Ceph Dashboard can be sluggish, especially the first load after a mgr failover. The <code class="language-plaintext highlighter-rouge">health_timeout 3s</code> setting accounts for this, but if you’re seeing consistent timeouts, increase it:</p>
+
+<pre><code class="language-caddyfile">health_timeout 5s
+</code></pre>
+
+<h3 id="port-conflict">Port Conflict</h3>
+
+<p>If something else is already using port 8443 on the LXC, pick a different port:</p>
+
+<pre><code class="language-caddyfile">https://192.168.86.30:9443 {
+    # ... same config
+}
+</code></pre>
+
+<h2 id="the-complete-caddyfile">The Complete Caddyfile</h2>
+
+<p>For reference, here’s the full <code class="language-plaintext highlighter-rouge">/etc/caddy/Caddyfile</code> with both proxy configurations:</p>
+
+<pre><code class="language-caddyfile"># Proxmox Web UI — all six cluster nodes
+https://192.168.86.30 {
+	reverse_proxy * {
+		to 192.168.86.11:8006
+		to 192.168.86.12:8006
+		to 192.168.86.13:8006
+		to 192.168.86.14:8006
+		to 192.168.86.15:8006
+		to 192.168.86.16:8006
+
+		lb_policy ip_hash
+		health_uri /
+		health_interval 10s
+		health_timeout 2s
+		health_status 200
+
+		transport http {
+			tls_insecure_skip_verify
+		}
+
+		header_up Upgrade {http.request.header.Upgrade}
+		header_up Connection {http.request.header.Connection}
+	}
+}
+
+# Ceph Dashboard — all ceph-mgr nodes
+https://192.168.86.30:8443 {
+	reverse_proxy * {
+		to 192.168.86.11:8443
+		to 192.168.86.12:8443
+		to 192.168.86.13:8443
+		to 192.168.86.14:8443
+		to 192.168.86.15:8443
+		to 192.168.86.16:8443
+
+		lb_policy first
+		health_uri /api/health
+		health_interval 10s
+		health_timeout 3s
+		health_status 200
+
+		transport http {
+			tls_insecure_skip_verify
+		}
+	}
+}
+</code></pre>
+
+<h2 id="future-improvements">Future Improvements</h2>
+
+<ul>
+  <li>
+    <p><strong>DNS names</strong> — Technitium DNS is already running split-horizon for <code class="language-plaintext highlighter-rouge">home.mcgarrah.org</code>, resolving internal names to private IPs while Porkbun handles public DNS. Adding a <code class="language-plaintext highlighter-rouge">ceph.home.mcgarrah.org</code> A record pointing to <code class="language-plaintext highlighter-rouge">192.168.86.30</code> (the Caddy LXC) means internal clients resolve the friendly name while external queries go nowhere — keeping the dashboard off the public internet by design. Replace the IP-based Caddyfile block with a hostname-based one:</p>
+
+    <pre><code class="language-caddyfile">ceph.home.mcgarrah.org:8443 {
+    reverse_proxy * {
+        # ... same upstream config
+    }
+}
+</code></pre>
+  </li>
+  <li><strong>Proper TLS</strong> — With the DNS name in place, Caddy can obtain a trusted certificate via ACME DNS-01 challenge using the Porkbun API, eliminating the self-signed certificate warning entirely</li>
+  <li><strong>Caddy Admin API</strong> — Caddy exposes a REST API on <code class="language-plaintext highlighter-rouge">localhost:2019</code> by default (visible in the <code class="language-plaintext highlighter-rouge">ss</code> output above). This allows JSON-based config updates without touching the Caddyfile directly. It’s local-only by default, which is safe — access it via an SSH tunnel if you want to drive it remotely</li>
+  <li><strong>Additional services</strong> — Grafana, Prometheus, and other monitoring dashboards through the same proxy</li>
+  <li><strong>SSO integration</strong> — Authentik or Keycloak for unified authentication</li>
+</ul>
+
+<h2 id="related-articles">Related Articles</h2>
+
+<ul>
+  <li><a href="/proxmox-add-ceph-dashboard/">Adding Ceph Dashboard to Your Proxmox Cluster</a> — Initial Ceph Dashboard setup</li>
+  <li><a href="/caddy-reverse-proxy-proxmox-web-ui/">Caddy Reverse Proxy for Proxmox Web UI</a> — The Proxmox proxy this builds on</li>
+  <li><a href="/proxmox-ceph-guide/">Proxmox &amp; Ceph Homelab Guide</a> — All my Proxmox and Ceph articles in one place</li>
+</ul>
