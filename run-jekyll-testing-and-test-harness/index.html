@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Run Jekyll: Testing and Test Harness | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Run Jekyll: Testing and Test Harness" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="A practical guide to VS Code extension testing using the Jekyll Run plugin as a case study. Covers the existing test scaffold, the Extension Development Host, Mocha integration, unit tests for pure functions, integration tests for VS Code API calls, and writing regression tests for the getConfiguration, lsof parsing, and null rejection bugs." />
+<meta property="og:description" content="A practical guide to VS Code extension testing using the Jekyll Run plugin as a case study. Covers the existing test scaffold, the Extension Development Host, Mocha integration, unit tests for pure functions, integration tests for VS Code API calls, and writing regression tests for the getConfiguration, lsof parsing, and null rejection bugs." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/run-jekyll-testing-and-test-harness/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/run-jekyll-testing-and-test-harness/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-06-01T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Run Jekyll: Testing and Test Harness" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-06-01T00:00:00+00:00","datePublished":"2026-06-01T00:00:00+00:00","description":"A practical guide to VS Code extension testing using the Jekyll Run plugin as a case study. Covers the existing test scaffold, the Extension Development Host, Mocha integration, unit tests for pure functions, integration tests for VS Code API calls, and writing regression tests for the getConfiguration, lsof parsing, and null rejection bugs.","headline":"Run Jekyll: Testing and Test Harness","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/run-jekyll-testing-and-test-harness/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/run-jekyll-testing-and-test-harness/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/run-jekyll-testing-and-test-harness/">Run Jekyll: Testing and Test Harness</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-06-01T00:00:00+00:00">June 01, 2026</time><span class="reading-time">18 min read</span></header>
+
+  <p>The <a href="https://github.com/Kanna727/jekyll-run">Jekyll Run VS Code extension</a> has three bugs I’ve been <a href="/jekyll-run-plugin-multiroot-workspace-bug/">documenting</a> and <a href="/jekyll-run-plugin-pr-and-fork/">fixing</a>. Before submitting a PR or publishing a fork, the fixes need tests. The extension already has a test scaffold — but it’s the VS Code extension generator’s default: a single sample test that checks <code class="language-plaintext highlighter-rouge">[1, 2, 3].indexOf(5)</code>.</p>
+
+<p>This post covers how VS Code extension testing works, what the existing harness does, and how to write real tests for the bugs I found.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="how-vs-code-extension-testing-works">How VS Code Extension Testing Works</h2>
+
+<p>VS Code extensions run inside the Extension Host — a separate Node.js process managed by VS Code. You can’t just run <code class="language-plaintext highlighter-rouge">mocha</code> against extension code because it depends on the <code class="language-plaintext highlighter-rouge">vscode</code> module, which only exists inside a running VS Code instance.</p>
+
+<p>The testing architecture has three layers:</p>
+
+<ol>
+  <li><strong>Test runner</strong> (<code class="language-plaintext highlighter-rouge">src/test/runTest.ts</code>) — Downloads a VS Code instance, launches it with your extension loaded, and points it at your test suite</li>
+  <li><strong>Test suite index</strong> (<code class="language-plaintext highlighter-rouge">src/test/suite/index.ts</code>) — Configures Mocha and discovers test files</li>
+  <li><strong>Test files</strong> (<code class="language-plaintext highlighter-rouge">src/test/suite/*.test.ts</code>) — The actual tests</li>
+</ol>
+
+<p>When you run <code class="language-plaintext highlighter-rouge">npm test</code>, it compiles TypeScript, then executes <code class="language-plaintext highlighter-rouge">runTest.ts</code>, which downloads VS Code (cached after first run), launches it headlessly, loads your extension, and runs Mocha inside the Extension Development Host.</p>
+
+<h2 id="the-existing-scaffold">The Existing Scaffold</h2>
+
+<p>The Jekyll Run plugin has all three files, but the test file is a placeholder.</p>
+
+<h3 id="runtestts--the-launcher">runTest.ts — The Launcher</h3>
+
+<div class="language-typescript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="o">*</span> <span class="kd">as </span><span class="nx">path</span> <span class="k">from</span> <span class="dl">'</span><span class="s1">path</span><span class="dl">'</span><span class="p">;</span>
+<span class="k">import</span> <span class="p">{</span> <span class="nx">runTests</span> <span class="p">}</span> <span class="k">from</span> <span class="dl">'</span><span class="s1">vscode-test</span><span class="dl">'</span><span class="p">;</span>
+
+<span class="k">async</span> <span class="kd">function</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kd">const</span> <span class="nx">extensionDevelopmentPath</span> <span class="o">=</span> <span class="nx">path</span><span class="p">.</span><span class="nf">resolve</span><span class="p">(</span><span class="nx">__dirname</span><span class="p">,</span> <span class="dl">'</span><span class="s1">../../</span><span class="dl">'</span><span class="p">);</span>
+    <span class="kd">const</span> <span class="nx">extensionTestsPath</span> <span class="o">=</span> <span class="nx">path</span><span class="p">.</span><span class="nf">resolve</span><span class="p">(</span><span class="nx">__dirname</span><span class="p">,</span> <span class="dl">'</span><span class="s1">./suite/index</span><span class="dl">'</span><span class="p">);</span>
+    <span class="k">await</span> <span class="nf">runTests</span><span class="p">({</span> <span class="nx">extensionDevelopmentPath</span><span class="p">,</span> <span class="nx">extensionTestsPath</span> <span class="p">});</span>
+<span class="p">}</span>
+
+<span class="nf">main</span><span class="p">();</span>
+</code></pre></div></div>
+
+<p>This downloads VS Code (if not cached), launches it with <code class="language-plaintext highlighter-rouge">--extensionDevelopmentPath</code> pointing to the plugin root, and <code class="language-plaintext highlighter-rouge">--extensionTestsPath</code> pointing to the test suite. The <code class="language-plaintext highlighter-rouge">vscode-test</code> package handles the download and lifecycle.</p>
+
+<h3 id="suiteindexts--the-mocha-configuration">suite/index.ts — The Mocha Configuration</h3>
+
+<div class="language-typescript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="o">*</span> <span class="kd">as </span><span class="nx">path</span> <span class="k">from</span> <span class="dl">'</span><span class="s1">path</span><span class="dl">'</span><span class="p">;</span>
+<span class="k">import</span> <span class="o">*</span> <span class="kd">as </span><span class="nx">Mocha</span> <span class="k">from</span> <span class="dl">'</span><span class="s1">mocha</span><span class="dl">'</span><span class="p">;</span>
+<span class="k">import</span> <span class="o">*</span> <span class="kd">as </span><span class="nx">glob</span> <span class="k">from</span> <span class="dl">'</span><span class="s1">glob</span><span class="dl">'</span><span class="p">;</span>
+
+<span class="k">export</span> <span class="kd">function</span> <span class="nf">run</span><span class="p">():</span> <span class="nb">Promise</span><span class="o">&lt;</span><span class="k">void</span><span class="o">&gt;</span> <span class="p">{</span>
+    <span class="kd">const</span> <span class="nx">mocha</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Mocha</span><span class="p">({</span> <span class="na">ui</span><span class="p">:</span> <span class="dl">'</span><span class="s1">tdd</span><span class="dl">'</span><span class="p">,</span> <span class="na">color</span><span class="p">:</span> <span class="kc">true</span> <span class="p">});</span>
+    <span class="kd">const</span> <span class="nx">testsRoot</span> <span class="o">=</span> <span class="nx">path</span><span class="p">.</span><span class="nf">resolve</span><span class="p">(</span><span class="nx">__dirname</span><span class="p">,</span> <span class="dl">'</span><span class="s1">..</span><span class="dl">'</span><span class="p">);</span>
+
+    <span class="k">return</span> <span class="k">new</span> <span class="nc">Promise</span><span class="p">((</span><span class="nx">c</span><span class="p">,</span> <span class="nx">e</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="nf">glob</span><span class="p">(</span><span class="dl">'</span><span class="s1">**/**.test.js</span><span class="dl">'</span><span class="p">,</span> <span class="p">{</span> <span class="na">cwd</span><span class="p">:</span> <span class="nx">testsRoot</span> <span class="p">},</span> <span class="p">(</span><span class="nx">err</span><span class="p">,</span> <span class="nx">files</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+            <span class="nx">files</span><span class="p">.</span><span class="nf">forEach</span><span class="p">(</span><span class="nx">f</span> <span class="o">=&gt;</span> <span class="nx">mocha</span><span class="p">.</span><span class="nf">addFile</span><span class="p">(</span><span class="nx">path</span><span class="p">.</span><span class="nf">resolve</span><span class="p">(</span><span class="nx">testsRoot</span><span class="p">,</span> <span class="nx">f</span><span class="p">)));</span>
+            <span class="nx">mocha</span><span class="p">.</span><span class="nf">run</span><span class="p">(</span><span class="nx">failures</span> <span class="o">=&gt;</span> <span class="p">{</span>
+                <span class="k">if </span><span class="p">(</span><span class="nx">failures</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span> <span class="nf">e</span><span class="p">(</span><span class="k">new</span> <span class="nc">Error</span><span class="p">(</span><span class="s2">`</span><span class="p">${</span><span class="nx">failures</span><span class="p">}</span><span class="s2"> tests failed.`</span><span class="p">));</span> <span class="p">}</span>
+                <span class="k">else</span> <span class="p">{</span> <span class="nf">c</span><span class="p">();</span> <span class="p">}</span>
+            <span class="p">});</span>
+        <span class="p">});</span>
+    <span class="p">});</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>This finds all <code class="language-plaintext highlighter-rouge">*.test.js</code> files under the test directory and runs them with Mocha in TDD mode (<code class="language-plaintext highlighter-rouge">suite</code>/<code class="language-plaintext highlighter-rouge">test</code> instead of <code class="language-plaintext highlighter-rouge">describe</code>/<code class="language-plaintext highlighter-rouge">it</code>).</p>
+
+<h3 id="extensiontestts--the-placeholder">extension.test.ts — The Placeholder</h3>
+
+<div class="language-typescript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">import</span> <span class="o">*</span> <span class="kd">as </span><span class="nx">assert</span> <span class="k">from</span> <span class="dl">'</span><span class="s1">assert</span><span class="dl">'</span><span class="p">;</span>
+<span class="k">import</span> <span class="o">*</span> <span class="kd">as </span><span class="nx">vscode</span> <span class="k">from</span> <span class="dl">'</span><span class="s1">vscode</span><span class="dl">'</span><span class="p">;</span>
+
+<span class="nf">suite</span><span class="p">(</span><span class="dl">'</span><span class="s1">Extension Test Suite</span><span class="dl">'</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="nx">vscode</span><span class="p">.</span><span class="nb">window</span><span class="p">.</span><span class="nf">showInformationMessage</span><span class="p">(</span><span class="dl">'</span><span class="s1">Start all tests.</span><span class="dl">'</span><span class="p">);</span>
+
+    <span class="nf">test</span><span class="p">(</span><span class="dl">'</span><span class="s1">Sample test</span><span class="dl">'</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="nx">assert</span><span class="p">.</span><span class="nf">equal</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">].</span><span class="nf">indexOf</span><span class="p">(</span><span class="mi">5</span><span class="p">));</span>
+        <span class="nx">assert</span><span class="p">.</span><span class="nf">equal</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">].</span><span class="nf">indexOf</span><span class="p">(</span><span class="mi">0</span><span class="p">));</span>
+    <span class="p">});</span>
+<span class="p">});</span>
+</code></pre></div></div>
+
+<p>This is the default from <code class="language-plaintext highlighter-rouge">yo code</code> — the VS Code extension generator. It proves the test harness runs but tests nothing about the extension.</p>
+
+<h2 id="running-the-existing-tests">Running the Existing Tests</h2>
+
+<p>From a cloned copy of the repository:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone https://github.com/mcgarrah/jekyll-run.git
+<span class="nb">cd </span>jekyll-run
+npm <span class="nb">install
+</span>npm <span class="nb">test</span>
+</code></pre></div></div>
+
+<p>The first run downloads a VS Code instance (~200MB, cached in <code class="language-plaintext highlighter-rouge">.vscode-test/</code>). A VS Code window flashes open briefly (the Extension Development Host), runs the single test, and exits. You’ll see:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Extension Test Suite
+  ✓ Sample test
+
+1 passing
+</code></pre></div></div>
+
+<h3 id="dependencies">Dependencies</h3>
+
+<p>The test infrastructure uses these packages (all already in <code class="language-plaintext highlighter-rouge">devDependencies</code>):</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Package</th>
+      <th>Version</th>
+      <th>Purpose</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">vscode-test</code></td>
+      <td>^1.3.0</td>
+      <td>Downloads and launches VS Code for integration tests</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">mocha</code></td>
+      <td>^7.1.2</td>
+      <td>Test framework</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">glob</code></td>
+      <td>^7.1.6</td>
+      <td>File discovery for test suite</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">@types/mocha</code></td>
+      <td>^7.0.2</td>
+      <td>TypeScript types for Mocha</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">@types/glob</code></td>
+      <td>^7.1.1</td>
+      <td>TypeScript types for glob</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>These are outdated (2020 versions) but functional. A dependency update is out of scope for a bug fix PR but worth doing in a fork.</p>
+
+<h2 id="two-types-of-tests">Two Types of Tests</h2>
+
+<p>VS Code extension tests fall into two categories:</p>
+
+<h3 id="unit-tests--pure-functions">Unit Tests — Pure Functions</h3>
+
+<p>Functions that don’t depend on the <code class="language-plaintext highlighter-rouge">vscode</code> module can be tested with plain Mocha — no Extension Development Host needed. In the Jekyll Run plugin, these include:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">getNumbersInString()</code> — Extracts numbers from a string</li>
+  <li><code class="language-plaintext highlighter-rouge">findPidByPort()</code> — Parses <code class="language-plaintext highlighter-rouge">netstat</code> output (Windows)</li>
+  <li>The <code class="language-plaintext highlighter-rouge">lsof</code> output parsing in <code class="language-plaintext highlighter-rouge">findProcessOnPort()</code> (the bug we found)</li>
+  <li>The Errno regex match in the stderr handler</li>
+</ul>
+
+<p>These are the easiest to test and the most valuable — they cover the exact parsing logic where the bugs live.</p>
+
+<h3 id="integration-tests--vs-code-api">Integration Tests — VS Code API</h3>
+
+<p>Functions that use <code class="language-plaintext highlighter-rouge">vscode.workspace</code>, <code class="language-plaintext highlighter-rouge">vscode.window</code>, or other VS Code APIs must run inside the Extension Development Host. These include:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">Config.get()</code> — The <code class="language-plaintext highlighter-rouge">getConfiguration()</code> call that breaks in multi-root workspaces</li>
+  <li><code class="language-plaintext highlighter-rouge">isStaticWebsiteWorkspace()</code> — Workspace folder detection</li>
+  <li>The full <code class="language-plaintext highlighter-rouge">Run.run()</code> lifecycle</li>
+</ul>
+
+<p>Integration tests are slower (they launch VS Code) and harder to write (you need workspace fixtures), but they’re the only way to test the <code class="language-plaintext highlighter-rouge">getConfiguration()</code> fix.</p>
+
+<h2 id="writing-tests-for-the-three-bugs">Writing Tests for the Three Bugs</h2>
+
+<h3 id="bug-1-lsof-output-parsing">Bug 1: lsof Output Parsing</h3>
+
+<p>The <code class="language-plaintext highlighter-rouge">findProcessOnPort()</code> function splits <code class="language-plaintext highlighter-rouge">lsof</code> output on single spaces, which fails on macOS because <code class="language-plaintext highlighter-rouge">lsof</code> uses variable-width columns. This is a pure function test — no VS Code API needed.</p>
+
+<div class="language-typescript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// src/test/suite/process-on-port.test.ts</span>
+<span class="k">import</span> <span class="o">*</span> <span class="kd">as </span><span class="nx">assert</span> <span class="k">from</span> <span class="dl">'</span><span class="s1">assert</span><span class="dl">'</span><span class="p">;</span>
+
+<span class="nf">suite</span><span class="p">(</span><span class="dl">'</span><span class="s1">Process on Port Parsing</span><span class="dl">'</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+
+    <span class="c1">// Simulates the parsing logic from findProcessOnPort</span>
+    <span class="kd">function</span> <span class="nf">parseLsofOutput</span><span class="p">(</span><span class="na">output</span><span class="p">:</span> <span class="kr">string</span><span class="p">):</span> <span class="p">{</span> <span class="na">name</span><span class="p">:</span> <span class="kr">string</span><span class="p">;</span> <span class="nl">pid</span><span class="p">:</span> <span class="kr">number</span> <span class="p">}</span> <span class="p">{</span>
+        <span class="kd">const</span> <span class="nx">line</span> <span class="o">=</span> <span class="nx">output</span><span class="p">.</span><span class="nf">split</span><span class="p">(</span><span class="dl">'</span><span class="se">\n</span><span class="dl">'</span><span class="p">)[</span><span class="mi">1</span><span class="p">];</span>
+        <span class="c1">// BUG: original uses .split(' ')</span>
+        <span class="c1">// FIX: use .split(/\s+/).filter(Boolean)</span>
+        <span class="kd">const</span> <span class="nx">parts</span> <span class="o">=</span> <span class="nx">line</span><span class="p">.</span><span class="nf">split</span><span class="p">(</span><span class="sr">/</span><span class="se">\s</span><span class="sr">+/</span><span class="p">).</span><span class="nf">filter</span><span class="p">(</span><span class="nb">Boolean</span><span class="p">);</span>
+        <span class="k">return</span> <span class="p">{</span> <span class="na">name</span><span class="p">:</span> <span class="nx">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="na">pid</span><span class="p">:</span> <span class="o">+</span><span class="nx">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="p">};</span>
+    <span class="p">}</span>
+
+    <span class="nf">test</span><span class="p">(</span><span class="dl">'</span><span class="s1">parses lsof output with single spaces</span><span class="dl">'</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="kd">const</span> <span class="nx">output</span> <span class="o">=</span> <span class="dl">'</span><span class="s1">COMMAND PID USER FD TYPE</span><span class="se">\n</span><span class="s1">ruby 12345 user 6u IPv4</span><span class="dl">'</span><span class="p">;</span>
+        <span class="kd">const</span> <span class="nx">result</span> <span class="o">=</span> <span class="nf">parseLsofOutput</span><span class="p">(</span><span class="nx">output</span><span class="p">);</span>
+        <span class="nx">assert</span><span class="p">.</span><span class="nf">strictEqual</span><span class="p">(</span><span class="nx">result</span><span class="p">.</span><span class="nx">name</span><span class="p">,</span> <span class="dl">'</span><span class="s1">ruby</span><span class="dl">'</span><span class="p">);</span>
+        <span class="nx">assert</span><span class="p">.</span><span class="nf">strictEqual</span><span class="p">(</span><span class="nx">result</span><span class="p">.</span><span class="nx">pid</span><span class="p">,</span> <span class="mi">12345</span><span class="p">);</span>
+    <span class="p">});</span>
+
+    <span class="nf">test</span><span class="p">(</span><span class="dl">'</span><span class="s1">parses lsof output with variable-width columns (macOS)</span><span class="dl">'</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="c1">// Real macOS lsof output has multiple spaces between columns</span>
+        <span class="kd">const</span> <span class="nx">output</span> <span class="o">=</span> <span class="dl">'</span><span class="s1">COMMAND   PID             USER   FD   TYPE</span><span class="se">\n</span><span class="s1">ruby    20545 michael.mcgarrah    6u  IPv4</span><span class="dl">'</span><span class="p">;</span>
+        <span class="kd">const</span> <span class="nx">result</span> <span class="o">=</span> <span class="nf">parseLsofOutput</span><span class="p">(</span><span class="nx">output</span><span class="p">);</span>
+        <span class="nx">assert</span><span class="p">.</span><span class="nf">strictEqual</span><span class="p">(</span><span class="nx">result</span><span class="p">.</span><span class="nx">name</span><span class="p">,</span> <span class="dl">'</span><span class="s1">ruby</span><span class="dl">'</span><span class="p">);</span>
+        <span class="nx">assert</span><span class="p">.</span><span class="nf">strictEqual</span><span class="p">(</span><span class="nx">result</span><span class="p">.</span><span class="nx">pid</span><span class="p">,</span> <span class="mi">20545</span><span class="p">);</span>
+    <span class="p">});</span>
+
+    <span class="nf">test</span><span class="p">(</span><span class="dl">'</span><span class="s1">handles lsof output with tabs</span><span class="dl">'</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="kd">const</span> <span class="nx">output</span> <span class="o">=</span> <span class="dl">'</span><span class="s1">COMMAND</span><span class="se">\t</span><span class="s1">PID</span><span class="se">\t</span><span class="s1">USER</span><span class="se">\n</span><span class="s1">ruby</span><span class="se">\t</span><span class="s1">12345</span><span class="se">\t</span><span class="s1">user</span><span class="dl">'</span><span class="p">;</span>
+        <span class="kd">const</span> <span class="nx">result</span> <span class="o">=</span> <span class="nf">parseLsofOutput</span><span class="p">(</span><span class="nx">output</span><span class="p">);</span>
+        <span class="nx">assert</span><span class="p">.</span><span class="nf">strictEqual</span><span class="p">(</span><span class="nx">result</span><span class="p">.</span><span class="nx">name</span><span class="p">,</span> <span class="dl">'</span><span class="s1">ruby</span><span class="dl">'</span><span class="p">);</span>
+        <span class="nx">assert</span><span class="p">.</span><span class="nf">strictEqual</span><span class="p">(</span><span class="nx">result</span><span class="p">.</span><span class="nx">pid</span><span class="p">,</span> <span class="mi">12345</span><span class="p">);</span>
+    <span class="p">});</span>
+<span class="p">});</span>
+</code></pre></div></div>
+
+<h3 id="bug-2-null-rejection-on-non-errno-errors">Bug 2: Null Rejection on Non-Errno Errors</h3>
+
+<p>The stderr handler rejects with <code class="language-plaintext highlighter-rouge">null</code> when a Ruby error doesn’t contain “Errno”. This is also a pure function test.</p>
+
+<div class="language-typescript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// src/test/suite/error-handling.test.ts</span>
+<span class="k">import</span> <span class="o">*</span> <span class="kd">as </span><span class="nx">assert</span> <span class="k">from</span> <span class="dl">'</span><span class="s1">assert</span><span class="dl">'</span><span class="p">;</span>
+
+<span class="nf">suite</span><span class="p">(</span><span class="dl">'</span><span class="s1">Error Handler Regex</span><span class="dl">'</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+
+    <span class="kd">function</span> <span class="nf">extractError</span><span class="p">(</span><span class="na">stderr</span><span class="p">:</span> <span class="kr">string</span><span class="p">):</span> <span class="kr">string</span> <span class="o">|</span> <span class="kc">null</span> <span class="p">{</span>
+        <span class="c1">// Original: returns null when Errno not found</span>
+        <span class="c1">// return stderr.match(/\B(.+)Errno(.+)/m);</span>
+
+        <span class="c1">// Fixed: falls back to full error string</span>
+        <span class="k">return</span> <span class="nx">stderr</span><span class="p">.</span><span class="nf">match</span><span class="p">(</span><span class="sr">/</span><span class="se">\B(</span><span class="sr">.+</span><span class="se">)</span><span class="sr">Errno</span><span class="se">(</span><span class="sr">.+</span><span class="se">)</span><span class="sr">/m</span><span class="p">)?.[</span><span class="mi">0</span><span class="p">]</span> <span class="o">||</span> <span class="nx">stderr</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="nf">test</span><span class="p">(</span><span class="dl">'</span><span class="s1">extracts Errno message when present</span><span class="dl">'</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="kd">const</span> <span class="nx">stderr</span> <span class="o">=</span> <span class="dl">'</span><span class="s1">Error: Errno::EADDRINUSE - Address already in use</span><span class="dl">'</span><span class="p">;</span>
+        <span class="kd">const</span> <span class="nx">result</span> <span class="o">=</span> <span class="nf">extractError</span><span class="p">(</span><span class="nx">stderr</span><span class="p">);</span>
+        <span class="nx">assert</span><span class="p">.</span><span class="nf">ok</span><span class="p">(</span><span class="nx">result</span><span class="p">);</span>
+        <span class="nx">assert</span><span class="p">.</span><span class="nf">ok</span><span class="p">(</span><span class="nx">result</span><span class="o">!</span><span class="p">.</span><span class="nf">includes</span><span class="p">(</span><span class="dl">'</span><span class="s1">Errno</span><span class="dl">'</span><span class="p">));</span>
+    <span class="p">});</span>
+
+    <span class="nf">test</span><span class="p">(</span><span class="dl">'</span><span class="s1">returns full error when Errno not present</span><span class="dl">'</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="kd">const</span> <span class="nx">stderr</span> <span class="o">=</span> <span class="dl">"</span><span class="s2">Could not find 'bundler' (4.0.8) required by your Gemfile.lock</span><span class="dl">"</span><span class="p">;</span>
+        <span class="kd">const</span> <span class="nx">result</span> <span class="o">=</span> <span class="nf">extractError</span><span class="p">(</span><span class="nx">stderr</span><span class="p">);</span>
+        <span class="nx">assert</span><span class="p">.</span><span class="nf">ok</span><span class="p">(</span><span class="nx">result</span><span class="p">);</span>
+        <span class="nx">assert</span><span class="p">.</span><span class="nf">ok</span><span class="p">(</span><span class="nx">result</span><span class="o">!</span><span class="p">.</span><span class="nf">includes</span><span class="p">(</span><span class="dl">'</span><span class="s1">bundler</span><span class="dl">'</span><span class="p">));</span>
+    <span class="p">});</span>
+
+    <span class="nf">test</span><span class="p">(</span><span class="dl">'</span><span class="s1">never returns null</span><span class="dl">'</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="kd">const</span> <span class="nx">stderrSamples</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="dl">'</span><span class="s1">ruby: command not found</span><span class="dl">'</span><span class="p">,</span>
+            <span class="dl">"</span><span class="s2">Could not find 'bundler' (4.0.8)</span><span class="dl">"</span><span class="p">,</span>
+            <span class="dl">'</span><span class="s1">LoadError: cannot load such file</span><span class="dl">'</span><span class="p">,</span>
+            <span class="dl">'</span><span class="s1">/usr/bin/ruby: No such file or directory</span><span class="dl">'</span><span class="p">,</span>
+        <span class="p">];</span>
+        <span class="k">for </span><span class="p">(</span><span class="kd">const</span> <span class="nx">stderr</span> <span class="k">of</span> <span class="nx">stderrSamples</span><span class="p">)</span> <span class="p">{</span>
+            <span class="kd">const</span> <span class="nx">result</span> <span class="o">=</span> <span class="nf">extractError</span><span class="p">(</span><span class="nx">stderr</span><span class="p">);</span>
+            <span class="nx">assert</span><span class="p">.</span><span class="nf">notStrictEqual</span><span class="p">(</span><span class="nx">result</span><span class="p">,</span> <span class="kc">null</span><span class="p">,</span> <span class="s2">`Got null for: </span><span class="p">${</span><span class="nx">stderr</span><span class="p">}</span><span class="s2">`</span><span class="p">);</span>
+        <span class="p">}</span>
+    <span class="p">});</span>
+<span class="p">});</span>
+</code></pre></div></div>
+
+<h3 id="bug-3-getconfiguration-scoping">Bug 3: getConfiguration() Scoping</h3>
+
+<p>This requires an integration test because it depends on the VS Code API. The test needs to run inside the Extension Development Host with a multi-root workspace.</p>
+
+<div class="language-typescript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// src/test/suite/config.test.ts</span>
+<span class="k">import</span> <span class="o">*</span> <span class="kd">as </span><span class="nx">assert</span> <span class="k">from</span> <span class="dl">'</span><span class="s1">assert</span><span class="dl">'</span><span class="p">;</span>
+<span class="k">import</span> <span class="o">*</span> <span class="kd">as </span><span class="nx">vscode</span> <span class="k">from</span> <span class="dl">'</span><span class="s1">vscode</span><span class="dl">'</span><span class="p">;</span>
+
+<span class="nf">suite</span><span class="p">(</span><span class="dl">'</span><span class="s1">Config Resolution</span><span class="dl">'</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+
+    <span class="nf">test</span><span class="p">(</span><span class="dl">'</span><span class="s1">getConfiguration with section returns WorkspaceConfiguration</span><span class="dl">'</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="c1">// The fixed approach: pass section name directly</span>
+        <span class="kd">const</span> <span class="nx">config</span> <span class="o">=</span> <span class="nx">vscode</span><span class="p">.</span><span class="nx">workspace</span><span class="p">.</span><span class="nf">getConfiguration</span><span class="p">(</span><span class="dl">'</span><span class="s1">jekyll-run</span><span class="dl">'</span><span class="p">);</span>
+        <span class="nx">assert</span><span class="p">.</span><span class="nf">ok</span><span class="p">(</span><span class="nx">config</span><span class="p">,</span> <span class="dl">'</span><span class="s1">getConfiguration("jekyll-run") should not return null</span><span class="dl">'</span><span class="p">);</span>
+        <span class="c1">// Should resolve the default from package.json</span>
+        <span class="kd">const</span> <span class="nx">args</span> <span class="o">=</span> <span class="nx">config</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="dl">'</span><span class="s1">commandLineArguments</span><span class="dl">'</span><span class="p">);</span>
+        <span class="nx">assert</span><span class="p">.</span><span class="nf">strictEqual</span><span class="p">(</span><span class="k">typeof</span> <span class="nx">args</span><span class="p">,</span> <span class="dl">'</span><span class="s1">string</span><span class="dl">'</span><span class="p">,</span>
+            <span class="dl">'</span><span class="s1">commandLineArguments should resolve to a string (default: "")</span><span class="dl">'</span><span class="p">);</span>
+    <span class="p">});</span>
+
+    <span class="nf">test</span><span class="p">(</span><span class="dl">'</span><span class="s1">commandLineArguments has a default value</span><span class="dl">'</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="kd">const</span> <span class="nx">config</span> <span class="o">=</span> <span class="nx">vscode</span><span class="p">.</span><span class="nx">workspace</span><span class="p">.</span><span class="nf">getConfiguration</span><span class="p">(</span><span class="dl">'</span><span class="s1">jekyll-run</span><span class="dl">'</span><span class="p">);</span>
+        <span class="kd">const</span> <span class="nx">args</span> <span class="o">=</span> <span class="nx">config</span><span class="p">.</span><span class="kd">get</span><span class="o">&lt;</span><span class="kr">string</span><span class="o">&gt;</span><span class="p">(</span><span class="dl">'</span><span class="s1">commandLineArguments</span><span class="dl">'</span><span class="p">,</span> <span class="dl">''</span><span class="p">);</span>
+        <span class="nx">assert</span><span class="p">.</span><span class="nf">strictEqual</span><span class="p">(</span><span class="k">typeof</span> <span class="nx">args</span><span class="p">,</span> <span class="dl">'</span><span class="s1">string</span><span class="dl">'</span><span class="p">);</span>
+        <span class="c1">// Default from package.json is empty string</span>
+        <span class="c1">// If user has settings, it will be their value</span>
+    <span class="p">});</span>
+
+    <span class="nf">test</span><span class="p">(</span><span class="dl">'</span><span class="s1">stopServerOnExit has a default value</span><span class="dl">'</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="kd">const</span> <span class="nx">config</span> <span class="o">=</span> <span class="nx">vscode</span><span class="p">.</span><span class="nx">workspace</span><span class="p">.</span><span class="nf">getConfiguration</span><span class="p">(</span><span class="dl">'</span><span class="s1">jekyll-run</span><span class="dl">'</span><span class="p">);</span>
+        <span class="kd">const</span> <span class="nx">stop</span> <span class="o">=</span> <span class="nx">config</span><span class="p">.</span><span class="kd">get</span><span class="o">&lt;</span><span class="nx">boolean</span><span class="o">&gt;</span><span class="p">(</span><span class="dl">'</span><span class="s1">stopServerOnExit</span><span class="dl">'</span><span class="p">);</span>
+        <span class="nx">assert</span><span class="p">.</span><span class="nf">strictEqual</span><span class="p">(</span><span class="k">typeof</span> <span class="nx">stop</span><span class="p">,</span> <span class="dl">'</span><span class="s1">boolean</span><span class="dl">'</span><span class="p">);</span>
+    <span class="p">});</span>
+<span class="p">});</span>
+</code></pre></div></div>
+
+<h3 id="bug-4-getnumbersinstring-utility">Bug 4: getNumbersInString Utility</h3>
+
+<p>The existing utility function also splits on single spaces. While it’s not directly involved in the bugs I found, it has the same pattern:</p>
+
+<div class="language-typescript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// src/test/suite/utils.test.ts</span>
+<span class="k">import</span> <span class="o">*</span> <span class="kd">as </span><span class="nx">assert</span> <span class="k">from</span> <span class="dl">'</span><span class="s1">assert</span><span class="dl">'</span><span class="p">;</span>
+
+<span class="c1">// Inline the function since we can't import from src without restructuring</span>
+<span class="kd">function</span> <span class="nf">getNumbersInString</span><span class="p">(</span><span class="nx">str</span><span class="p">:</span> <span class="kr">string</span><span class="p">):</span> <span class="kr">number</span><span class="p">[]</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">str</span><span class="p">.</span><span class="nf">trim</span><span class="p">().</span><span class="nf">split</span><span class="p">(</span><span class="sr">/</span><span class="se">\s</span><span class="sr">+/</span><span class="p">).</span><span class="nf">filter</span><span class="p">(</span><span class="nb">Boolean</span><span class="p">)</span>
+        <span class="p">.</span><span class="nf">filter</span><span class="p">(</span><span class="nx">value</span> <span class="o">=&gt;</span> <span class="sr">/^</span><span class="se">\d</span><span class="sr">+$/</span><span class="p">.</span><span class="nf">test</span><span class="p">(</span><span class="nx">value</span><span class="p">.</span><span class="nf">trim</span><span class="p">()))</span>
+        <span class="p">.</span><span class="nf">map</span><span class="p">(</span><span class="nb">Number</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="nf">suite</span><span class="p">(</span><span class="dl">'</span><span class="s1">getNumbersInString</span><span class="dl">'</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+
+    <span class="nf">test</span><span class="p">(</span><span class="dl">'</span><span class="s1">extracts numbers from space-separated string</span><span class="dl">'</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="nx">assert</span><span class="p">.</span><span class="nf">deepStrictEqual</span><span class="p">(</span><span class="nf">getNumbersInString</span><span class="p">(</span><span class="dl">'</span><span class="s1">PID 12345</span><span class="dl">'</span><span class="p">),</span> <span class="p">[</span><span class="mi">12345</span><span class="p">]);</span>
+    <span class="p">});</span>
+
+    <span class="nf">test</span><span class="p">(</span><span class="dl">'</span><span class="s1">extracts multiple numbers</span><span class="dl">'</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="nx">assert</span><span class="p">.</span><span class="nf">deepStrictEqual</span><span class="p">(</span><span class="nf">getNumbersInString</span><span class="p">(</span><span class="dl">'</span><span class="s1">12345 67890</span><span class="dl">'</span><span class="p">),</span> <span class="p">[</span><span class="mi">12345</span><span class="p">,</span> <span class="mi">67890</span><span class="p">]);</span>
+    <span class="p">});</span>
+
+    <span class="nf">test</span><span class="p">(</span><span class="dl">'</span><span class="s1">handles multiple spaces between values</span><span class="dl">'</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="nx">assert</span><span class="p">.</span><span class="nf">deepStrictEqual</span><span class="p">(</span><span class="nf">getNumbersInString</span><span class="p">(</span><span class="dl">'</span><span class="s1">PID   12345   USER</span><span class="dl">'</span><span class="p">),</span> <span class="p">[</span><span class="mi">12345</span><span class="p">]);</span>
+    <span class="p">});</span>
+
+    <span class="nf">test</span><span class="p">(</span><span class="dl">'</span><span class="s1">returns empty array for no numbers</span><span class="dl">'</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="nx">assert</span><span class="p">.</span><span class="nf">deepStrictEqual</span><span class="p">(</span><span class="nf">getNumbersInString</span><span class="p">(</span><span class="dl">'</span><span class="s1">no numbers here</span><span class="dl">'</span><span class="p">),</span> <span class="p">[]);</span>
+    <span class="p">});</span>
+
+    <span class="nf">test</span><span class="p">(</span><span class="dl">'</span><span class="s1">handles empty string</span><span class="dl">'</span><span class="p">,</span> <span class="p">()</span> <span class="o">=&gt;</span> <span class="p">{</span>
+        <span class="nx">assert</span><span class="p">.</span><span class="nf">deepStrictEqual</span><span class="p">(</span><span class="nf">getNumbersInString</span><span class="p">(</span><span class="dl">''</span><span class="p">),</span> <span class="p">[]);</span>
+    <span class="p">});</span>
+<span class="p">});</span>
+</code></pre></div></div>
+
+<h2 id="project-structure-with-tests">Project Structure with Tests</h2>
+
+<p>After adding the test files, the test directory looks like:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>src/test/
+├── runTest.ts                    # Launcher (unchanged)
+└── suite/
+    ├── index.ts                  # Mocha config (unchanged)
+    ├── extension.test.ts         # Original placeholder (can remove)
+    ├── config.test.ts            # Bug 3: getConfiguration scoping
+    ├── error-handling.test.ts    # Bug 2: null rejection
+    ├── process-on-port.test.ts   # Bug 1: lsof parsing
+    └── utils.test.ts             # Utility function coverage
+</code></pre></div></div>
+
+<h2 id="the-existing-fork-and-ci-infrastructure">The Existing Fork and CI Infrastructure</h2>
+
+<p>I already have the fork at <code class="language-plaintext highlighter-rouge">jekyll-run/</code> (origin: <code class="language-plaintext highlighter-rouge">mcgarrah/jekyll-run</code>). Better yet, the original author set up a complete CI pipeline that we can reuse:</p>
+
+<h3 id="ci-releaseyml--cross-platform-testing">ci-release.yml — Cross-Platform Testing</h3>
+
+<p>The existing workflow already runs tests on macOS, Ubuntu, and Windows on every push and PR:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">jobs</span><span class="pi">:</span>
+  <span class="na">test</span><span class="pi">:</span>
+    <span class="na">strategy</span><span class="pi">:</span>
+      <span class="na">matrix</span><span class="pi">:</span>
+        <span class="na">os</span><span class="pi">:</span> <span class="pi">[</span><span class="nv">macos-latest</span><span class="pi">,</span> <span class="nv">ubuntu-latest</span><span class="pi">,</span> <span class="nv">windows-latest</span><span class="pi">]</span>
+    <span class="na">runs-on</span><span class="pi">:</span> <span class="s">$</span>
+    <span class="na">steps</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/checkout@v2</span>
+      <span class="pi">-</span> <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/setup-node@v1</span>
+        <span class="na">with</span><span class="pi">:</span>
+          <span class="na">node-version</span><span class="pi">:</span> <span class="m">12</span>
+      <span class="pi">-</span> <span class="na">run</span><span class="pi">:</span> <span class="s">npm install</span>
+      <span class="pi">-</span> <span class="na">uses</span><span class="pi">:</span> <span class="s">GabrielBB/xvfb-action@v1.2</span>
+        <span class="na">with</span><span class="pi">:</span>
+          <span class="na">run</span><span class="pi">:</span> <span class="s">npm test</span>
+</code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">xvfb-action</code> handles the headless display server needed for VS Code integration tests on Linux. macOS and Windows don’t need it but the action is cross-platform safe.</p>
+
+<h3 id="ci-publishyml--marketplace-publishing">ci-publish.yml — Marketplace Publishing</h3>
+
+<p>Triggered on GitHub Release creation, publishes directly to the VS Code Marketplace:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">on</span><span class="pi">:</span>
+  <span class="na">release</span><span class="pi">:</span>
+    <span class="na">types</span><span class="pi">:</span> <span class="pi">[</span><span class="nv">published</span><span class="pi">]</span>
+<span class="na">jobs</span><span class="pi">:</span>
+  <span class="na">publish</span><span class="pi">:</span>
+    <span class="na">steps</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">run</span><span class="pi">:</span> <span class="s">npm install</span>
+      <span class="pi">-</span> <span class="na">uses</span><span class="pi">:</span> <span class="s">JCofman/vscodeaction@master</span>
+        <span class="na">env</span><span class="pi">:</span>
+          <span class="na">PUBLISHER_TOKEN</span><span class="pi">:</span> <span class="s">$</span>
+        <span class="na">with</span><span class="pi">:</span>
+          <span class="na">args</span><span class="pi">:</span> <span class="s">publish -p $PUBLISHER_TOKEN</span>
+</code></pre></div></div>
+
+<p>To use this, you’d add your VS Code Marketplace PAT as a <code class="language-plaintext highlighter-rouge">PUBLISHER_TOKEN</code> secret in the fork’s GitHub settings. Then creating a GitHub Release triggers the publish automatically.</p>
+
+<h3 id="what-needs-updating">What Needs Updating</h3>
+
+<p>The CI workflows are from 2020 and need version bumps before they’ll run:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Component</th>
+      <th>Current</th>
+      <th>Update To</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ubuntu-18.04</code></td>
+      <td>EOL</td>
+      <td><code class="language-plaintext highlighter-rouge">ubuntu-latest</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">actions/checkout@v2</code></td>
+      <td>Deprecated</td>
+      <td><code class="language-plaintext highlighter-rouge">actions/checkout@v4</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">actions/setup-node@v1</code></td>
+      <td>Deprecated</td>
+      <td><code class="language-plaintext highlighter-rouge">actions/setup-node@v4</code></td>
+    </tr>
+    <tr>
+      <td>Node.js 12</td>
+      <td>EOL</td>
+      <td>18 or 20</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">GabrielBB/xvfb-action@v1.2</code></td>
+      <td>Old</td>
+      <td><code class="language-plaintext highlighter-rouge">@v1</code> (latest)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The remote also needs updating — it currently points to the original author’s repo:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Fork remote is already set up</span>
+git remote <span class="nt">-v</span>
+<span class="c"># origin  https://github.com/mcgarrah/jekyll-run.git</span>
+
+<span class="c"># Add upstream for PRs to the original author</span>
+git remote add upstream https://github.com/Kanna727/jekyll-run.git
+</code></pre></div></div>
+
+<h2 id="running-tests">Running Tests</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Compile and run all tests</span>
+npm <span class="nb">test</span>
+
+<span class="c"># Compile only (useful during development)</span>
+npm run compile
+
+<span class="c"># Watch mode — recompile on save</span>
+npm run watch
+</code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">npm test</code> command runs <code class="language-plaintext highlighter-rouge">pretest</code> first (compile + lint), then launches the Extension Development Host with the test suite. The VS Code window opens briefly, runs the tests, and exits.</p>
+
+<h3 id="ci-integration">CI Integration</h3>
+
+<p>The fork already has cross-platform CI in <code class="language-plaintext highlighter-rouge">.github/workflows/ci-release.yml</code>. After updating the action versions (see “What Needs Updating” above), the workflow runs <code class="language-plaintext highlighter-rouge">npm test</code> on macOS, Ubuntu, and Windows on every push and PR. The <code class="language-plaintext highlighter-rouge">xvfb-action</code> provides the headless display server needed for VS Code integration tests on Linux.</p>
+
+<p>The updated workflow:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># .github/workflows/ci-release.yml</span>
+<span class="na">name</span><span class="pi">:</span> <span class="s">CI Release</span>
+<span class="na">on</span><span class="pi">:</span>
+  <span class="na">push</span><span class="pi">:</span>
+    <span class="na">branches</span><span class="pi">:</span> <span class="pi">[</span> <span class="nv">master</span><span class="pi">,</span> <span class="nv">main</span> <span class="pi">]</span>
+  <span class="na">pull_request</span><span class="pi">:</span>
+    <span class="na">branches</span><span class="pi">:</span> <span class="pi">[</span> <span class="nv">master</span><span class="pi">,</span> <span class="nv">main</span> <span class="pi">]</span>
+<span class="na">jobs</span><span class="pi">:</span>
+  <span class="na">test</span><span class="pi">:</span>
+    <span class="na">name</span><span class="pi">:</span> <span class="s">Test</span>
+    <span class="na">strategy</span><span class="pi">:</span>
+      <span class="na">matrix</span><span class="pi">:</span>
+        <span class="na">os</span><span class="pi">:</span> <span class="pi">[</span><span class="nv">macos-latest</span><span class="pi">,</span> <span class="nv">ubuntu-latest</span><span class="pi">,</span> <span class="nv">windows-latest</span><span class="pi">]</span>
+    <span class="na">runs-on</span><span class="pi">:</span> <span class="s">$</span>
+    <span class="na">steps</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Checkout</span>
+        <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/checkout@v4</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Setup Node.js</span>
+        <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/setup-node@v4</span>
+        <span class="na">with</span><span class="pi">:</span>
+          <span class="na">node-version</span><span class="pi">:</span> <span class="m">18</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Install dependencies</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="s">npm install</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Run headless test</span>
+        <span class="na">uses</span><span class="pi">:</span> <span class="s">GabrielBB/xvfb-action@v1</span>
+        <span class="na">with</span><span class="pi">:</span>
+          <span class="na">run</span><span class="pi">:</span> <span class="s">npm test</span>
+</code></pre></div></div>
+
+<p>Testing on all three platforms is important for this extension — the <code class="language-plaintext highlighter-rouge">lsof</code> parsing bug is macOS-specific, and the <code class="language-plaintext highlighter-rouge">netstat</code> parsing in <code class="language-plaintext highlighter-rouge">findPidByPort</code> is Windows-specific.</p>
+
+<h2 id="what-the-tests-prove">What the Tests Prove</h2>
+
+<p>Each test maps directly to a bug fix:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Test Suite</th>
+      <th>Bug</th>
+      <th>What It Validates</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">process-on-port.test.ts</code></td>
+      <td>lsof parsing</td>
+      <td>Variable-width columns parse correctly on macOS</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">error-handling.test.ts</code></td>
+      <td>null rejection</td>
+      <td>Non-Errno Ruby errors produce a string, never null</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">config.test.ts</code></td>
+      <td>getConfiguration scoping</td>
+      <td>Settings resolve with defaults in all workspace types</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">utils.test.ts</code></td>
+      <td>Defensive</td>
+      <td>Utility functions handle edge cases</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>A PR with tests is harder to ignore than a PR with just code changes. It shows the maintainer exactly what was broken and proves the fix works.</p>
+
+<h2 id="related-posts">Related Posts</h2>
+
+<ul>
+  <li><a href="/jekyll-run-vscode-plugin-local-development/">Jekyll Run Plugin: Local Development Settings That Actually Work</a> — Configuration guide</li>
+  <li><a href="/jekyll-run-plugin-multiroot-workspace-bug/">Jekyll Run Plugin: Fixing the Multi-Root Workspace Crash</a> — macOS debugging story</li>
+  <li><a href="/jekyll-run-plugin-pr-and-fork/">Jekyll Run Plugin: Patching the Source and Submitting a PR</a> — Code fixes and fork strategy</li>
+  <li><a href="/run-jekyll-vscode-marketplace-publisher-setup/">Setting Up a VS Code Marketplace Publisher Account</a> — Publishing prerequisites</li>
+</ul>
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://code.visualstudio.com/api/working-with-extensions/testing-extension">VS Code Extension Testing</a> — Official guide</li>
+  <li><a href="https://github.com/microsoft/vscode-test">vscode-test Package</a> — Test runner for VS Code extensions</li>
+  <li><a href="https://mochajs.org/">Mocha Test Framework</a> — The test framework used by the scaffold</li>
+  <li><a href="https://github.com/Kanna727/jekyll-run">Jekyll Run Source Code</a> — The extension being tested</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/vscode/">vscode</a>, 
+        
+          <a href="/tags/vscode-extension/">vscode-extension</a>, 
+        
+          <a href="/tags/testing/">testing</a>, 
+        
+          <a href="/tags/mocha/">mocha</a>, 
+        
+          <a href="/tags/typescript/">typescript</a>, 
+        
+          <a href="/tags/jekyll/">jekyll</a>, 
+        
+          <a href="/tags/open-source/">open-source</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/web-development/">web-development</a>, 
+        
+          <a href="/categories/technical/">technical</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

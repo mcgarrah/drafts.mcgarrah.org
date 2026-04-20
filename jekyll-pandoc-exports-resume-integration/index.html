@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Integrating Jekyll-Pandoc-Exports Into a Real Project - Part 3: Bugs, Fixes, and HTML Cleanup | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Integrating Jekyll-Pandoc-Exports Into a Real Project - Part 3: Bugs, Fixes, and HTML Cleanup" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="Real-world integration of the jekyll-pandoc-exports plugin into a resume site, covering Jekyll 3.x compatibility bugs, nil safety issues, Pandoc’s CSS limitations, regex-based HTML cleanup for document exports, and the value of eating your own dog food." />
+<meta property="og:description" content="Real-world integration of the jekyll-pandoc-exports plugin into a resume site, covering Jekyll 3.x compatibility bugs, nil safety issues, Pandoc’s CSS limitations, regex-based HTML cleanup for document exports, and the value of eating your own dog food." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/jekyll-pandoc-exports-resume-integration/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/jekyll-pandoc-exports-resume-integration/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-04-13T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Integrating Jekyll-Pandoc-Exports Into a Real Project - Part 3: Bugs, Fixes, and HTML Cleanup" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-04-13T00:00:00+00:00","datePublished":"2026-04-13T00:00:00+00:00","description":"Real-world integration of the jekyll-pandoc-exports plugin into a resume site, covering Jekyll 3.x compatibility bugs, nil safety issues, Pandoc’s CSS limitations, regex-based HTML cleanup for document exports, and the value of eating your own dog food.","headline":"Integrating Jekyll-Pandoc-Exports Into a Real Project - Part 3: Bugs, Fixes, and HTML Cleanup","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/jekyll-pandoc-exports-resume-integration/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/jekyll-pandoc-exports-resume-integration/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/jekyll-pandoc-exports-resume-integration/">Integrating Jekyll-Pandoc-Exports Into a Real Project - Part 3: Bugs, Fixes, and HTML Cleanup</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-04-13T00:00:00+00:00">April 13, 2026</time><span class="reading-time">11 min read</span></header>
+
+  <p>What happens when you integrate your own plugin into a real project? Three patch releases in one session, a Ruby language subtlety that only manifests in Jekyll 3.x, and the discovery that Pandoc completely ignores your CSS.</p>
+
+<!-- excerpt-end -->
+
+<p>In <a href="/ruby-gem-release-automation/">Part 1</a> I covered building the release automation pipeline, and in <a href="/jekyll-pandoc-exports-plugin/">Part 2</a> I covered the plugin’s technical architecture. This is the part where theory meets reality.</p>
+
+<p>My <a href="https://github.com/mcgarrah/resume">resume site</a> was the original motivation for building <a href="https://github.com/mcgarrah/jekyll-pandoc-exports">jekyll-pandoc-exports</a> — I wanted PDF and DOCX versions of my resume generated automatically on every build instead of manually exporting and committing static files. The integration seemed straightforward. It wasn’t.</p>
+
+<h2 id="the-integration">The Integration</h2>
+
+<p>The basic setup required changes to six files in the resume repository:</p>
+
+<ol>
+  <li><strong>Gemfile</strong> — added <code class="language-plaintext highlighter-rouge">jekyll-pandoc-exports</code> to the plugins group</li>
+  <li><strong>_config.yml</strong> — plugin configuration with a <code class="language-plaintext highlighter-rouge">downloads</code> output directory, pages-only collection processing, and disabled auto-injected download links (the resume theme already has sidebar links)</li>
+  <li><strong>print.html</strong> — added <code class="language-plaintext highlighter-rouge">pdf: true</code> and <code class="language-plaintext highlighter-rouge">docx: true</code> to the front matter</li>
+  <li><strong>_data/data.yml</strong> — updated the sidebar PDF link from a static file path to the generated <code class="language-plaintext highlighter-rouge">/resume/downloads/print.pdf</code>, and added a new DOCX link</li>
+  <li><strong>_includes/contact.html</strong> — added a Word Resume download link to the sidebar</li>
+  <li><strong>GitHub Actions workflow</strong> — added a step to install Pandoc and LaTeX in CI</li>
+</ol>
+
+<p>The configuration:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">pandoc_exports</span><span class="pi">:</span>
+  <span class="na">enabled</span><span class="pi">:</span> <span class="kc">true</span>
+  <span class="na">output_dir</span><span class="pi">:</span> <span class="s1">'</span><span class="s">downloads'</span>
+  <span class="na">collections</span><span class="pi">:</span> <span class="pi">[</span><span class="s1">'</span><span class="s">pages'</span><span class="pi">]</span>
+  <span class="na">incremental</span><span class="pi">:</span> <span class="kc">true</span>
+  <span class="na">unicode_cleanup</span><span class="pi">:</span> <span class="kc">true</span>
+  <span class="na">inject_downloads</span><span class="pi">:</span> <span class="kc">false</span>
+  <span class="na">pdf_options</span><span class="pi">:</span>
+    <span class="na">variable</span><span class="pi">:</span> <span class="s1">'</span><span class="s">geometry:margin=0.75in'</span>
+</code></pre></div></div>
+
+<p>Simple enough. Then I ran <code class="language-plaintext highlighter-rouge">bundle exec jekyll build</code>.</p>
+
+<h2 id="bug-1-localjumperror-in-jekyll-3x-v0112">Bug 1: LocalJumpError in Jekyll 3.x (v0.1.12)</h2>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>jekyll 3.10.0 | Error:  unexpected return
+generator.rb:14:in `block in &lt;module:PandocExports&gt;': unexpected return (LocalJumpError)
+</code></pre></div></div>
+
+<p>The resume site uses the <code class="language-plaintext highlighter-rouge">github-pages</code> gem, which pins Jekyll to 3.10.0. My plugin was developed and tested against Jekyll 4.x. The problem was in the hook registration:</p>
+
+<div class="language-ruby highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="no">Jekyll</span><span class="o">::</span><span class="no">Hooks</span><span class="p">.</span><span class="nf">register</span> <span class="ss">:site</span><span class="p">,</span> <span class="ss">:post_write</span> <span class="k">do</span> <span class="o">|</span><span class="n">site</span><span class="o">|</span>
+  <span class="n">config</span> <span class="o">=</span> <span class="n">setup_configuration</span><span class="p">(</span><span class="n">site</span><span class="p">)</span>
+  <span class="k">return</span> <span class="k">unless</span> <span class="n">config</span><span class="p">[</span><span class="s1">'enabled'</span><span class="p">]</span>  <span class="c1"># 💥 LocalJumpError in Jekyll 3.x</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<p>In Ruby, <code class="language-plaintext highlighter-rouge">return</code> inside a <code class="language-plaintext highlighter-rouge">do...end</code> block tries to return from the enclosing method. In Jekyll 4.x, hooks are invoked in a context where this works. In Jekyll 3.x, there’s no enclosing method — the block is called directly via <code class="language-plaintext highlighter-rouge">each</code>, so <code class="language-plaintext highlighter-rouge">return</code> has nowhere to go.</p>
+
+<p>The fix: replace <code class="language-plaintext highlighter-rouge">return</code> with <code class="language-plaintext highlighter-rouge">next</code>, which is the correct way to exit early from a block:</p>
+
+<div class="language-ruby highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="no">Jekyll</span><span class="o">::</span><span class="no">Hooks</span><span class="p">.</span><span class="nf">register</span> <span class="ss">:site</span><span class="p">,</span> <span class="ss">:post_write</span> <span class="k">do</span> <span class="o">|</span><span class="n">site</span><span class="o">|</span>
+  <span class="n">config</span> <span class="o">=</span> <span class="n">setup_configuration</span><span class="p">(</span><span class="n">site</span><span class="p">)</span>
+  <span class="k">next</span> <span class="k">unless</span> <span class="n">config</span><span class="p">[</span><span class="s1">'enabled'</span><span class="p">]</span>  <span class="c1"># ✅ Works in both Jekyll 3.x and 4.x</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<p>This is the kind of bug that’s invisible in development and testing but surfaces immediately in production. The plugin’s test suite ran against Jekyll 4.x, and all 87 tests passed. The <code class="language-plaintext highlighter-rouge">github-pages</code> gem is the only common path to Jekyll 3.x, and I hadn’t tested against it.</p>
+
+<p><strong>Lesson:</strong> If your gem declares <code class="language-plaintext highlighter-rouge">jekyll &gt;= 3.0</code> as a dependency, test against Jekyll 3.x.</p>
+
+<h2 id="bug-2-nil-safety-in-template-configuration-v0113">Bug 2: Nil Safety in Template Configuration (v0.1.13)</h2>
+
+<p>With the <code class="language-plaintext highlighter-rouge">return</code>/<code class="language-plaintext highlighter-rouge">next</code> fix deployed, the build got further — but crashed again:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>undefined method `empty?' for nil:NilClass
+generator.rb:187:in `apply_template'
+</code></pre></div></div>
+
+<p>The plugin’s default configuration defines the <code class="language-plaintext highlighter-rouge">template</code> hash with all three keys:</p>
+
+<div class="language-ruby highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="s1">'template'</span> <span class="o">=&gt;</span> <span class="p">{</span> <span class="s1">'header'</span> <span class="o">=&gt;</span> <span class="s1">''</span><span class="p">,</span> <span class="s1">'footer'</span> <span class="o">=&gt;</span> <span class="s1">''</span><span class="p">,</span> <span class="s1">'css'</span> <span class="o">=&gt;</span> <span class="s1">''</span> <span class="p">}</span>
+</code></pre></div></div>
+
+<p>But Ruby’s <code class="language-plaintext highlighter-rouge">Hash#merge</code> does a shallow merge. When the user provides only <code class="language-plaintext highlighter-rouge">template.css</code> in their <code class="language-plaintext highlighter-rouge">_config.yml</code>, the entire <code class="language-plaintext highlighter-rouge">template</code> hash is replaced — <code class="language-plaintext highlighter-rouge">header</code> and <code class="language-plaintext highlighter-rouge">footer</code> become nil instead of empty strings. Then <code class="language-plaintext highlighter-rouge">.empty?</code> on nil raises <code class="language-plaintext highlighter-rouge">NoMethodError</code>.</p>
+
+<p>The fix: coerce nil to empty string with <code class="language-plaintext highlighter-rouge">.to_s</code> before checking:</p>
+
+<div class="language-ruby highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nc">self</span><span class="o">.</span><span class="nf">apply_template</span><span class="p">(</span><span class="n">html_content</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+  <span class="n">template</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">'template'</span><span class="p">]</span> <span class="o">||</span> <span class="p">{}</span>
+  <span class="n">header</span> <span class="o">=</span> <span class="n">template</span><span class="p">[</span><span class="s1">'header'</span><span class="p">].</span><span class="nf">to_s</span>
+  <span class="n">footer</span> <span class="o">=</span> <span class="n">template</span><span class="p">[</span><span class="s1">'footer'</span><span class="p">].</span><span class="nf">to_s</span>
+  <span class="n">css</span> <span class="o">=</span> <span class="n">template</span><span class="p">[</span><span class="s1">'css'</span><span class="p">].</span><span class="nf">to_s</span>
+  <span class="k">return</span> <span class="n">html_content</span> <span class="k">if</span> <span class="n">header</span><span class="p">.</span><span class="nf">empty?</span> <span class="o">&amp;&amp;</span> <span class="n">footer</span><span class="p">.</span><span class="nf">empty?</span> <span class="o">&amp;&amp;</span> <span class="n">css</span><span class="p">.</span><span class="nf">empty?</span>
+  <span class="c1"># ...</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<p><strong>Lesson:</strong> If your defaults use nested hashes, shallow merge will bite you. Either deep-merge or nil-guard every access.</p>
+
+<h2 id="bug-3-title_cleanup-only-applied-to-pdf-v0114">Bug 3: title_cleanup Only Applied to PDF (v0.1.14)</h2>
+
+<p>The <code class="language-plaintext highlighter-rouge">title_cleanup</code> configuration accepts regex patterns that strip HTML elements before Pandoc converts them. But the cleanup code was inside <code class="language-plaintext highlighter-rouge">generate_pdf</code> only — DOCX exports got the raw, unprocessed HTML.</p>
+
+<p>Additionally, the regex used <code class="language-plaintext highlighter-rouge">Regexp.new(pattern)</code> without the <code class="language-plaintext highlighter-rouge">MULTILINE</code> flag. The resume theme’s <code class="language-plaintext highlighter-rouge">&lt;li&gt;</code> elements span three lines:</p>
+
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nt">&lt;li</span> <span class="na">class=</span><span class="s">"website"</span><span class="nt">&gt;&lt;i</span> <span class="na">class=</span><span class="s">"fas fa-globe-americas"</span><span class="nt">&gt;&lt;/i&gt;</span>
+  <span class="nt">&lt;a</span> <span class="na">href=</span><span class="s">"http://www.mcgarrah.org"</span> <span class="na">target=</span><span class="s">"_blank"</span><span class="nt">&gt;</span>www.mcgarrah.org<span class="nt">&lt;/a&gt;</span>
+<span class="nt">&lt;/li&gt;</span>
+</code></pre></div></div>
+
+<p>A pattern like <code class="language-plaintext highlighter-rouge">&lt;li class="website"[^&gt;]*&gt;.*?&lt;/li&gt;</code> won’t match because <code class="language-plaintext highlighter-rouge">.</code> doesn’t cross newlines by default.</p>
+
+<p>The fix: move cleanup to <code class="language-plaintext highlighter-rouge">process_html_content</code> (applies to both formats) and enable <code class="language-plaintext highlighter-rouge">Regexp::MULTILINE</code>:</p>
+
+<div class="language-ruby highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">'title_cleanup'</span><span class="p">]</span> <span class="o">||</span> <span class="p">[]).</span><span class="nf">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">pattern</span><span class="o">|</span>
+  <span class="n">processed</span><span class="p">.</span><span class="nf">gsub!</span><span class="p">(</span><span class="no">Regexp</span><span class="p">.</span><span class="nf">new</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="no">Regexp</span><span class="o">::</span><span class="no">MULTILINE</span><span class="p">),</span> <span class="s1">''</span><span class="p">)</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<p><strong>Lesson:</strong> If a processing step should apply to all output formats, put it in the shared pipeline, not in a format-specific method.</p>
+
+<h2 id="the-release-automation-payoff">The Release Automation Payoff</h2>
+
+<p>These three bugs resulted in three patch releases (v0.1.12, v0.1.13, v0.1.14) in a single session. Each followed the same cycle: fix the code, run the 87-test suite, commit to dev, create PR, merge, tag, create GitHub release, wait for the RubyGems publish workflow, update the consumer project.</p>
+
+<p>The release automation from <a href="/ruby-gem-release-automation/">Part 1</a> made this sustainable. Without it, three releases in one session would have been a nightmare of manual steps. With it, each release was a few commands.</p>
+
+<p>The one gotcha: the v0.1.12 publish workflow failed because I forgot to run <code class="language-plaintext highlighter-rouge">bundle install</code> after bumping the version, so the <code class="language-plaintext highlighter-rouge">Gemfile.lock</code> still referenced 0.1.11. The CI workflow’s <code class="language-plaintext highlighter-rouge">bundler-cache: true</code> sets frozen mode, which refuses to install when the lockfile doesn’t match the gemspec. I had to delete the tag, update the lockfile, re-tag, and manually trigger the publish workflow. This is now documented in Part 1’s “Frozen Lockfiles” section.</p>
+
+<h2 id="the-html-cleanup-challenge">The HTML Cleanup Challenge</h2>
+
+<p>With the plugin running, the generated PDF and DOCX files contained everything from the resume’s HTML — including the full sidebar with a headshot photo, social media links, download links, and a languages section. The initial output was 1.2 MB for the PDF and 659 KB for the DOCX, mostly due to the embedded headshot image.</p>
+
+<h3 id="why-css-doesnt-work">Why CSS Doesn’t Work</h3>
+
+<p>My first instinct was to use the plugin’s <code class="language-plaintext highlighter-rouge">template.css</code> injection to hide unwanted elements:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">template</span><span class="pi">:</span>
+  <span class="na">css</span><span class="pi">:</span> <span class="pi">&gt;</span>
+    <span class="s">.avatar { display: none !important; }</span>
+    <span class="s">.languages-container { display: none !important; }</span>
+</code></pre></div></div>
+
+<p>This doesn’t work. Pandoc parses HTML structure, not rendered output. It doesn’t execute CSS — <code class="language-plaintext highlighter-rouge">display: none</code> elements are still in the DOM, so Pandoc still converts them. The image data still gets embedded in the PDF, and the sidebar text still appears in the DOCX.</p>
+
+<h3 id="regex-stripping-with-title_cleanup">Regex Stripping with title_cleanup</h3>
+
+<p>The solution is to remove unwanted elements from the HTML before Pandoc sees them, using the <code class="language-plaintext highlighter-rouge">title_cleanup</code> regex patterns:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">title_cleanup</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s1">'</span><span class="s">&lt;img</span><span class="nv"> </span><span class="s">class="avatar"[^&gt;]*/?&gt;</span><span class="nv">                          </span><span class="s">'</span>
+  <span class="pi">-</span> <span class="s1">'</span><span class="s">&lt;li</span><span class="nv"> </span><span class="s">class="phone"&gt;&lt;i</span><span class="nv"> </span><span class="s">class="fas</span><span class="nv"> </span><span class="s">fa-passport"&gt;.*?&lt;/li&gt;'</span>
+  <span class="pi">-</span> <span class="s1">'</span><span class="s">&lt;li</span><span class="nv"> </span><span class="s">class="timezone"[^&gt;]*&gt;.*?&lt;/li&gt;'</span>
+  <span class="pi">-</span> <span class="s1">'</span><span class="s">&lt;li</span><span class="nv"> </span><span class="s">class="website"[^&gt;]*&gt;.*?&lt;/li&gt;'</span>
+  <span class="pi">-</span> <span class="s1">'</span><span class="s">&lt;li</span><span class="nv"> </span><span class="s">class="linkedin"[^&gt;]*&gt;.*?&lt;/li&gt;'</span>
+  <span class="pi">-</span> <span class="s1">'</span><span class="s">&lt;li</span><span class="nv"> </span><span class="s">class="github"[^&gt;]*&gt;.*?&lt;/li&gt;'</span>
+  <span class="pi">-</span> <span class="s1">'</span><span class="s">&lt;li</span><span class="nv"> </span><span class="s">class="gitlab"[^&gt;]*&gt;.*?&lt;/li&gt;'</span>
+  <span class="pi">-</span> <span class="s1">'</span><span class="s">&lt;li</span><span class="nv"> </span><span class="s">class="discord"[^&gt;]*&gt;.*?&lt;/li&gt;'</span>
+  <span class="pi">-</span> <span class="s1">'</span><span class="s">&lt;li</span><span class="nv"> </span><span class="s">class="stack-overflow"[^&gt;]*&gt;.*?&lt;/li&gt;'</span>
+  <span class="pi">-</span> <span class="s1">'</span><span class="s">&lt;li</span><span class="nv"> </span><span class="s">class="pdf"[^&gt;]*&gt;.*?&lt;/li&gt;'</span>
+  <span class="pi">-</span> <span class="s1">'</span><span class="s">&lt;li</span><span class="nv"> </span><span class="s">class="docx"[^&gt;]*&gt;.*?&lt;/li&gt;'</span>
+  <span class="pi">-</span> <span class="s1">'</span><span class="s">&lt;li</span><span class="nv"> </span><span class="s">class="print"[^&gt;]*&gt;.*?&lt;/li&gt;'</span>
+  <span class="pi">-</span> <span class="s1">'</span><span class="s">&lt;div</span><span class="nv"> </span><span class="s">class="languages-container[^"]*"[^&gt;]*&gt;.*?&lt;/div&gt;'</span>
+  <span class="pi">-</span> <span class="s1">'</span><span class="s">&lt;span</span><span class="nv"> </span><span class="s">class="fa-stack[^"]*"&gt;.*?&lt;/span&gt;'</span>
+</code></pre></div></div>
+
+<h3 id="the-shared-css-class-trap">The Shared CSS Class Trap</h3>
+
+<p>One pattern deserves special attention. The resume theme reuses <code class="language-plaintext highlighter-rouge">class="phone"</code> for both the actual phone number and the citizenship field:</p>
+
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nt">&lt;li</span> <span class="na">class=</span><span class="s">"phone"</span><span class="nt">&gt;&lt;i</span> <span class="na">class=</span><span class="s">"fas fa-phone"</span><span class="nt">&gt;&lt;/i&gt;</span>
+  <span class="nt">&lt;a</span> <span class="na">href=</span><span class="s">"tel:919 807-1057"</span><span class="nt">&gt;</span>919 807-1057<span class="nt">&lt;/a&gt;</span>
+<span class="nt">&lt;/li&gt;</span>
+
+<span class="nt">&lt;li</span> <span class="na">class=</span><span class="s">"phone"</span><span class="nt">&gt;&lt;i</span> <span class="na">class=</span><span class="s">"fas fa-passport"</span><span class="nt">&gt;&lt;/i&gt;</span>
+  <span class="nt">&lt;a</span> <span class="na">href=</span><span class="s">""</span><span class="nt">&gt;</span>US<span class="nt">&lt;/a&gt;</span>
+<span class="nt">&lt;/li&gt;</span>
+</code></pre></div></div>
+
+<p>A naive pattern like <code class="language-plaintext highlighter-rouge">&lt;li class="phone"[^&gt;]*&gt;.*?&lt;/li&gt;</code> would strip both. The fix was to target the citizenship entry by its icon class instead:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">-</span> <span class="s1">'</span><span class="s">&lt;li</span><span class="nv"> </span><span class="s">class="phone"&gt;&lt;i</span><span class="nv"> </span><span class="s">class="fas</span><span class="nv"> </span><span class="s">fa-passport"&gt;.*?&lt;/li&gt;'</span>
+</code></pre></div></div>
+
+<p>This matches only the passport-icon variant, preserving the actual phone number.</p>
+
+<h3 id="font-awesome-icon-cleanup">Font Awesome Icon Cleanup</h3>
+
+<p>The section headings in the resume theme include Font Awesome icon stacks:</p>
+
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nt">&lt;h2</span> <span class="na">class=</span><span class="s">"section-title"</span><span class="nt">&gt;</span>
+  <span class="nt">&lt;span</span> <span class="na">class=</span><span class="s">"fa-stack fa-xs"</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;i</span> <span class="na">class=</span><span class="s">"fas fa-circle fa-stack-2x"</span><span class="nt">&gt;&lt;/i&gt;</span>
+    <span class="nt">&lt;i</span> <span class="na">class=</span><span class="s">"fas fa-user fa-stack-1x fa-inverse"</span><span class="nt">&gt;&lt;/i&gt;</span>
+  <span class="nt">&lt;/span&gt;</span>
+  Career Profile
+<span class="nt">&lt;/h2&gt;</span>
+</code></pre></div></div>
+
+<p>Pandoc converts these icon spans into LaTeX as <code class="language-plaintext highlighter-rouge">{ \emph{} \emph{} }</code>, which renders as whitespace before the heading text — creating the appearance of indentation. Stripping the spans produces clean headings:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">-</span> <span class="s1">'</span><span class="s">&lt;span</span><span class="nv"> </span><span class="s">class="fa-stack[^"]*"&gt;.*?&lt;/span&gt;'</span>
+</code></pre></div></div>
+
+<h3 id="layout-flattening-with-template-css">Layout Flattening with Template CSS</h3>
+
+<p>While CSS <code class="language-plaintext highlighter-rouge">display: none</code> doesn’t work for hiding elements, Pandoc does respect some CSS for layout purposes when converting to DOCX. The resume theme uses CSS Grid with <code class="language-plaintext highlighter-rouge">padding: 60px</code> on the main content wrapper. Adding template CSS to flatten the layout helps produce cleaner output:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">template</span><span class="pi">:</span>
+  <span class="na">css</span><span class="pi">:</span> <span class="pi">&gt;</span>
+    <span class="s">.wrapper { display: block; padding: 0; margin: 0; }</span>
+    <span class="s">.sidebar-wrapper { display: block; padding: 0; }</span>
+    <span class="s">.main-wrapper { display: block; padding: 0; }</span>
+    <span class="s">.section { margin-bottom: 10px; }</span>
+    <span class="s">.section-title { font-size: 24px; font-weight: bold;</span>
+      <span class="s">text-transform: uppercase; border-bottom: 2px solid #333;</span>
+      <span class="s">padding-bottom: 4px; margin-bottom: 10px; }</span>
+</code></pre></div></div>
+
+<h2 id="results">Results</h2>
+
+<p>After all the cleanup, the output files dropped significantly:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Metric</th>
+      <th>Before Cleanup</th>
+      <th>After Cleanup</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>PDF size</td>
+      <td>1.2 MB</td>
+      <td>273 KB</td>
+    </tr>
+    <tr>
+      <td>DOCX size</td>
+      <td>659 KB</td>
+      <td>79 KB</td>
+    </tr>
+    <tr>
+      <td>Build time</td>
+      <td>~4 seconds</td>
+      <td>~3.5 seconds</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The generated documents now contain:</p>
+
+<ul>
+  <li>Name and tagline</li>
+  <li>Email and phone number (only)</li>
+  <li>Clean section headings without icon artifacts</li>
+  <li>All resume content without sidebar noise</li>
+</ul>
+
+<p>Both files are served from <code class="language-plaintext highlighter-rouge">/resume/downloads/</code> and linked directly from the resume sidebar, staying current with every deploy.</p>
+
+<h2 id="what-id-do-differently">What I’d Do Differently</h2>
+
+<p><strong>Test against Jekyll 3.x from the start.</strong> The <code class="language-plaintext highlighter-rouge">github-pages</code> gem is one of the most common Jekyll deployment paths, and it pins to Jekyll 3.x. If your gemspec says <code class="language-plaintext highlighter-rouge">jekyll &gt;= 3.0</code>, your CI matrix should include Jekyll 3.x.</p>
+
+<p><strong>Deep-merge nested configuration hashes.</strong> Ruby’s <code class="language-plaintext highlighter-rouge">Hash#merge</code> is shallow. Any nested hash in your defaults will be completely replaced if the user provides a partial override. Either deep-merge or nil-guard every nested access.</p>
+
+<p><strong>Apply processing steps in the shared pipeline.</strong> If cleanup, transformation, or validation should apply to all output formats, don’t put it in a format-specific method. It’s easy to add a feature to PDF generation and forget that DOCX needs it too.</p>
+
+<p><strong>Don’t assume CSS works with Pandoc.</strong> Pandoc’s HTML parser reads structure, not rendered output. CSS <code class="language-plaintext highlighter-rouge">display: none</code> is invisible to it. If you need to remove content from Pandoc’s input, strip it from the HTML before conversion.</p>
+
+<p><strong>Eat your own dog food early.</strong> Every bug in this article was invisible during development and testing. They only surfaced when I integrated the plugin into a real project with a different Jekyll version, a different theme structure, and real content. The sooner you use your own tool in production, the sooner you find the real bugs.</p>
+
+<hr />
+
+<p><strong>Series Resources:</strong></p>
+
+<ul>
+  <li><a href="/ruby-gem-release-automation/">Part 1: Release Automation</a></li>
+  <li><a href="/jekyll-pandoc-exports-plugin/">Part 2: Plugin Architecture</a></li>
+  <li><a href="https://github.com/mcgarrah/jekyll-pandoc-exports">GitHub Repository</a></li>
+  <li><a href="https://jekyll-pandoc-exports.readthedocs.io">Documentation Site</a></li>
+  <li><a href="https://rubygems.org/gems/jekyll-pandoc-exports">RubyGems Package</a></li>
+  <li><a href="https://github.com/mcgarrah/resume">Resume Site Integration</a></li>
+</ul>
+
+<h2 id="related-posts">Related Posts</h2>
+
+<ul>
+  <li><a href="/ruby-gem-release-automation/">Ruby Gem Release Automation</a> — Part 1: The CI/CD pipeline</li>
+  <li><a href="/jekyll-pandoc-exports-plugin/">Jekyll Pandoc Exports Plugin</a> — Part 2: Plugin architecture</li>
+  <li><a href="/merging-two-jekyll-websites-architectural-analysis/">Merging Two Jekyll Websites</a> — Why the blog and resume stay separate</li>
+  <li><a href="/jekyll-markdown-feature-reference/">How the Sausage Is Made</a> — Complete feature reference including Pandoc exports</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/jekyll-plugin/">jekyll-plugin</a>, 
+        
+          <a href="/tags/pandoc/">pandoc</a>, 
+        
+          <a href="/tags/pdf-generation/">pdf-generation</a>, 
+        
+          <a href="/tags/docx/">docx</a>, 
+        
+          <a href="/tags/ruby-gem/">ruby-gem</a>, 
+        
+          <a href="/tags/resume/">resume</a>, 
+        
+          <a href="/tags/github-pages/">github-pages</a>, 
+        
+          <a href="/tags/debugging/">debugging</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/jekyll/">jekyll</a>, 
+        
+          <a href="/categories/ruby/">ruby</a>, 
+        
+          <a href="/categories/pandoc/">pandoc</a>, 
+        
+          <a href="/categories/automation/">automation</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

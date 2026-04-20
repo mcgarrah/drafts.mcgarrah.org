@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>ProxMox 8.2.4 Upgrade on Dell Wyse 3040s | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="ProxMox 8.2.4 Upgrade on Dell Wyse 3040s" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="My earlier post for ProxMox 8.2.2 Cluster on Dell Wyse 3040s mentioned the tight constraints of the cluster both with RAM and DISK space. There are some extra steps involved in keeping a very lean Proxmox 8 cluster running on these extremely resource limited boxes. I am running Proxmox 8.2 and Ceph Reef on them which leaves them slightly under resourced as a default. So when the Ceph would not start up the Ceph Monitors after my upgrade from Proxmox 8.2.2 to 8.2.4, I had to dig a bit to find the problem. Ceph Monitor will not start up if there is not at least 5% free disk space on the root partition. My root volumes were sitting right at 95% used. So our story begins…" />
+<meta property="og:description" content="My earlier post for ProxMox 8.2.2 Cluster on Dell Wyse 3040s mentioned the tight constraints of the cluster both with RAM and DISK space. There are some extra steps involved in keeping a very lean Proxmox 8 cluster running on these extremely resource limited boxes. I am running Proxmox 8.2 and Ceph Reef on them which leaves them slightly under resourced as a default. So when the Ceph would not start up the Ceph Monitors after my upgrade from Proxmox 8.2.2 to 8.2.4, I had to dig a bit to find the problem. Ceph Monitor will not start up if there is not at least 5% free disk space on the root partition. My root volumes were sitting right at 95% used. So our story begins…" />
+<link rel="canonical" href="https://drafts.mcgarrah.org/proxmox-8-dell-wyse-3040-upgrade/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/proxmox-8-dell-wyse-3040-upgrade/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2024-08-26T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="ProxMox 8.2.4 Upgrade on Dell Wyse 3040s" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2025-09-11T00:00:00+00:00","datePublished":"2024-08-26T00:00:00+00:00","description":"My earlier post for ProxMox 8.2.2 Cluster on Dell Wyse 3040s mentioned the tight constraints of the cluster both with RAM and DISK space. There are some extra steps involved in keeping a very lean Proxmox 8 cluster running on these extremely resource limited boxes. I am running Proxmox 8.2 and Ceph Reef on them which leaves them slightly under resourced as a default. So when the Ceph would not start up the Ceph Monitors after my upgrade from Proxmox 8.2.2 to 8.2.4, I had to dig a bit to find the problem. Ceph Monitor will not start up if there is not at least 5% free disk space on the root partition. My root volumes were sitting right at 95% used. So our story begins…","headline":"ProxMox 8.2.4 Upgrade on Dell Wyse 3040s","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/proxmox-8-dell-wyse-3040-upgrade/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/proxmox-8-dell-wyse-3040-upgrade/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/proxmox-8-dell-wyse-3040-upgrade/">ProxMox 8.2.4 Upgrade on Dell Wyse 3040s</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2024-08-26T00:00:00+00:00">August 26, 2024</time><span class="reading-time">11 min read</span></header>
+
+  <p>My earlier post for <a href="/proxmox-8-dell-wyse-3040/">ProxMox 8.2.2 Cluster on Dell Wyse 3040s</a> mentioned the tight constraints of the cluster both with RAM and DISK space. There are some extra steps involved in keeping a very lean Proxmox 8 cluster running on these extremely resource limited boxes. I am running Proxmox 8.2 and Ceph Reef on them which leaves them slightly under resourced as a default. So when the Ceph would not start up the Ceph Monitors after my upgrade from Proxmox 8.2.2 to 8.2.4, I had to dig a bit to find the problem.</p>
+
+<p><a href="/assets/images/proxmox-8-sff-testbed-upgrade.png" target="_blank"><img src="/assets/images/proxmox-8-sff-testbed-upgrade.png" alt="Proxmox SFF Cluster" title="Proxmox SFF Cluster" width="45%" height="45%" style="display:block; margin-left:auto; margin-right:auto" /></a></p>
+
+<p>Ceph Monitor will not start up if there is not at least 5% free disk space on the root partition. My root volumes were sitting right at 95% used. So our story begins…</p>
+
+<!-- excerpt-end -->
+
+<h3 id="cluster-ssh-for-proxmox-cssh">Cluster SSH for Proxmox (cssh)</h3>
+
+<p>To help with running commands across the cluster, I have a quick script for running <code class="language-plaintext highlighter-rouge">ssh</code> command across the cluster nodes. It requires the <code class="language-plaintext highlighter-rouge">jq</code> command to be installed on the node running the script. The commented out section is for those with DNS entries for their nodes. I use IP addresses for my testbed nodes for now.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+
+<span class="c">#for node in $(pvesh get /nodes --output-format json | jq -r '.[].node'); do</span>
+<span class="c">#  ssh root@$node "$*"</span>
+<span class="c">#done</span>
+
+<span class="k">for </span>node <span class="k">in</span> <span class="si">$(</span>pvesh get /cluster/status <span class="nt">--output-format</span> json | jq <span class="nt">-r</span> <span class="s1">'.[].ip'</span> | <span class="nb">grep</span> <span class="nt">-v</span> null<span class="si">)</span><span class="p">;</span> <span class="k">do
+  </span>ssh root@<span class="nv">$node</span> <span class="s2">"</span><span class="nv">$*</span><span class="s2">"</span>
+<span class="k">done</span>
+</code></pre></div></div>
+
+<p>For ease of use, I have added the shell script to the cephfs share in <code class="language-plaintext highlighter-rouge">/mnt/pve/cephfs/bin/cssh</code> and execute it as needed.</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@pve3:~#</span><span class="w"> </span>bash /mnt/pve/cephfs/bin/cssh <span class="s2">"hostname -i"</span>
+<span class="go">192.168.89.11
+192.168.89.12
+192.168.89.13
+</span></code></pre></div></div>
+
+<p><strong>Note</strong>: The first time you execute the <code class="language-plaintext highlighter-rouge">cssh</code>, you will be prompted to accept the <code class="language-plaintext highlighter-rouge">ssh</code> keys for each node.</p>
+
+<p>I’m installing the <code class="language-plaintext highlighter-rouge">jq</code> command across the cluster so I can run <code class="language-plaintext highlighter-rouge">cssh</code> from any node in the cluster.</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@pve1:~#</span><span class="w"> </span>bash /mnt/pve/cephfs/bin/cssh <span class="s2">"hostname &amp;&amp; apt-get install jq -y"</span>
+</code></pre></div></div>
+
+<h3 id="ceph-mon-will-not-start">Ceph-Mon will not start</h3>
+
+<p>Ceph-Mon would not start on two nodes after upgrading the cluster from Proxmox 8.2.2 to 8.2.4. I gathered this from the Proxmox WebUI Cluster Tasks at the bottom by double clicking the red error after pressing “Start” for the Ceph-Mon service.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Job for ceph-mon@pve3.service failed because the control process exited with error code.
+See "systemctl status ceph-mon@pve3.service" and "journalctl -xeu ceph-mon@pve3.service" for details.
+TASK ERROR: command '/bin/systemctl start ceph-mon@pve3' failed: exit code 1
+</code></pre></div></div>
+
+<p>Digging into the <code class="language-plaintext highlighter-rouge">journalctl</code> logs, I find and entry about disk space being short of storage space.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Aug 26 13:59:03 pve3 ceph-mon[2570]: 2024-08-26T13:59:03.058-0400 7c064bfd6d40 -1 error: monitor data filesystem reached concerning levels of available storage space (available: 5% 339 MiB)
+Aug 26 13:59:03 pve3 ceph-mon[2570]: you may adjust 'mon data avail crit' to a lower value to make this go away (default: 5%)
+Aug 26 13:59:03 pve3 systemd[1]: ceph-mon@pve3.service: Main process exited, code=exited, status=28/n/a
+</code></pre></div></div>
+
+<p>Checking the file systems on each node finds, I have 95% or higher usage on each. So we now have a root cause why Ceph-Mon won’t start. It won’t start because a disk 95% full or less than 5% free stops the Ceph-Mon service from starting.</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@pve3:~#</span><span class="w"> </span>bash /mnt/pve/cephfs/bin/cssh <span class="s2">"hostname &amp;&amp; df -h /"</span>
+<span class="go">pve1
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/mmcblk0p2  5.7G  5.4G  283M  95% /
+pve3
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/mmcblk0p2  5.7G  5.4G  285M  95% /
+pve2
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/mmcblk0p2  5.7G  5.5G  228M  96% /
+</span></code></pre></div></div>
+
+<h4 id="debian-apt-cache">Debian APT Cache</h4>
+
+<p>Here I’m going after a quick win to get us some space back fast. The first place I can think of is to clean out the Debian Apt Cache after upgrades. The gives us a good 10% reduction in disk space used.</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@pve3:~#</span><span class="w"> </span>bash /mnt/pve/cephfs/bin/cssh <span class="s2">"hostname &amp;&amp; apt-get clean &amp;&amp; df -h /"</span>
+<span class="go">pve1
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/mmcblk0p2  5.7G  4.6G  771M  86% /
+pve3
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/mmcblk0p2  5.7G  4.5G  874M  85% /
+pve2
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/mmcblk0p2  5.7G  4.6G  828M  85% /
+</span></code></pre></div></div>
+
+<h4 id="surprise-of-atop-daily-logs">Surprise of <code class="language-plaintext highlighter-rouge">atop</code> daily logs</h4>
+
+<p>Next some digging around with <code class="language-plaintext highlighter-rouge">du -msh *</code> in various locations of the file system find a tool I forgot about. <code class="language-plaintext highlighter-rouge">atop</code> stores logs daily in <code class="language-plaintext highlighter-rouge">/var/log/atop/atop_YYYYMMDD</code> which is consuming a good bit of space for these disk limited systems. You can <code class="language-plaintext highlighter-rouge">man atop</code> and search for <code class="language-plaintext highlighter-rouge">RAW DATA STORAGE</code> section for details.</p>
+
+<p>The default for <code class="language-plaintext highlighter-rouge">atop</code> is to create log entries and retain them for 28 days. This amounts for a couple hundred MBs or the 227M shows below.</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@pve1:/etc/default#</span><span class="w"> </span><span class="nb">du</span> <span class="nt">-msh</span> /var/log/atop
+<span class="go">277M    /var/log/atop
+</span><span class="gp">root@pve1:/etc/default#</span><span class="w"> </span><span class="nb">cat </span>atop 
+<span class="gp">#</span><span class="w"> </span>/etc/default/atop
+<span class="gp">#</span><span class="w"> </span>see man atoprc <span class="k">for </span>more possibilities to configure atop execution
+<span class="go">
+LOGOPTS=""
+LOGINTERVAL=600
+LOGGENERATIONS=28
+LOGPATH=/var/log/atop
+</span></code></pre></div></div>
+
+<p>We are removing the <code class="language-plaintext highlighter-rouge">atop</code> package from all the nodes in the cluster rather than configure it for less disk space usage. We could revisit this later to reduce the days of retention.</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@pve1:~#</span><span class="w"> </span>bash /mnt/pve/cephfs/bin/cssh <span class="s2">"hostname &amp;&amp; apt-get remove atop -y"</span>
+</code></pre></div></div>
+
+<p>We are also removing all the <code class="language-plaintext highlighter-rouge">atop</code> logs from each node in the cluster with an <code class="language-plaintext highlighter-rouge">rm -rf</code> command.</p>
+
+<p><strong>Note</strong>: Be very careful with <code class="language-plaintext highlighter-rouge">rm -rf</code> commands scripts but this was appropriate to remove the logs for <code class="language-plaintext highlighter-rouge">atop</code>.</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@pve1:~#</span><span class="w"> </span>bash /mnt/pve/cephfs/bin/cssh <span class="s2">"hostname &amp;&amp; df -h / &amp;&amp; rm -rf /var/log/atop &amp;&amp; df -h /"</span>
+<span class="go">pve2
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/mmcblk0p2  5.7G  4.6G  827M  85% /
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/mmcblk0p2  5.7G  4.3G  1.1G  80% /
+pve1
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/mmcblk0p2  5.7G  4.6G  769M  86% /
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/mmcblk0p2  5.7G  4.4G  1.1G  81% /
+pve3
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/mmcblk0p2  5.7G  4.5G  872M  85% /
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/mmcblk0p2  5.7G  4.3G  1.2G  80% /
+</span></code></pre></div></div>
+
+<h4 id="look-for-large-debian-packages">Look for large Debian Packages</h4>
+
+<p>Here is a quick way to find the size of debian packages and their on size on disk. I’ve been using this for awhile when checking Debian based systems when recovering disk space.</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@pve1:~#</span><span class="w"> </span>dpkg-query <span class="nt">-W</span> <span class="nt">-f</span><span class="o">=</span><span class="s1">'${Installed-Size;8}  ${Package}\n'</span> | <span class="nb">sort</span> <span class="nt">-n</span> | <span class="nb">tail</span> <span class="nt">-10</span>
+<span class="go">   51483  proxmox-backup-restore-image
+   83933  ceph-osd
+   93078  ceph-common
+  114610  libllvm15
+  308160  pve-qemu-kvm
+  308520  pve-firmware
+  398601  linux-image-6.1.0-18-amd64
+  398628  linux-image-6.1.0-23-amd64
+  538392  proxmox-kernel-6.8.12-1-pve-signed
+  564229  proxmox-kernel-6.8.8-3-pve-signed
+</span></code></pre></div></div>
+
+<h5 id="pve-kernel-cleanups">PVE kernel cleanups</h5>
+
+<p><a href="https://tteck.github.io/Proxmox/#proxmox-ve-kernel-clean">Proxmox VE Kernel Clean</a> scripts cleans unused kernel images from your system. It is beneficial for reducing the length of the GRUB menu and freeing up disk space. By removing old, unused kernels, the system is able to conserve disk space and streamline the boot process.</p>
+
+<p>This is an easy one to recover some disk space after an upgrade of the PVE Cluster. You can run this from the website or my one-liner below that can be run from a shell.</p>
+
+<hr />
+
+<p>One liner for quick execution that works for me. For a safer experience, use the above script with more error checking and safety features.</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">apt purge -y $</span><span class="o">(</span>dpkg <span class="nt">--list</span> | <span class="nb">grep</span> <span class="s1">'kernel-.*-pve'</span> | <span class="nb">awk</span> <span class="s1">'{print $2}'</span> | <span class="nb">grep</span> <span class="nt">-v</span> <span class="s2">"</span><span class="si">$(</span><span class="nb">uname</span> <span class="nt">-r</span><span class="si">)</span><span class="s2">"</span> | <span class="nb">sort</span> <span class="nt">-V</span><span class="o">)</span>
+</code></pre></div></div>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@pve3:~#</span><span class="w"> </span>apt purge <span class="nt">-y</span> <span class="si">$(</span>dpkg <span class="nt">--list</span> | <span class="nb">grep</span> <span class="s1">'kernel-.*-pve'</span> | <span class="nb">awk</span> <span class="s1">'{print $2}'</span> | <span class="nb">grep</span> <span class="nt">-v</span> <span class="s2">"</span><span class="si">$(</span><span class="nb">uname</span> <span class="nt">-r</span><span class="si">)</span><span class="s2">"</span> | <span class="nb">sort</span> <span class="nt">-V</span><span class="si">)</span>
+<span class="go">Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+The following packages will be REMOVED:
+  proxmox-kernel-6.8.8-3-pve-signed*
+0 upgraded, 0 newly installed, 1 to remove and 1 not upgraded.
+After this operation, 578 MB disk space will be freed.
+(Reading database ... 60726 files and directories currently installed.)
+Removing proxmox-kernel-6.8.8-3-pve-signed (6.8.8-3) ...
+Examining /etc/kernel/postrm.d.
+run-parts: executing /etc/kernel/postrm.d/initramfs-tools 6.8.8-3-pve /boot/vmlinuz-6.8.8-3-pve
+update-initramfs: Deleting /boot/initrd.img-6.8.8-3-pve
+run-parts: executing /etc/kernel/postrm.d/proxmox-auto-removal 6.8.8-3-pve /boot/vmlinuz-6.8.8-3-pve
+run-parts: executing /etc/kernel/postrm.d/zz-proxmox-boot 6.8.8-3-pve /boot/vmlinuz-6.8.8-3-pve
+Re-executing '/etc/kernel/postrm.d/zz-proxmox-boot' in new private mount namespace..
+No /etc/kernel/proxmox-boot-uuids found, skipping ESP sync.
+run-parts: executing /etc/kernel/postrm.d/zz-update-grub 6.8.8-3-pve /boot/vmlinuz-6.8.8-3-pve
+Generating grub configuration file ...
+Found linux image: /boot/vmlinuz-6.8.12-1-pve
+Found initrd image: /boot/initrd.img-6.8.12-1-pve
+Adding boot menu entry for UEFI Firmware Settings ...
+done
+(Reading database ... 53021 files and directories currently installed.)
+Purging configuration files for proxmox-kernel-6.8.8-3-pve-signed (6.8.8-3) ...
+Examining /etc/kernel/postrm.d.
+run-parts: executing /etc/kernel/postrm.d/initramfs-tools 6.8.8-3-pve /boot/vmlinuz-6.8.8-3-pve
+update-initramfs: Deleting /boot/initrd.img-6.8.8-3-pve
+run-parts: executing /etc/kernel/postrm.d/proxmox-auto-removal 6.8.8-3-pve /boot/vmlinuz-6.8.8-3-pve
+run-parts: executing /etc/kernel/postrm.d/zz-proxmox-boot 6.8.8-3-pve /boot/vmlinuz-6.8.8-3-pve
+Re-executing '/etc/kernel/postrm.d/zz-proxmox-boot' in new private mount namespace..
+No /etc/kernel/proxmox-boot-uuids found, skipping ESP sync.
+run-parts: executing /etc/kernel/postrm.d/zz-update-grub 6.8.8-3-pve /boot/vmlinuz-6.8.8-3-pve
+Generating grub configuration file ...
+Found linux image: /boot/vmlinuz-6.8.12-1-pve
+Found initrd image: /boot/initrd.img-6.8.12-1-pve
+Adding boot menu entry for UEFI Firmware Settings ...
+done
+</span></code></pre></div></div>
+
+<h5 id="debian-kernel-image-cleanup">Debian kernel image cleanup</h5>
+
+<p>I missed cleaning up all the Debian Kernel Image packages and meta-package in my <a href="/proxmox-8-dell-wyse-3040/">earlier post</a>. I’ll have to update it.</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">apt purge -y $</span><span class="o">(</span>dpkg <span class="nt">--list</span> | <span class="nb">grep</span> <span class="nt">-Ei</span> <span class="s1">'linux-image|linux-headers'</span> | <span class="nb">awk</span> <span class="s1">'{print $2}'</span> | <span class="nb">grep</span> <span class="nt">-v</span> <span class="s2">"</span><span class="si">$(</span><span class="nb">uname</span> <span class="nt">-r</span><span class="si">)</span><span class="s2">"</span> | <span class="nb">sort</span> <span class="nt">-V</span><span class="o">)</span>
+</code></pre></div></div>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@pve3:~#</span><span class="w"> </span><span class="nb">echo</span> <span class="si">$(</span>dpkg <span class="nt">--list</span> | <span class="nb">grep</span> <span class="nt">-Ei</span> <span class="s1">'linux-image|linux-headers'</span> | <span class="nb">awk</span> <span class="s1">'{print $2}'</span> | <span class="nb">grep</span> <span class="nt">-v</span> <span class="s2">"</span><span class="si">$(</span><span class="nb">uname</span> <span class="nt">-r</span><span class="si">)</span><span class="s2">"</span> | <span class="nb">sort</span> <span class="nt">-V</span><span class="si">)</span>
+<span class="go">linux-image-6.1.0-18-amd64 linux-image-6.1.0-23-amd64 linux-image-amd64
+</span><span class="gp">root@pve3:~#</span><span class="w"> </span>apt purge <span class="nt">-y</span> <span class="si">$(</span>dpkg <span class="nt">--list</span> | <span class="nb">grep</span> <span class="nt">-Ei</span> <span class="s1">'linux-image|linux-headers'</span> | <span class="nb">awk</span> <span class="s1">'{print $2}'</span> | <span class="nb">grep</span> <span class="nt">-v</span> <span class="s2">"</span><span class="si">$(</span><span class="nb">uname</span> <span class="nt">-r</span><span class="si">)</span><span class="s2">"</span> | <span class="nb">sort</span> <span class="nt">-V</span><span class="si">)</span>
+<span class="go">Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+The following packages will be REMOVED:
+  linux-image-6.1.0-18-amd64* linux-image-6.1.0-23-amd64* linux-image-amd64*
+0 upgraded, 0 newly installed, 3 to remove and 1 not upgraded.
+After this operation, 0 B of additional disk space will be used.
+(Reading database ... 60728 files and directories currently installed.)
+Purging configuration files for linux-image-6.1.0-18-amd64 (6.1.76-1) ...
+I: /vmlinuz.old is now a symlink to boot/vmlinuz-6.8.8-3-pve
+I: /initrd.img.old is now a symlink to boot/initrd.img-6.8.8-3-pve
+I: /vmlinuz is now a symlink to boot/vmlinuz-6.8.12-1-pve
+I: /initrd.img is now a symlink to boot/initrd.img-6.8.12-1-pve
+Purging configuration files for linux-image-amd64 (6.1.99-1) ...
+Purging configuration files for linux-image-6.1.0-23-amd64 (6.1.99-1) ...
+</span></code></pre></div></div>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@pve3:~#</span><span class="w"> </span>update-grub
+<span class="go">Generating grub configuration file ...
+Found linux image: /boot/vmlinuz-6.8.12-1-pve
+Found initrd image: /boot/initrd.img-6.8.12-1-pve
+Found linux image: /boot/vmlinuz-6.8.8-3-pve
+Found initrd image: /boot/initrd.img-6.8.8-3-pve
+Adding boot menu entry for UEFI Firmware Settings ...
+done
+</span></code></pre></div></div>
+
+<!--
+---
+
+I missed cleaning up some of the Debian Kernels and not **purging** them.
+
+Remove the meta-package for Debian Kernel
+
+```console
+root@pve1:~# apt-get --purge remove linux-image-amd64
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+The following packages will be REMOVED:
+  linux-image-amd64*
+0 upgraded, 0 newly installed, 1 to remove and 1 not upgraded.
+After this operation, 0 B of additional disk space will be used.
+Do you want to continue? [Y/n] Y
+(Reading database ... 53076 files and directories currently installed.)
+Purging configuration files for linux-image-amd64 (6.1.99-1) ...
+```
+
+Remove the debian kernel images
+
+```console
+root@pve1:~# dpkg-query -W -f='${Package}\n' | grep -Ei 'linux-image|linux-headers' | sort -n
+linux-image-6.1.0-18-amd64
+linux-image-6.1.0-23-amd64
+root@pve1:~# apt-get --purge remove $(dpkg-query -W -f='${Package}\n' | grep -Ei 'linux-image|linux-headers' | sort -n) -y
+Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+The following packages will be REMOVED:
+  linux-image-6.1.0-18-amd64* linux-image-6.1.0-23-amd64*
+0 upgraded, 0 newly installed, 2 to remove and 1 not upgraded.
+After this operation, 0 B of additional disk space will be used.
+(Reading database ... 53076 files and directories currently installed.)
+Purging configuration files for linux-image-6.1.0-18-amd64 (6.1.76-1) ...
+I: /vmlinuz.old is now a symlink to boot/vmlinuz-6.8.12-1-pve
+I: /initrd.img.old is now a symlink to boot/initrd.img-6.8.12-1-pve
+I: /vmlinuz is now a symlink to boot/vmlinuz-6.8.12-1-pve
+I: /initrd.img is now a symlink to boot/initrd.img-6.8.12-1-pve
+Purging configuration files for linux-image-6.1.0-23-amd64 (6.1.99-1) ...
+```
+
+Regenerate the grub boot images
+
+```console
+root@pve1:~# update-grub
+Generating grub configuration file ...
+Found linux image: /boot/vmlinuz-6.8.12-1-pve
+Found initrd image: /boot/initrd.img-6.8.12-1-pve
+Adding boot menu entry for UEFI Firmware Settings ...
+done
+```
+-->
+
+<h3 id="final-disk-space">Final Disk Space</h3>
+
+<p>After clean up <code class="language-plaintext highlighter-rouge">atop</code> and its logs, the <strong>Debian Kernel Images</strong>, and the extra <strong>Proxmox Kernels</strong>, we are down from about 95% usage on each node to about 70% on our root disk volumes.</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@pve2:~#</span><span class="w"> </span>bash /mnt/pve/cephfs/bin/cssh <span class="s2">"hostname &amp;&amp; df -h /"</span>
+<span class="go">pve1
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/mmcblk0p2  5.7G  3.8G  1.6G  71% /
+pve3
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/mmcblk0p2  5.7G  3.7G  1.7G  70% /
+pve2
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/mmcblk0p2  5.7G  3.8G  1.7G  70% /
+</span></code></pre></div></div>
+
+<h2 id="post-mortem">Post mortem</h2>
+
+<p>The Dell Wyse 3040s are really disk space constrained and I have to keep an eye on usage closely. This is just one of the challenges with a super small-form-factor homelab cluster.</p>
+
+<p><a href="/assets/images/proxmox-8-sff-testbed-upgrade.png" target="_blank"><img src="/assets/images/proxmox-8-sff-testbed-upgrade.png" alt="Proxmox SFF Cluster" title="Proxmox SFF Cluster" width="45%" height="45%" style="display:block; margin-left:auto; margin-right:auto" /></a></p>
+
+<p>I just look at this picture and remember that the extra work is worth it. That is a full Proxmox 8 Cluster with Ceph Reef with a separate SAN network and a SDN capable configuration which is sitting on a table in my network closet sipping (not gulping) electricity.</p>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/proxmox/">proxmox</a>, 
+        
+          <a href="/tags/dell-wyse-3040/">dell-wyse-3040</a>, 
+        
+          <a href="/tags/upgrade/">upgrade</a>, 
+        
+          <a href="/tags/ceph/">ceph</a>, 
+        
+          <a href="/tags/homelab/">homelab</a>, 
+        
+          <a href="/tags/troubleshooting/">troubleshooting</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/technical/">technical</a>, 
+        
+          <a href="/categories/homelab/">homelab</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

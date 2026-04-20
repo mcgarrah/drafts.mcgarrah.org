@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>ZFS Boot Mirrors on Proxmox 8 for the Homelab - Part 2 | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="ZFS Boot Mirrors on Proxmox 8 for the Homelab - Part 2" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="Step-by-step guide to recovering a Proxmox node after catastrophic dual-drive ZFS boot mirror failure, covering pre-failure backup strategy, fresh install, hostid restoration, cluster rejoin, and Ceph OSD reactivation without data loss." />
+<meta property="og:description" content="Step-by-step guide to recovering a Proxmox node after catastrophic dual-drive ZFS boot mirror failure, covering pre-failure backup strategy, fresh install, hostid restoration, cluster rejoin, and Ceph OSD reactivation without data loss." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/proxmox-zfs-boot-mirrors-part-2/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/proxmox-zfs-boot-mirrors-part-2/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-05-29T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="ZFS Boot Mirrors on Proxmox 8 for the Homelab - Part 2" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-05-29T00:00:00+00:00","datePublished":"2026-05-29T00:00:00+00:00","description":"Step-by-step guide to recovering a Proxmox node after catastrophic dual-drive ZFS boot mirror failure, covering pre-failure backup strategy, fresh install, hostid restoration, cluster rejoin, and Ceph OSD reactivation without data loss.","headline":"ZFS Boot Mirrors on Proxmox 8 for the Homelab - Part 2","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/proxmox-zfs-boot-mirrors-part-2/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/proxmox-zfs-boot-mirrors-part-2/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/proxmox-zfs-boot-mirrors-part-2/">ZFS Boot Mirrors on Proxmox 8 for the Homelab - Part 2</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-05-29T00:00:00+00:00">May 29, 2026</time><span class="reading-time">13 min read</span></header>
+
+  <p><a href="/proxmox-zfs-boot-mirrors-part-1/">Part 1</a> covers replacing a failed drive with one of the same size. This part covers the scenario that procedure can’t fix — when both drives in the mirror fail at the same time and you’re doing an emergency recovery. <a href="/proxmox-zfs-boot-mirrors-part-3/">Part 3</a> covers the planned migration path — downsizing from large HDDs to smaller SSDs with a fresh install and UEFI upgrade, applying the lessons learned here.</p>
+
+<p>That’s what happened to harlan, one of the six nodes in my homelab cluster. Both 500GB HDDs developed simultaneous checksum errors and permanent data corruption. The root cause wasn’t two independent drive deaths — it was a shared failure point, most likely a bad SATA cable or failing controller causing I/O errors that corrupted both sides of the mirror before ZFS could self-heal.</p>
+
+<p>The recovery path is a fresh Proxmox install. The goal is to get the OS back without touching the Ceph OSD drives, then rejoin the cluster and reactivate the OSDs from their existing LVM metadata.</p>
+
+<p><a href="/assets/images/zfs-boot-mirror-proxmox8-001.png" target="_blank"><img src="/assets/images/zfs-boot-mirror-proxmox8-001.png" alt="Proxmox 8 ZFS Boot Mirror status in the web UI" width="40%" height="40%" style="display:block; margin-left:auto; margin-right:auto" /></a></p>
+
+<!-- excerpt-end -->
+
+<h2 id="recognizing-the-catastrophic-failure">Recognizing the Catastrophic Failure</h2>
+
+<p>The first sign was a <code class="language-plaintext highlighter-rouge">dpkg</code> error during a routine package install:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>dpkg: unrecoverable fatal error, aborting:
+loading files list for package 'ssh': cannot open
+/var/lib/dpkg/info/ssh.list (Invalid exchange)
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">Invalid exchange</code> (errno 52) from a filesystem operation means the kernel hit a block it couldn’t read. Running <code class="language-plaintext highlighter-rouge">zpool status -v</code> confirmed the worst:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@harlan:~#</span><span class="w"> </span>zpool status <span class="nt">-v</span>
+<span class="go">  pool: rpool
+ state: DEGRADED
+status: Mismatch between pool hostid and system hostid on imported pool.
+  scan: resilvered 17.5M in 00:00:08 with 7 errors on Thu Jan 15 06:47:57 2026
+config:
+        NAME                                        STATE     READ WRITE CKSUM
+        rpool                                       DEGRADED     0     0     0
+          mirror-0                                  DEGRADED     0     0     0
+            ata-ST500DM002-1BD142_Z3TGX1AS-part3    DEGRADED     0     0   226  too many errors
+            ata-ST500DM002-1SB10A_ZA45K50E-part3    DEGRADED     0     0  3.14K too many errors
+
+errors: Permanent errors have been detected in the following files:
+/var/lib/dpkg/info/ssh.list
+</span><span class="c">...
+</span></code></pre></div></div>
+
+<p>Both drives show <code class="language-plaintext highlighter-rouge">CKSUM</code> errors — 226 and 3,140 respectively. ZFS cannot self-heal when both sides of the mirror are corrupted. The <code class="language-plaintext highlighter-rouge">Permanent errors</code> section lists files that are unrecoverable from either disk.</p>
+
+<p><strong>This is not a normal drive failure.</strong> When you see high CKSUM counts on both sides of a mirror simultaneously, suspect:</p>
+
+<ul>
+  <li>A bad SATA cable (most common — a loose cable causes CRC errors that corrupt both drives before ZFS notices)</li>
+  <li>A failing HBA or SATA controller</li>
+  <li>Bad RAM (ECC errors corrupting data in flight)</li>
+</ul>
+
+<p>Check <code class="language-plaintext highlighter-rouge">dmesg | grep -E "ata|error"</code> for <code class="language-plaintext highlighter-rouge">exception Emask</code> or <code class="language-plaintext highlighter-rouge">SATA link down</code> messages. If you see those, you have a physical connection problem, not two independent drive deaths.</p>
+
+<h2 id="the-decision-fresh-install">The Decision: Fresh Install</h2>
+
+<p>Once you have permanent errors on both sides of a ZFS mirror, your options are:</p>
+
+<ol>
+  <li><strong>Attempt repair</strong> — only viable if the corruption is limited to non-critical files and the hardware problem is fixed</li>
+  <li><strong>Fresh install</strong> — the clean path when system files are corrupted</li>
+</ol>
+
+<p>For a Proxmox cluster node with Ceph OSDs, a fresh install is actually less scary than it sounds. The Ceph data lives on separate drives and is completely independent of the OS. The cluster configuration is replicated across all nodes. What you need to preserve is the node’s <em>identity</em> so it can rejoin the cluster and reclaim its OSDs.</p>
+
+<h2 id="what-to-back-up-before-the-drives-die-completely">What to Back Up Before the Drives Die Completely</h2>
+
+<p>Ideally you run these backups while the node is still limping along. If the node is already dead, most of this can be reconstructed from other cluster nodes — but having it locally is faster and safer.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create backup directory on shared CephFS storage</span>
+<span class="nb">mkdir</span> <span class="nt">-p</span> /mnt/pve/cephfs/backups/harlan/
+
+<span class="c"># Capture the binary hostid — critical for ZFS pool reimport</span>
+<span class="nb">hostid</span> <span class="o">&gt;</span> /mnt/pve/cephfs/backups/harlan/harlan-hostid.txt
+
+<span class="c"># Bundle the cluster identity files</span>
+<span class="nb">tar</span> <span class="nt">-cvzf</span> /mnt/pve/cephfs/backups/harlan/harlan_backup_<span class="si">$(</span><span class="nb">date</span> +%Y-%m-%d<span class="si">)</span>.tar.gz <span class="se">\</span>
+  /etc/network/interfaces <span class="se">\</span>
+  /etc/hosts <span class="se">\</span>
+  /etc/resolv.conf <span class="se">\</span>
+  /etc/hostname <span class="se">\</span>
+  /etc/subuid <span class="se">\</span>
+  /etc/subgid <span class="se">\</span>
+  /etc/pve/ceph.conf <span class="se">\</span>
+  /etc/pve/storage.cfg <span class="se">\</span>
+  /etc/corosync/corosync.conf <span class="se">\</span>
+  /etc/corosync/authkey <span class="se">\</span>
+  /etc/ceph/ceph.client.admin.keyring <span class="se">\</span>
+  /var/lib/ceph/bootstrap-osd/ceph.keyring <span class="se">\</span>
+  /var/lib/pve-cluster/config.db
+
+<span class="c"># Capture OSD-to-disk mapping</span>
+ceph-volume lvm list <span class="o">&gt;</span> /mnt/pve/cephfs/backups/harlan/ceph_lvm_layout.txt
+pvs <span class="o">&gt;</span> /mnt/pve/cephfs/backups/harlan/ceph_pv_layout.txt
+
+<span class="c"># Capture /var/lib/ceph/osd symlinks (block device paths)</span>
+<span class="nb">tar</span> <span class="nt">-cvzf</span> /mnt/pve/cephfs/backups/harlan/ceph_osd_var_lib.tar.gz <span class="se">\</span>
+  /var/lib/ceph/osd/
+
+<span class="c"># Capture any kernel boot quirks (important for USB OSD drives)</span>
+<span class="nb">cp</span> /etc/default/grub.d/<span class="k">*</span>.cfg <span class="se">\</span>
+  /mnt/pve/cephfs/backups/harlan/ 2&gt;/dev/null <span class="o">||</span> <span class="nb">true</span>
+
+<span class="c"># List manually installed packages for post-install restoration</span>
+apt-mark showmanual <span class="o">&gt;</span> /mnt/pve/cephfs/backups/harlan/harlan-apt-mark-showmanual.txt
+</code></pre></div></div>
+
+<h3 id="why-each-file-matters">Why Each File Matters</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>File</th>
+      <th>Why it matters</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">hostid</code></td>
+      <td>ZFS records the hostid that imported the pool. Mismatch causes warnings and can prevent clean import</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">corosync/authkey</code></td>
+      <td>Without this, the node cannot rejoin the cluster — it’s the shared secret</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">corosync/corosync.conf</code></td>
+      <td>Node list, cluster name, config version — needed to reconstruct if cluster is also degraded</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ceph.client.admin.keyring</code></td>
+      <td>Ceph admin authentication — needed to run <code class="language-plaintext highlighter-rouge">ceph</code> commands post-install</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">bootstrap-osd/ceph.keyring</code></td>
+      <td>Required for <code class="language-plaintext highlighter-rouge">ceph-volume lvm activate</code> to authenticate with the cluster</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ceph_lvm_layout.txt</code></td>
+      <td>Maps OSD IDs to physical devices — your recovery map if <code class="language-plaintext highlighter-rouge">activate --all</code> fails</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">subuid</code> / <code class="language-plaintext highlighter-rouge">subgid</code></td>
+      <td>UID/GID mappings for unprivileged LXC containers — missing this breaks container startup</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">grub.d/*.cfg</code></td>
+      <td>USB storage quirks — without these, USB-attached OSD drives may not be accessible at boot</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="the-usb-quirks-file">The USB Quirks File</h3>
+
+<p>harlan’s Ceph OSDs are on Seagate USB3 portable drives. Without a kernel parameter to disable UAS (USB Attached SCSI) for these specific drives, the kernel’s UAS driver causes I/O errors. The quirks file looked like this:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># /etc/default/grub.d/usb-quirks.cfg</span>
+<span class="nv">GRUB_CMDLINE_LINUX</span><span class="o">=</span><span class="s2">"</span><span class="nv">$GRUB_CMDLINE_LINUX</span><span class="s2"> usb_storage.quirks=0bc2:ac2b:,0bc2:2344:,0bc2:ac41:,0bc2:ab9a:"</span>
+</code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">0bc2:*</code> vendor IDs are Seagate’s USB bridge chips. If your OSDs are on USB drives, check <code class="language-plaintext highlighter-rouge">lsusb</code> and <code class="language-plaintext highlighter-rouge">dmesg | grep -i uas</code> to identify whether you need this. Without it, the drives may appear but throw I/O errors under load.</p>
+
+<h2 id="pause-the-ceph-cluster">Pause the Ceph Cluster</h2>
+
+<p>Before taking the node down, tell Ceph not to rebalance data while the node is offline. Run this from any healthy cluster node:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph osd <span class="nb">set </span>noout
+ceph osd <span class="nb">set </span>nobackfill
+</code></pre></div></div>
+
+<p>This prevents the cluster from treating harlan’s OSDs as permanently lost and starting a potentially hours-long rebalance. You’ll unset these flags after the node rejoins.</p>
+
+<h2 id="the-fresh-install">The Fresh Install</h2>
+
+<p>Boot from the Proxmox installer USB. The key decisions:</p>
+
+<ul>
+  <li><strong>Target disks</strong>: Select only the new boot SSDs. Do <strong>not</strong> touch the OSD drives or the WAL SSD.</li>
+  <li><strong>Filesystem</strong>: ZFS RAID1 (mirror)</li>
+  <li><strong>Hostname</strong>: Use the exact same hostname (<code class="language-plaintext highlighter-rouge">harlan</code>) and IP (<code class="language-plaintext highlighter-rouge">192.168.86.11</code>)</li>
+  <li><strong>Boot mode</strong>: harlan was reinstalled in Legacy BIOS mode to match the existing cluster. See the note below on UEFI.</li>
+</ul>
+
+<p>The installer will create a fresh rpool on the new SSDs. The OSD drives are untouched.</p>
+
+<h3 id="legacy-bios-vs-uefi">Legacy BIOS vs UEFI</h3>
+
+<p>harlan was kept on Legacy BIOS for the reinstall because the other cluster nodes are also Legacy BIOS. Mixing boot modes in a cluster is fine — each node boots independently — but switching a live node from Legacy to UEFI requires repartitioning the boot disks, which adds risk during an already stressful recovery.</p>
+
+<p>The practical rule: <strong>keep the same boot mode as the original install</strong> for an emergency recovery. Switch to UEFI on a planned fresh install when you have time to do it deliberately — see <a href="/proxmox-zfs-boot-mirrors-part-3/">Part 3</a> for the planned migration path that includes the UEFI upgrade.</p>
+
+<h2 id="post-install-identity-restoration">Post-Install Identity Restoration</h2>
+
+<p>Once the fresh install is up and you can SSH in, restore the node’s identity before joining the cluster.</p>
+
+<h3 id="1-restore-the-hostid">1. Restore the HostID</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Set the hostid to match the original</span>
+zgenhostid a8c00b56
+</code></pre></div></div>
+
+<p>Verify it took:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">hostid</span>
+<span class="c"># should output: a8c00b56</span>
+</code></pre></div></div>
+
+<p>Without this step, ZFS will import the rpool with a hostid mismatch warning. The pool still works, but the warning persists across reboots and can cause confusion. More importantly, if you ever need to import the pool on another node for recovery, the mismatch can complicate things.</p>
+
+<h3 id="2-restore-network-configuration">2. Restore Network Configuration</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Copy back from the backup tarball</span>
+<span class="nb">tar</span> <span class="nt">-xvzf</span> /path/to/harlan_backup_2026-01-15.tar.gz <span class="se">\</span>
+  <span class="nt">-C</span> / <span class="se">\</span>
+  etc/network/interfaces <span class="se">\</span>
+  etc/hosts <span class="se">\</span>
+  etc/resolv.conf
+</code></pre></div></div>
+
+<p>Verify the interfaces match what the installer configured. The installer may have set up the bridge correctly already if you used the same hostname and IP — but confirm <code class="language-plaintext highlighter-rouge">vmbr0</code> and <code class="language-plaintext highlighter-rouge">vmbr1</code> (SAN network) are both present.</p>
+
+<h3 id="3-restore-lxc-uidgid-mappings">3. Restore LXC UID/GID Mappings</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">tar</span> <span class="nt">-xvzf</span> /path/to/harlan_backup_2026-01-15.tar.gz <span class="se">\</span>
+  <span class="nt">-C</span> / <span class="se">\</span>
+  etc/subuid <span class="se">\</span>
+  etc/subgid
+</code></pre></div></div>
+
+<p>If you skip this, unprivileged LXC containers will fail to start with permission errors. The Jellyfin LXC on harlan hit exactly this problem — the container started but couldn’t write to its data directories because the UID mapping was wrong.</p>
+
+<h3 id="4-restore-usb-boot-quirks">4. Restore USB Boot Quirks</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cp</span> /path/to/etc-default-grub.d-usb-quirks.cfg <span class="se">\</span>
+  /etc/default/grub.d/usb-quirks.cfg
+
+update-grub
+</code></pre></div></div>
+
+<p>This must be done before the OSDs are activated, or the USB drives may not be accessible.</p>
+
+<h3 id="5-run-the-proxmox-post-install-script-optional">5. Run the Proxmox Post-Install Script (Optional)</h3>
+
+<p>The <a href="https://community-scripts.github.io/ProxmoxVE/">Proxmox community post-install script</a> fixes the no-subscription repository warning, disables the enterprise repo, and applies CPU microcode updates:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bash <span class="nt">-c</span> <span class="s2">"</span><span class="si">$(</span>wget <span class="nt">-qLO</span> - https://github.com/community-scripts/ProxmoxVE/raw/main/misc/post-pve-install.sh<span class="si">)</span><span class="s2">"</span>
+</code></pre></div></div>
+
+<h2 id="rejoin-the-cluster">Rejoin the Cluster</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pvecm add 192.168.86.12
+</code></pre></div></div>
+
+<p>Use the IP of any healthy cluster node. You’ll be prompted for the root password of that node.</p>
+
+<h3 id="the-etcpve-mount-issue">The <code class="language-plaintext highlighter-rouge">/etc/pve</code> Mount Issue</h3>
+
+<p>After <code class="language-plaintext highlighter-rouge">pvecm add</code>, Proxmox mounts the cluster filesystem at <code class="language-plaintext highlighter-rouge">/etc/pve</code>. If the directory already has files from the fresh install (it will), you may see:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mount: /etc/pve: special device pmxcfs already mounted or /etc/pve busy.
+</code></pre></div></div>
+
+<p>The fix:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Move the local pve config out of the way</span>
+<span class="nb">mv</span> /etc/pve /etc/pve.local-backup
+
+<span class="c"># Let the cluster mount take over</span>
+systemctl restart pve-cluster
+
+<span class="c"># Merge any node-specific config from the backup if needed</span>
+<span class="c"># (most config is cluster-wide and will come from pmxcfs)</span>
+</code></pre></div></div>
+
+<p>Once the cluster filesystem is mounted, the node’s configuration — VM/LXC definitions, storage config, user permissions — is all replicated from the cluster. You don’t need to restore <code class="language-plaintext highlighter-rouge">config.db</code> manually unless the entire cluster was down.</p>
+
+<h3 id="verify-cluster-membership">Verify Cluster Membership</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pvecm status
+</code></pre></div></div>
+
+<p>harlan should appear in the node list with quorum. If the cluster had 6 nodes before and now shows 6 again, you’re in good shape.</p>
+
+<h2 id="reactivate-the-ceph-osds">Reactivate the Ceph OSDs</h2>
+
+<p>The OSD data is intact on the drives. Ceph just needs to be told to activate them on the new OS install.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph-volume lvm activate <span class="nt">--all</span>
+</code></pre></div></div>
+
+<p>This scans the LVM metadata on all drives, finds the Ceph OSD volumes, and starts the OSD daemons. For harlan, this brought back osd.0, osd.3, and osd.6.</p>
+
+<p>Watch the OSD status from any cluster node:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph osd tree
+</code></pre></div></div>
+
+<p>The OSDs should transition from <code class="language-plaintext highlighter-rouge">down</code> to <code class="language-plaintext highlighter-rouge">up</code>. They’ll stay <code class="language-plaintext highlighter-rouge">in</code> because the cluster map still has them — they were never removed, just offline.</p>
+
+<h3 id="if-activate---all-fails">If <code class="language-plaintext highlighter-rouge">activate --all</code> Fails</h3>
+
+<p>If the automatic activation doesn’t find the OSDs, use the LVM layout backup to activate them manually:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># From ceph_lvm_layout.txt, find the OSD fsid and activate by ID</span>
+ceph-volume lvm activate <span class="nt">--bluestore</span> &lt;osd-id&gt; &lt;osd-fsid&gt;
+
+<span class="c"># Example for osd.0:</span>
+ceph-volume lvm activate <span class="nt">--bluestore</span> 0 3f49e837-c410-4025-bcf5-af5e6cd2c173
+</code></pre></div></div>
+
+<p>The OSD fsids are in the <code class="language-plaintext highlighter-rouge">ceph_lvm_layout.txt</code> backup under <code class="language-plaintext highlighter-rouge">osd fsid</code>.</p>
+
+<h2 id="unpause-the-cluster">Unpause the Cluster</h2>
+
+<p>Once harlan’s OSDs are <code class="language-plaintext highlighter-rouge">up</code> and the cluster health is <code class="language-plaintext highlighter-rouge">HEALTH_OK</code> (or <code class="language-plaintext highlighter-rouge">HEALTH_WARN</code> with only expected warnings):</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph osd <span class="nb">unset </span>noout
+ceph osd <span class="nb">unset </span>nobackfill
+
+<span class="c"># Archive any crash reports from the outage</span>
+ceph crash archive-all
+</code></pre></div></div>
+
+<h2 id="verify-the-new-boot-mirror">Verify the New Boot Mirror</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>root@harlan:~# zpool status <span class="nt">-v</span>
+  pool: rpool
+ state: ONLINE
+  scan: scrub repaired 0B <span class="k">in </span>00:00:12 with 0 errors on Sun Apr 12 00:24:13 2026
+config:
+        NAME                                STATE     READ WRITE CKSUM
+        rpool                               ONLINE       0     0     0
+          mirror-0                          ONLINE       0     0     0
+            ata-SSD_YS202010015363AA-part3  ONLINE       0     0     0
+            ata-SSD_YS202010025083AA-part3  ONLINE       0     0     0
+
+errors: No known data errors
+
+root@harlan:~# proxmox-boot-tool status
+System currently booted with legacy bios
+D91B-B982 is configured with: grub <span class="o">(</span>versions: 6.8.12-18-pve<span class="o">)</span>
+D91C-8216 is configured with: grub <span class="o">(</span>versions: 6.8.12-18-pve<span class="o">)</span>
+</code></pre></div></div>
+
+<p>Both SSDs listed, both registered with grub, no errors. The recovery is complete.</p>
+
+<h3 id="the-residual-hostid-warning">The Residual HostID Warning</h3>
+
+<p>After the fresh install and <code class="language-plaintext highlighter-rouge">zgenhostid</code>, harlan still shows this on <code class="language-plaintext highlighter-rouge">zpool status</code>:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>status: Mismatch between pool hostid and system hostid on imported pool.
+</code></pre></div></div>
+
+<p>This is a cosmetic warning from the initial boot before <code class="language-plaintext highlighter-rouge">zgenhostid</code> was run. It clears permanently after a clean export and reimport of the pool, which requires a live migration of any running VMs/LXCs off the node first. It does not affect pool operation or data integrity. You can leave it or clear it during a future maintenance window with:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Migrate all VMs/LXCs off harlan first, then:</span>
+zpool <span class="nb">export </span>rpool
+zpool import rpool
+</code></pre></div></div>
+
+<h2 id="the-backup-checklist">The Backup Checklist</h2>
+
+<p>Based on the harlan recovery, here’s the minimum backup set every Proxmox Ceph node should have on shared storage:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+<span class="c"># Run on each node, store to /mnt/pve/cephfs/backups/&lt;nodename&gt;/</span>
+<span class="nv">NODE</span><span class="o">=</span><span class="si">$(</span><span class="nb">hostname</span><span class="si">)</span>
+<span class="nv">BACKUP_DIR</span><span class="o">=</span><span class="s2">"/mnt/pve/cephfs/backups/</span><span class="k">${</span><span class="nv">NODE</span><span class="k">}</span><span class="s2">"</span>
+<span class="nb">mkdir</span> <span class="nt">-p</span> <span class="s2">"</span><span class="k">${</span><span class="nv">BACKUP_DIR</span><span class="k">}</span><span class="s2">"</span>
+
+<span class="nb">hostid</span> <span class="o">&gt;</span> <span class="s2">"</span><span class="k">${</span><span class="nv">BACKUP_DIR</span><span class="k">}</span><span class="s2">/</span><span class="k">${</span><span class="nv">NODE</span><span class="k">}</span><span class="s2">-hostid.txt"</span>
+
+<span class="nb">tar</span> <span class="nt">-czf</span> <span class="s2">"</span><span class="k">${</span><span class="nv">BACKUP_DIR</span><span class="k">}</span><span class="s2">/</span><span class="k">${</span><span class="nv">NODE</span><span class="k">}</span><span class="s2">_backup_</span><span class="si">$(</span><span class="nb">date</span> +%Y-%m-%d<span class="si">)</span><span class="s2">.tar.gz"</span> <span class="se">\</span>
+  /etc/network/interfaces <span class="se">\</span>
+  /etc/hosts <span class="se">\</span>
+  /etc/resolv.conf <span class="se">\</span>
+  /etc/hostname <span class="se">\</span>
+  /etc/subuid <span class="se">\</span>
+  /etc/subgid <span class="se">\</span>
+  /etc/pve/ceph.conf <span class="se">\</span>
+  /etc/pve/storage.cfg <span class="se">\</span>
+  /etc/corosync/corosync.conf <span class="se">\</span>
+  /etc/corosync/authkey <span class="se">\</span>
+  /etc/ceph/ceph.client.admin.keyring <span class="se">\</span>
+  /var/lib/ceph/bootstrap-osd/ceph.keyring <span class="se">\</span>
+  /var/lib/pve-cluster/config.db <span class="se">\</span>
+  2&gt;/dev/null
+
+ceph-volume lvm list <span class="o">&gt;</span> <span class="s2">"</span><span class="k">${</span><span class="nv">BACKUP_DIR</span><span class="k">}</span><span class="s2">/ceph_lvm_layout.txt"</span>
+pvs <span class="o">&gt;</span> <span class="s2">"</span><span class="k">${</span><span class="nv">BACKUP_DIR</span><span class="k">}</span><span class="s2">/ceph_pv_layout.txt"</span>
+<span class="nb">tar</span> <span class="nt">-czf</span> <span class="s2">"</span><span class="k">${</span><span class="nv">BACKUP_DIR</span><span class="k">}</span><span class="s2">/ceph_osd_var_lib.tar.gz"</span> /var/lib/ceph/osd/
+<span class="nb">cp</span> /etc/default/grub.d/<span class="k">*</span>.cfg <span class="s2">"</span><span class="k">${</span><span class="nv">BACKUP_DIR</span><span class="k">}</span><span class="s2">/"</span> 2&gt;/dev/null <span class="o">||</span> <span class="nb">true
+</span>apt-mark showmanual <span class="o">&gt;</span> <span class="s2">"</span><span class="k">${</span><span class="nv">BACKUP_DIR</span><span class="k">}</span><span class="s2">/</span><span class="k">${</span><span class="nv">NODE</span><span class="k">}</span><span class="s2">-apt-mark-showmanual.txt"</span>
+</code></pre></div></div>
+
+<p>Run this as a cron job or after any significant configuration change. The backup is small (under 50KB for most nodes) and the CephFS storage is replicated across the cluster.</p>
+
+<h2 id="related-articles">Related Articles</h2>
+
+<ul>
+  <li><a href="/proxmox-zfs-boot-mirrors-part-1/">ZFS Boot Mirrors on Proxmox 8 - Part 1</a> — Same-size drive replacement</li>
+  <li><a href="/proxmox-zfs-boot-mirrors-part-3/">ZFS Boot Mirrors on Proxmox 8 - Part 3</a> — Planned migration to smaller SSDs with fresh install and UEFI upgrade</li>
+  <li><a href="/proxmox-zfs-boot-mirror-smart-analysis/">Monitoring ZFS Boot Mirror Health in Proxmox 8 Clusters</a> — SMART monitoring and alerting</li>
+  <li><a href="/proxmox-ceph-guide/">Proxmox &amp; Ceph Homelab Guide</a> — All my Proxmox and Ceph articles in one place</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/proxmox/">proxmox</a>, 
+        
+          <a href="/tags/zfs/">zfs</a>, 
+        
+          <a href="/tags/storage/">storage</a>, 
+        
+          <a href="/tags/homelab/">homelab</a>, 
+        
+          <a href="/tags/hardware/">hardware</a>, 
+        
+          <a href="/tags/boot/">boot</a>, 
+        
+          <a href="/tags/mirror/">mirror</a>, 
+        
+          <a href="/tags/ceph/">ceph</a>, 
+        
+          <a href="/tags/recovery/">recovery</a>, 
+        
+          <a href="/tags/disaster-recovery/">disaster-recovery</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/proxmox/">proxmox</a>, 
+        
+          <a href="/categories/zfs/">zfs</a>, 
+        
+          <a href="/categories/storage/">storage</a>, 
+        
+          <a href="/categories/homelab/">homelab</a>, 
+        
+          <a href="/categories/ceph/">ceph</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

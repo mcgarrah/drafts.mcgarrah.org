@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Building Kubernetes on Proxmox with Ansible &amp; Teraform for the Homelabs | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Building Kubernetes on Proxmox with Ansible &amp; Teraform for the Homelabs" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="ClusterCreator: Terraform &amp; Ansible K8S Bootstrapping on Proxmox by Jairus Christensen looks like an amazing opportunity for me to get a Kuberetes Cluster running in the Homelab with my existing Proxmox Cluster. From Jairus README.md ClusterCreator automates the creation and maintenance of fully functional Kubernetes (K8S) clusters of any size on Proxmox. Leveraging Terraform/OpenTofu and Ansible, it facilitates complex setups, including decoupled etcd clusters, diverse worker node configurations, and optional integration with Unifi networks and VLANs. Having a virtualized K8S cluster allows you to not only simulate a cloud environment but also scale and customize your cluster to your needs—adding or removing nodes and disks, managing backups and snapshots of the virtual machine disks, customizing node class types, and controlling state." />
+<meta property="og:description" content="ClusterCreator: Terraform &amp; Ansible K8S Bootstrapping on Proxmox by Jairus Christensen looks like an amazing opportunity for me to get a Kuberetes Cluster running in the Homelab with my existing Proxmox Cluster. From Jairus README.md ClusterCreator automates the creation and maintenance of fully functional Kubernetes (K8S) clusters of any size on Proxmox. Leveraging Terraform/OpenTofu and Ansible, it facilitates complex setups, including decoupled etcd clusters, diverse worker node configurations, and optional integration with Unifi networks and VLANs. Having a virtualized K8S cluster allows you to not only simulate a cloud environment but also scale and customize your cluster to your needs—adding or removing nodes and disks, managing backups and snapshots of the virtual machine disks, customizing node class types, and controlling state." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/k8s-on-proxmox-with-tf-ansible/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/k8s-on-proxmox-with-tf-ansible/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2024-12-01T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Building Kubernetes on Proxmox with Ansible &amp; Teraform for the Homelabs" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2024-12-01T00:00:00+00:00","datePublished":"2024-12-01T00:00:00+00:00","description":"ClusterCreator: Terraform &amp; Ansible K8S Bootstrapping on Proxmox by Jairus Christensen looks like an amazing opportunity for me to get a Kuberetes Cluster running in the Homelab with my existing Proxmox Cluster. From Jairus README.md ClusterCreator automates the creation and maintenance of fully functional Kubernetes (K8S) clusters of any size on Proxmox. Leveraging Terraform/OpenTofu and Ansible, it facilitates complex setups, including decoupled etcd clusters, diverse worker node configurations, and optional integration with Unifi networks and VLANs. Having a virtualized K8S cluster allows you to not only simulate a cloud environment but also scale and customize your cluster to your needs—adding or removing nodes and disks, managing backups and snapshots of the virtual machine disks, customizing node class types, and controlling state.","headline":"Building Kubernetes on Proxmox with Ansible &amp; Teraform for the Homelabs","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/k8s-on-proxmox-with-tf-ansible/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/k8s-on-proxmox-with-tf-ansible/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/k8s-on-proxmox-with-tf-ansible/">Building Kubernetes on Proxmox with Ansible & Teraform for the Homelabs</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2024-12-01T00:00:00+00:00">December 01, 2024</time><span class="reading-time">3 min read</span></header>
+
+  <p><a href="https://github.com/mcgarrah/ClusterCreator">ClusterCreator: Terraform &amp; Ansible K8S Bootstrapping on Proxmox</a> by Jairus Christensen looks like an amazing opportunity for me to get a Kuberetes Cluster running in the Homelab with my existing Proxmox Cluster.</p>
+
+<p>From Jairus README.md</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ClusterCreator automates the creation and maintenance of fully functional Kubernetes (K8S) clusters of any size on Proxmox. Leveraging Terraform/OpenTofu and Ansible, it facilitates complex setups, including decoupled etcd clusters, diverse worker node configurations, and optional integration with Unifi networks and VLANs.
+
+Having a virtualized K8S cluster allows you to not only simulate a cloud environment but also scale and customize your cluster to your needs—adding or removing nodes and disks, managing backups and snapshots of the virtual machine disks, customizing node class types, and controlling state.
+</code></pre></div></div>
+
+<!-- excerpt-end -->
+
+<p>This is were I write stuff down.</p>
+
+<p><a href="https://cyber-engine.com/blog/2024/06/25/k8s-on-proxmox-using-clustercreator/">Introducing ClusterCreator: K8s on Proxmox using Terraform and Ansible</a></p>
+
+<p><a href="https://www.reddit.com/r/homelab/comments/1fcui9f/fully_functional_k8s_on_proxmox_using_terraform/?utm_source=share&amp;utm_medium=web3x&amp;utm_name=web3xcss&amp;utm_term=1&amp;utm_content=share_button">Fully Functional K8s on Proxmox using Terraform and Ansible</a></p>
+
+<h2 id="terraform--opentofu">Terraform / OpenTofu</h2>
+
+<p>This terraform uses the <a href="https://github.com/bpg/terraform-provider-proxmox">Terraform Provider for Proxmox VE</a> module.</p>
+
+<p>You can see the <a href="https://github.com/christensenjairus/ClusterCreator/blob/main/terraform/providers.tf#L36C1-L50C4">TF Statefile using S3 with Minio</a>. This needs to be replaced.</p>
+
+<p>TF Statefile storage in Minio S3 or something else…</p>
+
+<p>To store a Terraform state file in CephFS, you need to configure a remote backend in your Terraform configuration, specifying CephFS as the storage location, allowing you to access the state file from your CephFS cluster instead of storing it locally on your machine; essentially, you’re using CephFS as a remote storage for your Terraform state data.</p>
+
+<pre><code class="language-HCL">terraform {
+  backend "remote-exec" {
+    # Replace with your CephFS details
+    #directory = "/shared/terraform-state"
+    #key = "terraform.tfstate"
+    path = "/mnt/pve/cephfs/tfcluster/terraform.tfstate"
+  }
+}
+</code></pre>
+
+<p><a href="https://github.com/christensenjairus/ClusterCreator/blob/main/terraform/variables.tf">Terraform Variables File</a> has settings.</p>
+
+<pre><code class="language-HCL">locals {
+    proxmox_host   = "10.0.0.100"
+    proxmox_node   = "Citadel"
+    template_vm_id = 9000
+#     unifi_api_url  = "https://10.0.0.1/"
+#     minio_endpoint = "https://s3.christensencloud.us"
+#     minio_region   = "default"
+#     minio_bucket   = "terraform-state"
+}
+</code></pre>
+
+<p>The cluster types of <code class="language-plaintext highlighter-rouge">alpha</code>, <code class="language-plaintext highlighter-rouge">beta</code>, and <code class="language-plaintext highlighter-rouge">gamma</code> are found in <a href="https://github.com/christensenjairus/ClusterCreator/blob/main/terraform/clusters.tf#L80">clusters.tf</a> as the default.</p>
+
+<h2 id="ansible">Ansible</h2>
+
+<p>There is a bit of Ansible in here as well for configuration of the VMs.</p>
+
+<p><a href="https://github.com/christensenjairus/ClusterCreator/blob/main/scripts/k8s.env">Ansible Configuration file</a> has some interesting settings.</p>
+
+<p><code class="language-plaintext highlighter-rouge">PROXMOX_DISK_DATASTORE</code> would have to change to the ceph datastore and same for <code class="language-plaintext highlighter-rouge">PROXMOX_ISO_PATH</code> to get it in the right place.</p>
+
+<pre><code class="language-INI">### -------------------------------------------------------
+### --------------General Template Config------------------
+### -------------------------------------------------------
+
+NON_PASSWORD_PROTECTED_SSH_KEY="id_rsa" # assumed that this is in ~/.ssh/ and the .pub file is named similarly
+PROXMOX_USERNAME=root
+PROXMOX_HOST="10.0.0.100"
+PROXMOX_DISK_DATASTORE="local-btrfs"
+PROXMOX_BACKUPS_DATASTORE="hdds"
+PROXMOX_ISO_PATH="/var/lib/pve/local-btrfs/template/iso"
+TIMEZONE="America/Denver"
+TEMPLATE_VM_BRIDGE=vmbr0
+TEMPLATE_VM_GATEWAY="10.0.0.1"
+TEMPLATE_VM_IP="10.0.0.10/24"
+TEMPLATE_VM_SEARCH_DOMAIN="lan"
+TEMPLATE_VLAN_TAG="None" # None if no vlan, otherwise the vlan tag (e.g. 100)
+TWO_DNS_SERVERS="1.1.1.1 1.0.0.1"
+TEMPLATE_VM_CPU_TYPE="x86-64-v3"
+TEMPLATE_VM_CPU=8
+TEMPLATE_VM_MEM=8192
+
+### -------------------------------------------------------
+### --------------PKGS to Install with APT-----------------
+### ---kubectl, kubeadm, and kubelet use the k8s version---
+### -----`apt-cache madison &lt;package&gt;` to find versions----
+### -------------------------------------------------------
+
+KUBERNETES_SHORT_VERSION=1.32
+KUBERNETES_MEDIUM_VERSION=1.32.1
+KUBERNETES_LONG_VERSION=1.32.1-1.1
+
+# ------------------- Addon Versions ----------------------
+
+CILIUM_VERSION=1.16.6
+KUBELET_SERVING_CERT_APPROVER_VERSION=0.9.0
+LOCAL_PATH_PROVISIONER_VERSION=0.0.31
+METRICS_SERVER_VERSION=3.12.2
+METALLB_VERSION=0.14.9
+
+# ----------------NVIDIA Drivers (optional)----------------
+# To find versions on Ubuntu:
+#   apt search nvidia-driver | grep -E '^nvidia-driver-[0-9]+-server' | cut -d '/' -f 1
+# Versions on Debian:
+#   Bookworm only has 535.
+#   Bullseye has both 470 &amp; 390. For 390 you'll need to tweak apt-packages.sh
+#     to install `nvidia-legacy-390xx-driver` instead of `nvidia-drivers`.
+#     For debian, the version specified below will be ignored, and it will
+#     install whichever nvidia driver version matches the debian release.
+# Adds substantial creation time &amp; disk utilization for the template vm.
+# To install, uncomment the line below and increase TEMPLATE_DISK_SIZE.
+
+#NVIDIA_DRIVER_VERSION=535
+
+### -------------------------------------------------------
+### --------------PKGS to Download Directly----------------
+### -----Find these directly on GitHub Release Pages-------
+### -------------------------------------------------------
+
+CNI_PLUGINS_VERSION=1.6.0
+ETCD_VERSION=3.5.16
+
+# The template vm's cpu/mem resources only matter for initial creation.
+# More cpu greatly speeds up nvidia driver installation.
+
+### -------------------------------------------------------
+### -------------Template Image selection------------------
+### This project only supports debian &amp; ubuntu based images
+### Some pkg versions may be different for different images
+### -------------------------------------------------------
+
+# As a speed optimization, the disk size is set to be just large enough to fit
+#   the image and the k8s pkgs to help with vm cloning speed. The k8s installation
+#   ansible will check to make sure there wasn't any disk space issues during the
+#   template creation process.
+
+### Debian 12 Image (Bookworm)
+TEMPLATE_VM_ID=9000
+TEMPLATE_VM_NAME="k8s-ready-template"
+IMAGE_NAME="debian-12-generic-amd64.qcow2"
+IMAGE_LINK="https://cloud.debian.org/images/cloud/bookworm/latest/${IMAGE_NAME}"
+EXTRA_TEMPLATE_TAGS="bookworm template"
+TEMPLATE_DISK_SIZE=4.6G # Add 1.6G more if installing nvidia drivers
+
+### Ubuntu 24.04 LTS Image (Noble Numbat)
+#TEMPLATE_VM_ID=9000
+#TEMPLATE_VM_NAME="k8s-ready-template"
+#IMAGE_NAME="ubuntu-24.04-server-cloudimg-amd64.img"
+#IMAGE_LINK="https://cloud-images.ubuntu.com/releases/24.04/release/${IMAGE_NAME}"
+#EXTRA_TEMPLATE_TAGS="24.04-lts template"
+#TEMPLATE_DISK_SIZE=5.6G # Add 1.8G more if installing nvidia drivers
+
+### -------------------------------------------------------
+</code></pre>
+
+
+  <div class="post-tags-categories">
+    
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

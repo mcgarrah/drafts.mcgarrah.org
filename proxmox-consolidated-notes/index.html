@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Consolidating Proxmox Notes: A Python Export Script | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Consolidating Proxmox Notes: A Python Export Script" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="One of the underrated features of Proxmox is the ability to leave notes on the individual resources like the Datacenter, individual nodes, and every VM or Container. However, these notes are tucked away in individual configuration files within the Proxmox Cluster File System (/etc/pve). If you’re managing a cluster with nodes like quell, edgar, and tanaka, having a single consolidated Markdown file of all your documentation is incredibly helpful for disaster recovery or general reference." />
+<meta property="og:description" content="One of the underrated features of Proxmox is the ability to leave notes on the individual resources like the Datacenter, individual nodes, and every VM or Container. However, these notes are tucked away in individual configuration files within the Proxmox Cluster File System (/etc/pve). If you’re managing a cluster with nodes like quell, edgar, and tanaka, having a single consolidated Markdown file of all your documentation is incredibly helpful for disaster recovery or general reference." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/proxmox-consolidated-notes/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/proxmox-consolidated-notes/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-01-21T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Consolidating Proxmox Notes: A Python Export Script" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-04-02T00:00:00+00:00","datePublished":"2026-01-21T00:00:00+00:00","description":"One of the underrated features of Proxmox is the ability to leave notes on the individual resources like the Datacenter, individual nodes, and every VM or Container. However, these notes are tucked away in individual configuration files within the Proxmox Cluster File System (/etc/pve). If you’re managing a cluster with nodes like quell, edgar, and tanaka, having a single consolidated Markdown file of all your documentation is incredibly helpful for disaster recovery or general reference.","headline":"Consolidating Proxmox Notes: A Python Export Script","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/proxmox-consolidated-notes/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/proxmox-consolidated-notes/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/proxmox-consolidated-notes/">Consolidating Proxmox Notes: A Python Export Script</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-01-21T00:00:00+00:00">January 21, 2026</time><span class="reading-time">11 min read</span></header>
+
+  <p>One of the underrated features of Proxmox is the ability to leave notes on the individual resources like the Datacenter, individual nodes, and every VM or Container. However, these notes are tucked away in individual configuration files within the Proxmox Cluster File System (<code class="language-plaintext highlighter-rouge">/etc/pve</code>).</p>
+
+<p>If you’re managing a cluster with nodes like <em>quell</em>, <em>edgar</em>, and <em>tanaka</em>, having a single consolidated Markdown file of all your documentation is incredibly helpful for disaster recovery or general reference.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="the-challenge">The Challenge</h2>
+
+<p>Proxmox stores its configuration in a specialized fuse filesystem at <code class="language-plaintext highlighter-rouge">/etc/pve</code>. The Proxmox web UI provides a “Notes” feature for each resource (Datacenter, Nodes, VMs, and LXC containers) that stores multi-line documentation as comment lines starting with <code class="language-plaintext highlighter-rouge">#</code> in the config files.</p>
+
+<p>For example, your datacenter config might contain detailed cluster documentation:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#We have a six node HA cluster with Tanaka and Harlan/Kovacs/Poe/Edgar/Quell.</span>
+<span class="c">#</span>
+<span class="c">#We have a five node Ceph Cluster for Harlan/Kovacs/Poe/Edgar/Quell storage nodes</span>
+<span class="c"># - 4 x Nvidia P620 GPUs in Harlan/Kovacs/Poe/Quell</span>
+<span class="c"># - 2 x Nvidia K600 GPUs in Edgar/Tanaka</span>
+
+keyboard: en-us
+</code></pre></div></div>
+
+<p>And individual node configs track hardware-specific issues:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># /etc/pve/nodes/quell/config</span>
+<span class="c">#**2026-01-21**</span>
+<span class="c">#</span>
+<span class="c">#Pulled the /dev/sdb zfs boot mirror as it was damaged. No boot mirror.</span>
+</code></pre></div></div>
+
+<p>To get a clean backup, we need to extract these comment lines and decode any URL-encoded characters that Proxmox uses internally.</p>
+
+<h2 id="configuration-file-locations">Configuration File Locations</h2>
+
+<p>Proxmox uses a specialized cluster filesystem called <code class="language-plaintext highlighter-rouge">pmxcfs</code> that presents configuration data differently depending on where you look. Here’s the critical insight:</p>
+
+<p><strong>The top-level directories are node-local shortcuts:</strong></p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>root@edgar:~# <span class="nb">ls</span> /etc/pve/qemu-server/
+<span class="c"># Only shows VMs running on edgar</span>
+
+root@edgar:~# <span class="nb">ls</span> /etc/pve/lxc/
+<span class="c"># Only shows LXC containers on edgar</span>
+</code></pre></div></div>
+
+<p><strong>The true cluster-wide source of truth is in <code class="language-plaintext highlighter-rouge">/etc/pve/nodes/</code>:</strong></p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Datacenter-wide configuration</span>
+/etc/pve/datacenter.cfg
+
+<span class="c"># Individual node configurations</span>
+/etc/pve/nodes/edgar/config
+/etc/pve/nodes/harlan/config
+/etc/pve/nodes/kovacs/config
+/etc/pve/nodes/poe/config
+/etc/pve/nodes/quell/config
+/etc/pve/nodes/tanaka/config
+
+<span class="c"># Virtual Machines per node</span>
+/etc/pve/nodes/edgar/qemu-server/<span class="k">*</span>.conf
+/etc/pve/nodes/harlan/qemu-server/<span class="k">*</span>.conf
+/etc/pve/nodes/poe/qemu-server/<span class="k">*</span>.conf
+<span class="c"># ... (each node has its own subdirectory)</span>
+
+<span class="c"># LXC Containers per node</span>
+/etc/pve/nodes/edgar/lxc/<span class="k">*</span>.conf
+/etc/pve/nodes/harlan/lxc/<span class="k">*</span>.conf
+/etc/pve/nodes/poe/lxc/<span class="k">*</span>.conf
+<span class="c"># ... (each node has its own subdirectory)</span>
+</code></pre></div></div>
+
+<p>This is the “smoking gun” - to capture notes from your entire cluster from a single node, you must traverse <code class="language-plaintext highlighter-rouge">/etc/pve/nodes/</code> rather than relying on the top-level shortcuts.</p>
+
+<h2 id="the-python-solution">The Python Solution</h2>
+
+<p>The <code class="language-plaintext highlighter-rouge">proxmox_notes_exporter.py</code> script handles the heavy lifting:</p>
+
+<ol>
+  <li><strong>Traverses</strong> the entire <code class="language-plaintext highlighter-rouge">/etc/pve/nodes/</code> tree to find all configuration files</li>
+  <li><strong>Decodes</strong> URL-encoded characters from the Web UI (<code class="language-plaintext highlighter-rouge">%20</code> → space, <code class="language-plaintext highlighter-rouge">%3A</code> → colon)</li>
+  <li><strong>Detects</strong> HTML content and wraps it in code blocks for Markdown compatibility</li>
+  <li><strong>Consolidates</strong> results into a clean engineering report organized by type</li>
+</ol>
+
+<h3 id="key-features">Key Features</h3>
+
+<ul>
+  <li><strong>Captures notes from Proxmox web UI</strong> - Extracts comment lines (starting with <code class="language-plaintext highlighter-rouge">#</code>) added via the Notes interface</li>
+  <li><strong>Decodes URL encoding</strong> - Handles <code class="language-plaintext highlighter-rouge">%20</code> (space), <code class="language-plaintext highlighter-rouge">%3A</code> (colon), and other encoded characters</li>
+  <li><strong>Organizes by type</strong> - Datacenter, Nodes, VMs, and LXC containers in separate sections</li>
+  <li><strong>Migration-aware</strong> - VMs and LXC containers are listed independently since they can migrate between nodes</li>
+  <li><strong>Preserves community script templates</strong> - LXC containers created from <a href="https://helper-scripts.com">Helper-Scripts.com</a> include HTML metadata comments</li>
+  <li><strong>Optional inventory mode</strong> - Use <code class="language-plaintext highlighter-rouge">--include-empty</code> to list all VMs/LXCs even without notes</li>
+  <li><strong>Verbose output</strong> - Use <code class="language-plaintext highlighter-rouge">--verbose</code> to see processing details and statistics</li>
+</ul>
+
+<h3 id="usage-examples">Usage Examples</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Basic usage with default output location</span>
+./proxmox_notes_exporter.py
+
+<span class="c"># Specify custom output location</span>
+./proxmox_notes_exporter.py /root/cluster_backup.md
+
+<span class="c"># Create complete inventory including guests without notes</span>
+./proxmox_notes_exporter.py /tmp/inventory.md <span class="nt">--include-empty</span>
+
+<span class="c"># Show processing details and statistics</span>
+./proxmox_notes_exporter.py /mnt/backup/notes.md <span class="nt">--verbose</span>
+
+<span class="c"># Get help</span>
+./proxmox_notes_exporter.py <span class="nt">--help</span>
+</code></pre></div></div>
+
+<h3 id="why-preserve-everything">Why Preserve Everything?</h3>
+
+<p>During disaster recovery, you want a complete snapshot of your cluster configuration. Those community script comments tell you exactly which template was used to create each container, making it easier to rebuild or troubleshoot. The script treats all comments as valuable documentation.</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#!/usr/bin/env python3
+</span><span class="sh">"""</span><span class="s">
+Proxmox Cluster Notes Backup Script
+Copyright (c) 2026 Michael McGarrah
+Licensed under MIT License
+
+Extracts and consolidates notes from Proxmox VE cluster configuration files
+Author: Michael McGarrah (mcgarrah@gmail.com)
+Website: https://mcgarrah.org
+Repository: https://github.com/mcgarrah/mcgarrah.github.io
+</span><span class="sh">"""</span>
+
+<span class="kn">import</span> <span class="n">os</span>
+<span class="kn">import</span> <span class="n">argparse</span>
+<span class="kn">import</span> <span class="n">urllib.parse</span>
+<span class="kn">from</span> <span class="n">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+
+<span class="k">def</span> <span class="nf">extract_log_entries</span><span class="p">(</span><span class="n">filepath</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Extracts lines starting with # from Proxmox config files.</span><span class="sh">"""</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">exists</span><span class="p">(</span><span class="n">filepath</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">None</span>
+    
+    <span class="n">log_content</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">has_html</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nf">open</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="sh">'</span><span class="s">r</span><span class="sh">'</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">stripped</span> <span class="o">=</span> <span class="n">line</span><span class="p">.</span><span class="nf">strip</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">stripped</span><span class="p">.</span><span class="nf">startswith</span><span class="p">(</span><span class="sh">'</span><span class="s">#</span><span class="sh">'</span><span class="p">):</span>
+                    <span class="n">comment</span> <span class="o">=</span> <span class="n">stripped</span><span class="p">.</span><span class="nf">lstrip</span><span class="p">(</span><span class="sh">'</span><span class="s">#</span><span class="sh">'</span><span class="p">).</span><span class="nf">strip</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="sh">'</span><span class="s">&lt;</span><span class="sh">'</span> <span class="ow">in</span> <span class="n">comment</span> <span class="ow">or</span> <span class="sh">'</span><span class="s">href=</span><span class="sh">'</span> <span class="ow">in</span> <span class="n">comment</span><span class="p">:</span>
+                        <span class="n">has_html</span> <span class="o">=</span> <span class="bp">True</span>
+                    <span class="n">log_content</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">comment</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">log_content</span><span class="p">:</span>
+            <span class="n">decoded</span> <span class="o">=</span> <span class="n">urllib</span><span class="p">.</span><span class="n">parse</span><span class="p">.</span><span class="nf">unquote</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="sh">"</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">log_content</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">has_html</span><span class="p">:</span>
+                <span class="k">return</span> <span class="sa">f</span><span class="sh">"</span><span class="s">```html</span><span class="se">\n</span><span class="si">{</span><span class="n">decoded</span><span class="si">}</span><span class="se">\n</span><span class="s">```</span><span class="sh">"</span>
+            <span class="k">return</span> <span class="n">decoded</span>
+        <span class="k">return</span> <span class="bp">None</span>
+    <span class="k">except</span> <span class="nb">Exception</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">None</span>
+
+<span class="k">def</span> <span class="nf">generate_blog_markdown</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="n">include_empty</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Generate consolidated Markdown report of all Proxmox cluster notes.</span><span class="sh">"""</span>
+    <span class="n">base_path</span> <span class="o">=</span> <span class="sh">"</span><span class="s">/etc/pve</span><span class="sh">"</span>
+    
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Scanning Proxmox cluster at </span><span class="si">{</span><span class="n">base_path</span><span class="si">}</span><span class="s">...</span><span class="sh">"</span><span class="p">)</span>
+    
+    <span class="n">os</span><span class="p">.</span><span class="nf">makedirs</span><span class="p">(</span><span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">dirname</span><span class="p">(</span><span class="n">output_file</span><span class="p">),</span> <span class="n">exist_ok</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    
+    <span class="n">md</span> <span class="o">=</span> <span class="p">[</span><span class="sh">"</span><span class="s"># Proxmox Cluster Engineering Log</span><span class="se">\n</span><span class="sh">"</span><span class="p">]</span>
+    <span class="n">md</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">**Backup Date:** </span><span class="si">{</span><span class="n">datetime</span><span class="p">.</span><span class="nf">now</span><span class="p">().</span><span class="n">strftime</span><span class="p">(</span><span class="sh">'</span><span class="s">%Y-%m-%d %H</span><span class="si">:</span><span class="o">%</span><span class="n">M</span><span class="si">:</span><span class="o">%</span><span class="n">S</span><span class="sh">'</span><span class="s">)</span><span class="si">}</span><span class="se">\n</span><span class="sh">"</span><span class="p">)</span>
+
+    <span class="c1"># Datacenter Master Log
+</span>    <span class="n">md</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="sh">"</span><span class="s">## Datacenter Configuration</span><span class="sh">"</span><span class="p">)</span>
+    <span class="n">dc_notes</span> <span class="o">=</span> <span class="nf">extract_log_entries</span><span class="p">(</span><span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">base_path</span><span class="p">,</span> <span class="sh">'</span><span class="s">datacenter.cfg</span><span class="sh">'</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">dc_notes</span><span class="p">:</span>
+        <span class="n">md</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">```text</span><span class="se">\n</span><span class="si">{</span><span class="n">dc_notes</span><span class="si">}</span><span class="se">\n</span><span class="s">```</span><span class="se">\n</span><span class="sh">"</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">md</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="sh">"</span><span class="s">No datacenter notes.</span><span class="se">\n</span><span class="sh">"</span><span class="p">)</span>
+
+    <span class="c1"># Collect all VMs and LXCs across nodes
+</span>    <span class="n">all_vms</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">all_lxcs</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">vm_count</span> <span class="o">=</span> <span class="n">lxc_count</span> <span class="o">=</span> <span class="mi">0</span>
+    
+    <span class="c1"># Traverse Node Subdirectories
+</span>    <span class="n">md</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="sh">"</span><span class="s">## Node Hardware Logs</span><span class="sh">"</span><span class="p">)</span>
+    <span class="n">nodes_dir</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">base_path</span><span class="p">,</span> <span class="sh">"</span><span class="s">nodes</span><span class="sh">"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">exists</span><span class="p">(</span><span class="n">nodes_dir</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="nf">sorted</span><span class="p">(</span><span class="n">os</span><span class="p">.</span><span class="nf">listdir</span><span class="p">(</span><span class="n">nodes_dir</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Processing node: </span><span class="si">{</span><span class="n">node</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+            
+            <span class="c1"># Node Hardware Log
+</span>            <span class="n">node_config</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">nodes_dir</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="sh">"</span><span class="s">config</span><span class="sh">"</span><span class="p">)</span>
+            <span class="n">node_notes</span> <span class="o">=</span> <span class="nf">extract_log_entries</span><span class="p">(</span><span class="n">node_config</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">node_notes</span><span class="p">:</span>
+                <span class="n">md</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">### </span><span class="si">{</span><span class="n">node</span><span class="p">.</span><span class="nf">upper</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+                <span class="n">md</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">node_notes</span><span class="si">}</span><span class="se">\n</span><span class="sh">"</span><span class="p">)</span>
+
+            <span class="c1"># Collect VMs from this node
+</span>            <span class="n">qemu_dir</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">nodes_dir</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="sh">"</span><span class="s">qemu-server</span><span class="sh">"</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">exists</span><span class="p">(</span><span class="n">qemu_dir</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">vm</span> <span class="ow">in</span> <span class="n">os</span><span class="p">.</span><span class="nf">listdir</span><span class="p">(</span><span class="n">qemu_dir</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">vm</span><span class="p">.</span><span class="nf">endswith</span><span class="p">(</span><span class="sh">"</span><span class="s">.conf</span><span class="sh">"</span><span class="p">):</span>
+                        <span class="n">vm_id</span> <span class="o">=</span> <span class="n">vm</span><span class="p">.</span><span class="nf">replace</span><span class="p">(</span><span class="sh">'</span><span class="s">.conf</span><span class="sh">'</span><span class="p">,</span> <span class="sh">''</span><span class="p">)</span>
+                        <span class="n">vm_count</span> <span class="o">+=</span> <span class="mi">1</span>
+                        <span class="n">note</span> <span class="o">=</span> <span class="nf">extract_log_entries</span><span class="p">(</span><span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">qemu_dir</span><span class="p">,</span> <span class="n">vm</span><span class="p">))</span>
+                        <span class="k">if</span> <span class="n">note</span> <span class="ow">or</span> <span class="n">include_empty</span><span class="p">:</span>
+                            <span class="n">all_vms</span><span class="p">[</span><span class="n">vm_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">note</span> <span class="ow">or</span> <span class="sh">"</span><span class="s">No notes.</span><span class="sh">"</span><span class="p">)</span>
+
+            <span class="c1"># Collect LXCs from this node
+</span>            <span class="n">lxc_dir</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">nodes_dir</span><span class="p">,</span> <span class="n">node</span><span class="p">,</span> <span class="sh">"</span><span class="s">lxc</span><span class="sh">"</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">exists</span><span class="p">(</span><span class="n">lxc_dir</span><span class="p">):</span>
+                <span class="k">for</span> <span class="n">lxc</span> <span class="ow">in</span> <span class="n">os</span><span class="p">.</span><span class="nf">listdir</span><span class="p">(</span><span class="n">lxc_dir</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">lxc</span><span class="p">.</span><span class="nf">endswith</span><span class="p">(</span><span class="sh">"</span><span class="s">.conf</span><span class="sh">"</span><span class="p">):</span>
+                        <span class="n">lxc_id</span> <span class="o">=</span> <span class="n">lxc</span><span class="p">.</span><span class="nf">replace</span><span class="p">(</span><span class="sh">'</span><span class="s">.conf</span><span class="sh">'</span><span class="p">,</span> <span class="sh">''</span><span class="p">)</span>
+                        <span class="n">lxc_count</span> <span class="o">+=</span> <span class="mi">1</span>
+                        <span class="n">note</span> <span class="o">=</span> <span class="nf">extract_log_entries</span><span class="p">(</span><span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">lxc_dir</span><span class="p">,</span> <span class="n">lxc</span><span class="p">))</span>
+                        <span class="k">if</span> <span class="n">note</span> <span class="ow">or</span> <span class="n">include_empty</span><span class="p">:</span>
+                            <span class="n">all_lxcs</span><span class="p">[</span><span class="n">lxc_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">node</span><span class="p">,</span> <span class="n">note</span> <span class="ow">or</span> <span class="sh">"</span><span class="s">No notes.</span><span class="sh">"</span><span class="p">)</span>
+
+    <span class="c1"># Output all VMs in one section
+</span>    <span class="k">if</span> <span class="n">all_vms</span><span class="p">:</span>
+        <span class="n">md</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="sh">"</span><span class="s">## Virtual Machines</span><span class="sh">"</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">vm_id</span> <span class="ow">in</span> <span class="nf">sorted</span><span class="p">(</span><span class="n">all_vms</span><span class="p">.</span><span class="nf">keys</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="nb">int</span><span class="p">):</span>
+            <span class="n">node</span><span class="p">,</span> <span class="n">note</span> <span class="o">=</span> <span class="n">all_vms</span><span class="p">[</span><span class="n">vm_id</span><span class="p">]</span>
+            <span class="n">md</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">### VM </span><span class="si">{</span><span class="n">vm_id</span><span class="si">}</span><span class="s"> (on </span><span class="si">{</span><span class="n">node</span><span class="si">}</span><span class="s">)</span><span class="sh">"</span><span class="p">)</span>
+            <span class="n">md</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">note</span><span class="si">}</span><span class="se">\n</span><span class="sh">"</span><span class="p">)</span>
+
+    <span class="c1"># Output all LXCs in one section
+</span>    <span class="k">if</span> <span class="n">all_lxcs</span><span class="p">:</span>
+        <span class="n">md</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="sh">"</span><span class="s">## LXC Containers</span><span class="sh">"</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">lxc_id</span> <span class="ow">in</span> <span class="nf">sorted</span><span class="p">(</span><span class="n">all_lxcs</span><span class="p">.</span><span class="nf">keys</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="nb">int</span><span class="p">):</span>
+            <span class="n">node</span><span class="p">,</span> <span class="n">note</span> <span class="o">=</span> <span class="n">all_lxcs</span><span class="p">[</span><span class="n">lxc_id</span><span class="p">]</span>
+            <span class="n">md</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">### LXC </span><span class="si">{</span><span class="n">lxc_id</span><span class="si">}</span><span class="s"> (on </span><span class="si">{</span><span class="n">node</span><span class="si">}</span><span class="s">)</span><span class="sh">"</span><span class="p">)</span>
+            <span class="n">md</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">note</span><span class="si">}</span><span class="se">\n</span><span class="sh">"</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="nf">open</span><span class="p">(</span><span class="n">output_file</span><span class="p">,</span> <span class="sh">'</span><span class="s">w</span><span class="sh">'</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="p">.</span><span class="nf">write</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="sh">"</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">md</span><span class="p">))</span>
+    
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="se">\n</span><span class="s">Statistics:</span><span class="sh">"</span><span class="p">)</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Total VMs: </span><span class="si">{</span><span class="n">vm_count</span><span class="si">}</span><span class="s"> (documented: </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">all_vms</span><span class="p">)</span><span class="si">}</span><span class="s">)</span><span class="sh">"</span><span class="p">)</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">  Total LXCs: </span><span class="si">{</span><span class="n">lxc_count</span><span class="si">}</span><span class="s"> (documented: </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">all_lxcs</span><span class="p">)</span><span class="si">}</span><span class="s">)</span><span class="sh">"</span><span class="p">)</span>
+    
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Success! Backup generated at: </span><span class="si">{</span><span class="n">output_file</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="p">.</span><span class="nc">ArgumentParser</span><span class="p">(</span>
+        <span class="n">description</span><span class="o">=</span><span class="sh">'</span><span class="s">Export Proxmox cluster notes to Markdown</span><span class="sh">'</span><span class="p">,</span>
+        <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="p">.</span><span class="n">RawDescriptionHelpFormatter</span><span class="p">,</span>
+        <span class="n">epilog</span><span class="o">=</span><span class="sh">"""</span><span class="s">Examples:
+  %(prog)s /root/cluster_backup.md
+  %(prog)s /mnt/backup/notes.md --verbose
+  %(prog)s /tmp/inventory.md --include-empty
+        </span><span class="sh">"""</span><span class="p">)</span>
+    
+    <span class="n">parser</span><span class="p">.</span><span class="nf">add_argument</span><span class="p">(</span><span class="sh">'</span><span class="s">output</span><span class="sh">'</span><span class="p">,</span> 
+                        <span class="n">default</span><span class="o">=</span><span class="sh">'</span><span class="s">/mnt/pve/cephfs/backups/proxmox_notes_backup.md</span><span class="sh">'</span><span class="p">,</span>
+                        <span class="n">nargs</span><span class="o">=</span><span class="sh">'</span><span class="s">?</span><span class="sh">'</span><span class="p">,</span>
+                        <span class="nb">help</span><span class="o">=</span><span class="sh">'</span><span class="s">Output file path (default: /mnt/pve/cephfs/backups/proxmox_notes_backup.md)</span><span class="sh">'</span><span class="p">)</span>
+    <span class="n">parser</span><span class="p">.</span><span class="nf">add_argument</span><span class="p">(</span><span class="sh">'</span><span class="s">--include-empty</span><span class="sh">'</span><span class="p">,</span> 
+                        <span class="n">action</span><span class="o">=</span><span class="sh">'</span><span class="s">store_true</span><span class="sh">'</span><span class="p">,</span>
+                        <span class="nb">help</span><span class="o">=</span><span class="sh">'</span><span class="s">Include VMs/LXCs without notes (useful for inventory)</span><span class="sh">'</span><span class="p">)</span>
+    <span class="n">parser</span><span class="p">.</span><span class="nf">add_argument</span><span class="p">(</span><span class="sh">'</span><span class="s">--verbose</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">-v</span><span class="sh">'</span><span class="p">,</span> 
+                        <span class="n">action</span><span class="o">=</span><span class="sh">'</span><span class="s">store_true</span><span class="sh">'</span><span class="p">,</span>
+                        <span class="nb">help</span><span class="o">=</span><span class="sh">'</span><span class="s">Show processing details and statistics</span><span class="sh">'</span><span class="p">)</span>
+    
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="p">.</span><span class="nf">parse_args</span><span class="p">()</span>
+    <span class="nf">generate_blog_markdown</span><span class="p">(</span><span class="n">args</span><span class="p">.</span><span class="n">output</span><span class="p">,</span> <span class="n">args</span><span class="p">.</span><span class="n">include_empty</span><span class="p">,</span> <span class="n">args</span><span class="p">.</span><span class="n">verbose</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="sh">"</span><span class="s">__main__</span><span class="sh">"</span><span class="p">:</span>
+    <span class="nf">main</span><span class="p">()</span>
+</code></pre></div></div>
+
+<h2 id="future-enhancements">Future Enhancements</h2>
+
+<p>For publishing the cluster documentation, you could extend this script to generate HTML output alongside the Markdown. This would allow you to serve the documentation through your Caddy LXC container:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Generate both Markdown and HTML versions</span>
+./proxmox_notes_exporter.py /var/www/cluster/notes.md
+pandoc /var/www/cluster/notes.md <span class="nt">-o</span> /var/www/cluster/index.html <span class="nt">--standalone</span> <span class="nt">--css</span><span class="o">=</span>style.css
+</code></pre></div></div>
+
+<p>This creates a web-accessible version of your cluster documentation that stays in sync with your engineering notes. I have not done this part yet and will likely write a follow up when I do it.</p>
+
+<h2 id="related-articles">Related Articles</h2>
+
+<ul>
+  <li><a href="/proxmox-8-lessons-learned/">Proxmox 8 Lessons Learned in the Homelab</a> — Hard-won tips from running Proxmox</li>
+  <li><a href="/proxmox-zfs-boot-mirror-smart-analysis/">Monitoring ZFS Boot Mirror Health in Proxmox 8</a> — SMART monitoring for boot drives</li>
+  <li><a href="/proxmox-ceph-guide/">Proxmox &amp; Ceph Homelab Guide</a> — All my Proxmox and Ceph articles in one place</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/proxmox/">proxmox</a>, 
+        
+          <a href="/tags/python/">python</a>, 
+        
+          <a href="/tags/backup/">backup</a>, 
+        
+          <a href="/tags/automation/">automation</a>, 
+        
+          <a href="/tags/scripting/">scripting</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/technical/">technical</a>, 
+        
+          <a href="/categories/homelab/">homelab</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

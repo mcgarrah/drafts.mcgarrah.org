@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Ceph Cluster Complete Removal on Proxmox for the Homelabs | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Ceph Cluster Complete Removal on Proxmox for the Homelabs" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="My test Proxmox Cluster is used for testing and along the way I broke the Ceph Cluster part of it badly while doing a lot of physical media replacements. The test cluster is the right place to try out risky stuff instead of on my main cluster that is loaded up with my data. Fixing it often teaches you something but in this case I already know the lessons and just want to fast track getting a clean ceph cluster back online. I need it back in place to test the Proxmox 8.2 to Proxmox 8.3 upgrade of my main cluster. So this is a quick guide on how to completely clean out your Ceph Cluster installation as if it never existed on your Proxmox Cluster 8.2 or 8.3 environment." />
+<meta property="og:description" content="My test Proxmox Cluster is used for testing and along the way I broke the Ceph Cluster part of it badly while doing a lot of physical media replacements. The test cluster is the right place to try out risky stuff instead of on my main cluster that is loaded up with my data. Fixing it often teaches you something but in this case I already know the lessons and just want to fast track getting a clean ceph cluster back online. I need it back in place to test the Proxmox 8.2 to Proxmox 8.3 upgrade of my main cluster. So this is a quick guide on how to completely clean out your Ceph Cluster installation as if it never existed on your Proxmox Cluster 8.2 or 8.3 environment." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/proxmox-remove-ceph-completely/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/proxmox-remove-ceph-completely/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2025-02-15T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Ceph Cluster Complete Removal on Proxmox for the Homelabs" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-04-05T00:00:00+00:00","datePublished":"2025-02-15T00:00:00+00:00","description":"My test Proxmox Cluster is used for testing and along the way I broke the Ceph Cluster part of it badly while doing a lot of physical media replacements. The test cluster is the right place to try out risky stuff instead of on my main cluster that is loaded up with my data. Fixing it often teaches you something but in this case I already know the lessons and just want to fast track getting a clean ceph cluster back online. I need it back in place to test the Proxmox 8.2 to Proxmox 8.3 upgrade of my main cluster. So this is a quick guide on how to completely clean out your Ceph Cluster installation as if it never existed on your Proxmox Cluster 8.2 or 8.3 environment.","headline":"Ceph Cluster Complete Removal on Proxmox for the Homelabs","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/proxmox-remove-ceph-completely/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/proxmox-remove-ceph-completely/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/proxmox-remove-ceph-completely/">Ceph Cluster Complete Removal on Proxmox for the Homelabs</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2025-02-15T00:00:00+00:00">February 15, 2025</time><span class="reading-time">6 min read</span></header>
+
+  <p>My test Proxmox Cluster is used for <em>testing</em> and along the way I broke the Ceph Cluster part of it badly while doing a lot of physical media replacements. The test cluster is the right place to try out risky stuff instead of on my main cluster that is loaded up with my data. Fixing it often teaches you something but in this case I already know the lessons and just want to fast track getting a clean ceph cluster back online.</p>
+
+<p>I need it back in place to test the Proxmox 8.2 to Proxmox 8.3 upgrade of my main cluster. So this is a quick guide on how to completely clean out your Ceph Cluster installation as if it never existed on your Proxmox Cluster 8.2 or 8.3 environment.</p>
+
+<p><a href="/assets/images/proxmox-ceph-upgrade.png" target="_blank"><img src="/assets/images/proxmox-ceph-upgrade.png" alt="proxmox ceph install dialog" title="proxmox ceph install dialog" width="45%" height="45%" style="display:block; margin-left:auto; margin-right:auto" /></a></p>
+
+<!-- excerpt-end -->
+
+<p>This is a brutal set of commands to just burn down the ceph components. You are welcome to use this as it was successful for my system cleanup but I take no responsibility for your cluster if you use them. I am <em>nuking</em> stuff indiscriminately to just get it cleared out. Beware the <code class="language-plaintext highlighter-rouge">rm -rf</code> as it is crazy bad news under the wrong circumstances. This could damage your system and I again take no responsibility for any damage done.</p>
+
+<p>Everything here assumes you are logged in as the <code class="language-plaintext highlighter-rouge">root</code> user. There is no <code class="language-plaintext highlighter-rouge">sudo</code> going on here. You are playing with fire.</p>
+
+<h2 id="clean-up-steps">Clean up steps</h2>
+
+<p>Here is how to turn off all the ceph services and remove the larger parts of the startups along with killing off straggle processes.</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="go">systemctl stop ceph-mon.target
+systemctl stop ceph-mgr.target
+systemctl stop ceph-mds.target
+systemctl stop ceph-osd.target
+rm -rf /etc/systemd/system/ceph*
+killall -9 ceph-mon ceph-mgr ceph-mds
+</span></code></pre></div></div>
+
+<p>These are some extra steps to remove more of the pieces that <code class="language-plaintext highlighter-rouge">systemctl</code> throws into various other places. I did not spend the time to figure out how to do this the right way with <code class="language-plaintext highlighter-rouge">systemctl clean</code>. I am in a hurry.</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="go">ls -l /etc/systemd/system/*/ceph*
+rm -rf /etc/systemd/system/*/ceph*
+ls /lib/systemd/system/ceph*
+rm -rf /lib/systemd/system/ceph*
+</span></code></pre></div></div>
+
+<p>While testing this out on different nodes, I found that ceph often has left the ceph OSD mount-point mounted even after stopping the OSD service. So this step unmounts it if it exists. This makes the <code class="language-plaintext highlighter-rouge">pveceph purge</code> work better without errors.</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="go">mount | grep ceph | cut -d' ' -f3 | xargs umount
+rm -rf /var/lib/ceph/mon/  /var/lib/ceph/mgr/  /var/lib/ceph/mds/  /var/lib/ceph/osd/
+pveceph purge
+</span></code></pre></div></div>
+
+<p>This section removes all the OS packages, then their dependencies and finally cleans out the cached packages.</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="go">apt purge -y ceph-mon ceph-osd ceph-mgr ceph-mds ceph-base ceph-mgr-modules-core
+apt autoremove -y
+apt clean
+</span></code></pre></div></div>
+
+<p>Finally this last step goes thru and completely removes all remnants of ceph from your system. These are the pieces I determined as safe to remove for my system.</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="go">rm -rf /etc/ceph/*
+rm -rf /etc/pve/ceph.conf
+rm -rf /etc/pve/ceph
+rm -rf /etc/pve/priv/ceph
+rm -rf /var/lib/ceph
+rm -rf /var/log/ceph
+</span></code></pre></div></div>
+
+<p><em>Note</em>: Leaving the <code class="language-plaintext highlighter-rouge">/etc/ceph</code> directory in place as it is needed later when reinstalling Ceph on the system. The error “command ‘cp /etc/pve/priv/ceph.client.admin.keyring /etc/ceph/ceph.client.admin.keyring’ failed: exit code 1 (500)” requires the directory to exist.</p>
+
+<h2 id="unlocking-the-osd-media">Unlocking the OSD media</h2>
+
+<p>Error when trying to wipe the old Ceph OSD media came up when trying to setup the new Ceph Cluster.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Error
+disk/partition '/dev/sda' has a holder (500)
+</code></pre></div></div>
+
+<p>You need the long label name for the Ceph partition. You can get this from a <code class="language-plaintext highlighter-rouge">lsblk</code> call.</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@pve3:~#</span><span class="w"> </span>lsblk
+<span class="go">NAME                                                        MAJ:MIN RM   SIZE RO TYPE MOUNTPOINTS
+sda                                                           8:0    1  28.7G  0 disk
+└─sda1                                                        8:1    1  28.7G  0 part /mnt/pve/osdisk-usr
+                                                                                      /usr
+sdb                                                           8:16   1 117.2G  0 disk
+└─ceph--553fe20d--4cc0--4e58--9f9e--914b40d3403d-osd--block--57263386--2463--4f23--9848--6e7dee2c129d
+                                                            252:0    0 117.2G  0 lvm
+mmcblk0                                                     179:0    0   7.3G  0 disk
+├─mmcblk0p1                                                 179:1    0   512M  0 part /boot/efi
+├─mmcblk0p2                                                 179:2    0   5.8G  0 part /
+└─mmcblk0p3                                                 179:3    0   976M  0 part [SWAP]
+mmcblk0boot0                                                179:8    0     4M  1 disk
+mmcblk0boot1                                                179:16   0     4M  1 disk
+</span></code></pre></div></div>
+
+<p>Pass that value to the <code class="language-plaintext highlighter-rouge">dmsetup remove xxxx</code> to remove the hold.</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@pve3:~#</span><span class="w"> </span>dmsetup remove ceph--553fe20d--4cc0--4e58--9f9e--914b40d3403d-osd--block--57263386--2463--4f23--9848--6e7dee2c129d
+</code></pre></div></div>
+
+<p>Now you can use the Disks “Wipe Disk” option on that media before setting Ceph back up.</p>
+
+<p>Found this in <a href="https://forum.proxmox.com/threads/sda-has-a-holder.97771/post-513875">Proxmox Forum sda has a holder…</a> from 2021.</p>
+
+<h2 id="clear-out-shared-storage-entries">Clear out shared storage entries</h2>
+
+<p>Notice the question marks next to the <code class="language-plaintext highlighter-rouge">cephrbd</code> and <code class="language-plaintext highlighter-rouge">cephfs</code> storage entries.</p>
+
+<p><a href="/assets/images/proxmox-ceph-storage-cleanup.png" target="_blank"><img src="/assets/images/proxmox-ceph-storage-cleanup.png" alt="Shared Storage" title="Shared Storage" width="25%" height="25%" style="display:block; margin-left:auto; margin-right:auto" /></a></p>
+
+<p>You need to remove these from the <code class="language-plaintext highlighter-rouge">/etc/pve/storage.cfg</code> file that is in the shared PVE location used by the Proxmox Cluster to share configuration settings.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>dir: local
+        path /var/lib/vz
+        content snippets,images,rootdir,backup,vztmpl,iso
+        prune-backups keep-all=1
+
+cephfs: cephfs
+        path /mnt/pve/cephfs
+        content iso,vztmpl,backup
+        fs-name cephfs
+
+rbd: cephrbd
+        content rootdir,images
+        krbd 0
+        pool cephrbd
+
+dir: osdisk-usr
+        path /mnt/pve/osdisk-usr
+        content rootdir
+        is_mountpoint 1
+        nodes pve2,pve3,pve1
+</code></pre></div></div>
+
+<p>We need to remove the two sections with <code class="language-plaintext highlighter-rouge">ceph</code> RBD and FS in the name. You should only need to do this once and the cluster will share the file to the other nodes in the cluster.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>dir: local
+        path /var/lib/vz
+        content snippets,images,rootdir,backup,vztmpl,iso
+        prune-backups keep-all=1
+</code></pre></div></div>
+
+<p><em>Note</em>: You will probably not have a section called <code class="language-plaintext highlighter-rouge">osdisk-usr</code> as that is my special volume used when I migrated the <code class="language-plaintext highlighter-rouge">/usr</code> from root to external USB storage.</p>
+
+<h2 id="orphan-lxc-and-vm">Orphan LXC and VM</h2>
+
+<p>I had a couple of orphaned VMs and LXCs that would not allow themselves to be deleted because their disk images were in shared Ceph RBD storage. So out comes the <code class="language-plaintext highlighter-rouge">rm</code> command.</p>
+
+<p>I navigated to <code class="language-plaintext highlighter-rouge">/etc/pve/qemu-server</code> for the VMs on the node hosting it in the cluster. Once there, I found the VM ID which was <code class="language-plaintext highlighter-rouge">1001</code>. I just did a <code class="language-plaintext highlighter-rouge">rm 1001.conf</code> on the file to clear it out. It will be reflected in the Proxmox webui almost immediately.</p>
+
+<p>If it was a LXC that was locked, I would go to <code class="language-plaintext highlighter-rouge">/etc/pve/lxc</code> and find the file by LCX ID. Then do the same <code class="language-plaintext highlighter-rouge">rm</code> on that file.</p>
+
+<p>You’ll have to go to each node that is hosting your VM or LXC to remove them.</p>
+
+<p>Something that came up later, if you have Cluster level HA Resources configured for your VM or LXC, you will also need to remove them from it before doing this or face problems with it later.</p>
+
+<h2 id="last-thoughts">Last thoughts</h2>
+
+<p>This was what I needed to get my test cluster back where I needed it after really screwing up my <code class="language-plaintext highlighter-rouge">cephfs</code> and <code class="language-plaintext highlighter-rouge">cephrbd</code> by tearing out external storage used for OSDs and remapping my <code class="language-plaintext highlighter-rouge">/usr</code> to separate external storage. This test system is highly constrained on RAM and Storage so I have had to play games to keep it working and being useful. You can see some of those challenges in <a href="/proxmox-8-dell-wyse-3040/">ProxMox 8.2.2 Cluster on Dell Wyse 3040s</a> and again in <a href="/proxmox-8-dell-wyse-3040-upgrade/">ProxMox 8.2.4 Upgrade on Dell Wyse 3040s</a>. I am sharing this with the best intentions and hope you find it useful.</p>
+
+<p><a href="/assets/images/proxmox-8-sff-testbed-upgrade.png" target="_blank"><img src="/assets/images/proxmox-8-sff-testbed-upgrade.png" alt="Proxmox SFF Cluster" title="Proxmox SFF Cluster" width="25%" height="25%" style="display:block; margin-left:auto; margin-right:auto" /></a></p>
+
+<p>This cheap low-end cluster just keeps delivering value as I experiment.</p>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/proxmox/">proxmox</a>, 
+        
+          <a href="/tags/ceph/">ceph</a>, 
+        
+          <a href="/tags/removal/">removal</a>, 
+        
+          <a href="/tags/cleanup/">cleanup</a>, 
+        
+          <a href="/tags/homelab/">homelab</a>, 
+        
+          <a href="/tags/storage/">storage</a>, 
+        
+          <a href="/tags/troubleshooting/">troubleshooting</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/technical/">technical</a>, 
+        
+          <a href="/categories/homelab/">homelab</a>, 
+        
+          <a href="/categories/troubleshooting/">troubleshooting</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

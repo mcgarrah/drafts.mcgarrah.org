@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>ZFS Boot Mirrors on Proxmox 8 for the Homelab - Part 3 | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="ZFS Boot Mirrors on Proxmox 8 for the Homelab - Part 3" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="How to migrate a Proxmox ZFS boot mirror to smaller replacement drives using a fresh install approach, covering the Golden Backup checklist, UEFI upgrade from Legacy BIOS, cluster rejoin, and Ceph OSD reactivation. Based on real migrations across a six-node homelab cluster." />
+<meta property="og:description" content="How to migrate a Proxmox ZFS boot mirror to smaller replacement drives using a fresh install approach, covering the Golden Backup checklist, UEFI upgrade from Legacy BIOS, cluster rejoin, and Ceph OSD reactivation. Based on real migrations across a six-node homelab cluster." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/proxmox-zfs-boot-mirrors-part-3/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/proxmox-zfs-boot-mirrors-part-3/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-06-03T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="ZFS Boot Mirrors on Proxmox 8 for the Homelab - Part 3" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-06-03T00:00:00+00:00","datePublished":"2026-06-03T00:00:00+00:00","description":"How to migrate a Proxmox ZFS boot mirror to smaller replacement drives using a fresh install approach, covering the Golden Backup checklist, UEFI upgrade from Legacy BIOS, cluster rejoin, and Ceph OSD reactivation. Based on real migrations across a six-node homelab cluster.","headline":"ZFS Boot Mirrors on Proxmox 8 for the Homelab - Part 3","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/proxmox-zfs-boot-mirrors-part-3/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/proxmox-zfs-boot-mirrors-part-3/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/proxmox-zfs-boot-mirrors-part-3/">ZFS Boot Mirrors on Proxmox 8 for the Homelab - Part 3</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-06-03T00:00:00+00:00">June 03, 2026</time><span class="reading-time">9 min read</span></header>
+
+  <p><a href="/proxmox-zfs-boot-mirrors-part-1/">Part 1</a> covered replacing a failed ZFS boot mirror drive with one of the same size. <a href="/proxmox-zfs-boot-mirrors-part-2/">Part 2</a> covered the emergency recovery when both drives fail simultaneously. This is the planned version of that same fresh-install procedure — applied deliberately when your replacement drives are <em>smaller</em> than the originals, with a UEFI upgrade included.</p>
+
+<p>The backup checklist and recovery steps here were refined across the Harlan emergency (Part 2), the Quell sequential drive swap, and the Edgar planned migration. This is the procedure I’ll follow for the remaining cluster nodes as their spinning rust ages out.</p>
+
+<p>In my case, the cluster nodes have 500GB or 1TB spinning rust HDDs as boot mirrors but only use 3-7GB of actual space — Ceph handles all the real storage. Replacing them with 128GB SSDs makes sense on cost, speed, and reliability grounds. But ZFS won’t let you add a smaller drive to an existing mirror:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@tanaka:~#</span><span class="w"> </span>zpool attach rpool ata-existing-part3 /dev/disk/by-id/ata-smaller-ssd-part3
+<span class="go">cannot attach /dev/disk/by-id/ata-smaller-ssd-part3 to rpool: device is too small
+</span></code></pre></div></div>
+
+<p><a href="/assets/images/zfs-boot-mirror-proxmox8-001.png" target="_blank"><img src="/assets/images/zfs-boot-mirror-proxmox8-001.png" alt="Proxmox 8 ZFS Boot Mirror" width="40%" height="40%" style="display:block; margin-left:auto; margin-right:auto" /></a></p>
+
+<!-- excerpt-end -->
+
+<h2 id="why-fresh-install-instead-of-zfs-sendreceive">Why Fresh Install Instead of ZFS Send/Receive</h2>
+
+<p>My original plan was to use <code class="language-plaintext highlighter-rouge">zfs send | zfs receive</code> to migrate data from the larger pool to a new smaller pool without reinstalling. There are documented approaches for this — a <a href="https://www.reddit.com/r/Proxmox/comments/1cr6wn7/tutorial_howto_migrate_a_pve_zfs_bootroot_mirror/">Reddit tutorial</a>, a <a href="https://github.com/kneutron/ansitest/blob/master/proxmox/proxmox-replace-zfs-mirror-boot-disks-with-smaller.sh">shell script</a>, and Aaron Lauterer’s <a href="https://aaronlauterer.com/blog/2021/proxmox-ve-migrate-to-smaller-root-disks/">migration guide</a>. I spent time researching and partially testing this path on tanaka before abandoning it.</p>
+
+<p>The problem is that send/receive only solves one thing — the disk size mismatch. It leaves you on the same Legacy BIOS with GRUB, the same aging OS install, and the same accumulated configuration drift. After working through the Harlan and Quell recoveries documented in <a href="/proxmox-zfs-boot-mirrors-part-2/">Part 2</a>, I realized the fresh install approach solves multiple problems at once:</p>
+
+<ul>
+  <li><strong>UEFI upgrade.</strong> Legacy BIOS and GRUB are technical debt. Proxmox already prefers <code class="language-plaintext highlighter-rouge">systemd-boot</code> on UEFI installs, and PVE 9.x is coming. Every node left on Legacy BIOS is a node that will need extra attention during the major version upgrade. A fresh install is the clean path to UEFI — you can’t switch boot modes with a send/receive migration.</li>
+  <li><strong>Clean OS state.</strong> Years of package upgrades, configuration changes, and accumulated cruft disappear. The fresh install starts from a known-good baseline.</li>
+  <li><strong>The send/receive procedure is fragile.</strong> It requires creating a temporary pool, migrating snapshots, swapping pool names, and updating boot UUIDs — all on a live system. One mistake and you’re doing a fresh install anyway.</li>
+  <li><strong>You’re already touching the hardware.</strong> If you’re pulling drives and swapping SSDs, the incremental effort of a fresh install is small.</li>
+  <li><strong>The Ceph data is safe regardless.</strong> OSD drives are completely independent of the boot pool. A fresh install doesn’t touch them.</li>
+</ul>
+
+<p>The key insight from the Harlan recovery was that the <em>hard part</em> isn’t the install — it’s preserving the node’s identity so it can rejoin the cluster and reclaim its OSDs. Once you have a solid backup checklist, the fresh install path is actually less risky than the in-place migration.</p>
+
+<h3 id="grub-is-the-real-problem">GRUB Is the Real Problem</h3>
+
+<p>In a Proxmox ZFS-on-root setup, GRUB and Legacy BIOS are a constant source of friction. During the Quell recovery, <code class="language-plaintext highlighter-rouge">grub-install</code> failed with an “unknown filesystem” error because it doesn’t understand ZFS partitions directly — we had to work around it with <code class="language-plaintext highlighter-rouge">proxmox-boot-tool</code> every time. On UEFI with <code class="language-plaintext highlighter-rouge">systemd-boot</code>, this entire class of problem disappears. The boot partition is a simple FAT32 ESP that every tool understands.</p>
+
+<p>With PVE 9.x on the horizon, staying on Legacy BIOS means risking boot issues during the major version upgrade. Converting one node at a time during planned SSD migrations is far less stressful than dealing with it during a cluster-wide upgrade.</p>
+
+<h2 id="which-path-is-right-for-you">Which Path Is Right for You?</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Situation</th>
+      <th>Approach</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>One drive failed, replacement is same size</td>
+      <td><a href="/proxmox-zfs-boot-mirrors-part-1/">Part 1</a> (zpool replace)</td>
+    </tr>
+    <tr>
+      <td>Both drives failed simultaneously</td>
+      <td><a href="/proxmox-zfs-boot-mirrors-part-2/">Part 2</a> (emergency fresh install)</td>
+    </tr>
+    <tr>
+      <td>Planned migration to smaller drives</td>
+      <td>This article (planned fresh install with UEFI upgrade)</td>
+    </tr>
+    <tr>
+      <td>Node has no Ceph OSDs</td>
+      <td>Simpler — skip the OSD reactivation steps</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The difference between this article and Part 2 is <em>timing</em>. Part 2 is an emergency recovery when the node is already dead. This article is a planned migration where you control the schedule and can prepare thoroughly.</p>
+
+<h2 id="the-golden-backup-checklist">The Golden Backup Checklist</h2>
+
+<p>This checklist was refined across the Harlan emergency recovery and the Quell and Edgar planned migrations. Every item earned its place by causing problems when it was missing.</p>
+
+<p>Run these on the node <em>before</em> you power it down:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create backup directory on shared CephFS storage</span>
+<span class="nb">mkdir</span> <span class="nt">-p</span> /mnt/pve/cephfs/backups/edgar/
+
+<span class="c"># Capture the binary hostid — critical for ZFS pool reimport</span>
+<span class="nb">hostid</span> <span class="o">&gt;</span> /mnt/pve/cephfs/backups/edgar/hostid.txt
+
+<span class="c"># Bundle the critical system identity and mapping files</span>
+<span class="nb">tar</span> <span class="nt">-cvzf</span> /mnt/pve/cephfs/backups/edgar/edgar_migration_bundle.tar.gz <span class="se">\</span>
+  /etc/network/interfaces <span class="se">\</span>
+  /etc/hosts <span class="se">\</span>
+  /etc/hostname <span class="se">\</span>
+  /etc/subuid <span class="se">\</span>
+  /etc/subgid <span class="se">\</span>
+  /etc/kernel/cmdline <span class="se">\</span>
+  /etc/modprobe.d/ <span class="se">\</span>
+  /etc/modules <span class="se">\</span>
+  /etc/default/grub <span class="se">\</span>
+  /etc/pve/user.cfg
+
+<span class="c"># Capture OSD-to-disk mapping</span>
+ceph-volume lvm list <span class="o">&gt;</span> /mnt/pve/cephfs/backups/edgar/ceph_lvm_layout.txt
+lvs <span class="nt">-a</span> <span class="nt">-o</span> +devices <span class="o">&gt;</span> /mnt/pve/cephfs/backups/edgar/lvm_devices.txt
+
+<span class="c"># List manually installed packages for post-install restoration</span>
+apt-mark showmanual <span class="o">&gt;</span> /mnt/pve/cephfs/backups/edgar/apt-mark-showmanual.txt
+</code></pre></div></div>
+
+<h3 id="why-each-file-matters">Why Each File Matters</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>File</th>
+      <th>Why it matters</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">hostid</code></td>
+      <td>ZFS records the hostid that imported the pool. Mismatch causes warnings and can prevent clean import</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">/etc/subuid</code> / <code class="language-plaintext highlighter-rouge">/etc/subgid</code></td>
+      <td>UID/GID mappings for unprivileged LXC containers — missing this breaks container startup with permission errors</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">/etc/default/grub</code></td>
+      <td>Captures kernel boot parameters (USB quirks, etc.) that need to be translated to <code class="language-plaintext highlighter-rouge">/etc/kernel/cmdline</code> for UEFI</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">ceph_lvm_layout.txt</code></td>
+      <td>Maps OSD IDs to physical devices — your recovery map if <code class="language-plaintext highlighter-rouge">ceph-volume lvm activate --all</code> fails</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">/etc/pve/user.cfg</code></td>
+      <td>Cluster-wide but good to have a local copy for reference</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The <code class="language-plaintext highlighter-rouge">/etc/subuid</code> and <code class="language-plaintext highlighter-rouge">/etc/subgid</code> files were the lesson learned from the Harlan recovery — the Jellyfin LXC container wouldn’t start after the rebuild because the UID mappings were missing. See <a href="/proxmox-zfs-boot-mirrors-part-2/">Part 2</a> for the full story.</p>
+
+<h2 id="the-migration-procedure">The Migration Procedure</h2>
+
+<h3 id="phase-1-pause-the-ceph-cluster">Phase 1: Pause the Ceph Cluster</h3>
+
+<p>Run from any healthy cluster node:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph osd <span class="nb">set </span>noout
+ceph osd <span class="nb">set </span>nobackfill
+</code></pre></div></div>
+
+<p>This prevents the cluster from rebalancing data while the node is offline.</p>
+
+<h3 id="phase-2-hardware-and-bios">Phase 2: Hardware and BIOS</h3>
+
+<ol>
+  <li><strong>Power down</strong> the node</li>
+  <li><strong>Swap drives</strong> — pull the old HDDs, install the new SSDs</li>
+  <li><strong>Verify OSD cables</strong> — since the case is open, confirm SATA and power cables for the OSD drives and WAL SSD are secure</li>
+  <li><strong>Enter BIOS setup:</strong>
+    <ul>
+      <li>Set Boot Mode to <strong>UEFI Only</strong> (disable CSM/Legacy Boot)</li>
+      <li>Ensure <strong>Secure Boot is OFF</strong> (avoids complications with Proxmox/ZFS)</li>
+      <li>Enable <strong>SATA AHCI Mode</strong> if not already set</li>
+      <li>Set the new SSDs as primary boot priority</li>
+    </ul>
+  </li>
+</ol>
+
+<h3 id="phase-3-fresh-proxmox-install">Phase 3: Fresh Proxmox Install</h3>
+
+<p>Boot from the Proxmox installer USB:</p>
+
+<ol>
+  <li><strong>Target disks</strong>: Select the two new SSDs. Choose <strong>ZFS (RAID1)</strong>.
+    <ul>
+      <li><strong>WARNING</strong>: Do NOT select the OSD drives or the WAL SSD. The installer will show all connected drives.</li>
+    </ul>
+  </li>
+  <li><strong>Network</strong>: Use the exact same <strong>hostname</strong> and <strong>IP address</strong> as the original node.</li>
+  <li><strong>Boot mode</strong>: Because you switched to UEFI in the BIOS, the installer will automatically create the ESP (EFI System Partition) and set up <code class="language-plaintext highlighter-rouge">systemd-boot</code> instead of GRUB.</li>
+</ol>
+
+<h3 id="phase-4-post-install-identity-restoration">Phase 4: Post-Install Identity Restoration</h3>
+
+<p>Once the fresh install is up and you can SSH in:</p>
+
+<p><strong>Restore the HostID:</strong></p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Use the hex value from your backup</span>
+zgenhostid <span class="si">$(</span><span class="nb">cat</span> /mnt/pve/cephfs/backups/edgar/hostid.txt<span class="si">)</span>
+</code></pre></div></div>
+
+<p><strong>Restore LXC UID/GID mappings:</strong></p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">tar</span> <span class="nt">-xvzf</span> /mnt/pve/cephfs/backups/edgar/edgar_migration_bundle.tar.gz <span class="se">\</span>
+  <span class="nt">-C</span> / etc/subuid etc/subgid
+</code></pre></div></div>
+
+<p><strong>Translate boot quirks from GRUB to systemd-boot:</strong></p>
+
+<p>If your old <code class="language-plaintext highlighter-rouge">/etc/default/grub</code> had kernel parameters (like USB storage quirks for OSD drives), they need to move to the UEFI equivalent:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check the old grub config from your backup</span>
+<span class="nb">tar</span> <span class="nt">-xvzf</span> /mnt/pve/cephfs/backups/edgar/edgar_migration_bundle.tar.gz <span class="se">\</span>
+  <span class="nt">-C</span> /tmp etc/default/grub
+<span class="nb">grep </span>GRUB_CMDLINE /tmp/etc/default/grub
+
+<span class="c"># If you had usb-storage.quirks or other parameters, add them to:</span>
+nano /etc/kernel/cmdline
+<span class="c"># Append the parameters to the existing line</span>
+
+<span class="c"># Apply the change</span>
+proxmox-boot-tool refresh
+</code></pre></div></div>
+
+<p><strong>Run the Proxmox post-install script</strong> (optional but recommended):</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bash <span class="nt">-c</span> <span class="s2">"</span><span class="si">$(</span>wget <span class="nt">-qLO</span> - https://github.com/community-scripts/ProxmoxVE/raw/main/misc/post-pve-install.sh<span class="si">)</span><span class="s2">"</span>
+</code></pre></div></div>
+
+<p>This fixes the no-subscription repository warning, disables the enterprise repo, and applies CPU microcode updates.</p>
+
+<h3 id="phase-5-rejoin-the-cluster">Phase 5: Rejoin the Cluster</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pvecm add &lt;IP-of-healthy-node&gt;
+</code></pre></div></div>
+
+<p>If you get a mount error about <code class="language-plaintext highlighter-rouge">/etc/pve</code> being busy:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">mv</span> /etc/pve /etc/pve.local-backup
+systemctl restart pve-cluster
+</code></pre></div></div>
+
+<p>The cluster filesystem will mount and replicate the shared configuration from the other nodes.</p>
+
+<h3 id="phase-6-reactivate-ceph-osds">Phase 6: Reactivate Ceph OSDs</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph-volume lvm activate <span class="nt">--all</span>
+</code></pre></div></div>
+
+<p>Watch the OSD status:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph osd tree
+</code></pre></div></div>
+
+<p>The OSDs should transition from <code class="language-plaintext highlighter-rouge">down</code> to <code class="language-plaintext highlighter-rouge">up</code>. If automatic activation fails, use the LVM layout backup to activate manually:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># From ceph_lvm_layout.txt, find the OSD fsid</span>
+ceph-volume lvm activate <span class="nt">--bluestore</span> &lt;osd-id&gt; &lt;osd-fsid&gt;
+</code></pre></div></div>
+
+<h3 id="phase-7-unpause-the-cluster">Phase 7: Unpause the Cluster</h3>
+
+<p>Once the OSDs are <code class="language-plaintext highlighter-rouge">up</code> and cluster health looks good:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph osd <span class="nb">unset </span>noout
+ceph osd <span class="nb">unset </span>nobackfill
+ceph crash archive-all
+</code></pre></div></div>
+
+<h2 id="the-uefi-difference">The UEFI Difference</h2>
+
+<p>The main practical difference after switching from Legacy BIOS to UEFI:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>Legacy BIOS</th>
+      <th>UEFI</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Bootloader</td>
+      <td>GRUB</td>
+      <td><code class="language-plaintext highlighter-rouge">systemd-boot</code></td>
+    </tr>
+    <tr>
+      <td>Kernel parameters</td>
+      <td><code class="language-plaintext highlighter-rouge">/etc/default/grub</code> + <code class="language-plaintext highlighter-rouge">update-grub</code></td>
+      <td><code class="language-plaintext highlighter-rouge">/etc/kernel/cmdline</code> + <code class="language-plaintext highlighter-rouge">proxmox-boot-tool refresh</code></td>
+    </tr>
+    <tr>
+      <td>Boot partition</td>
+      <td>BIOS boot (1007K)</td>
+      <td>EFI System Partition (1GB, FAT32)</td>
+    </tr>
+    <tr>
+      <td>Boot tool</td>
+      <td><code class="language-plaintext highlighter-rouge">proxmox-boot-tool init &lt;part&gt; grub</code></td>
+      <td><code class="language-plaintext highlighter-rouge">proxmox-boot-tool init &lt;part&gt;</code></td>
+    </tr>
+    <tr>
+      <td>Max boot disk size</td>
+      <td>2TB (MBR limitation)</td>
+      <td>No practical limit</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The <code class="language-plaintext highlighter-rouge">proxmox-boot-tool</code> commands for managing the boot mirror are the same — <code class="language-plaintext highlighter-rouge">format</code>, <code class="language-plaintext highlighter-rouge">init</code>, <code class="language-plaintext highlighter-rouge">status</code>, <code class="language-plaintext highlighter-rouge">clean</code> — the tool detects the boot mode automatically. The only workflow change is where kernel parameters live.</p>
+
+<h2 id="verify-the-migration">Verify the Migration</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># ZFS pool healthy</span>
+zpool status <span class="nt">-v</span> rpool
+
+<span class="c"># Both SSDs registered as boot targets</span>
+proxmox-boot-tool status
+
+<span class="c"># Scrub to verify data integrity</span>
+zpool scrub rpool
+
+<span class="c"># Cluster membership</span>
+pvecm status
+
+<span class="c"># Ceph OSDs active</span>
+ceph osd tree
+</code></pre></div></div>
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://aaronlauterer.com/blog/2021/proxmox-ve-migrate-to-smaller-root-disks/">Migrate Proxmox VE to smaller root disks</a> — Aaron Lauterer (send/receive approach for reference)</li>
+  <li><a href="https://www.reddit.com/r/Proxmox/comments/1cr6wn7/tutorial_howto_migrate_a_pve_zfs_bootroot_mirror/">Tutorial: migrate PVE ZFS boot mirror to smaller disks</a> — Reddit (send/receive shell script)</li>
+  <li><a href="https://community-scripts.github.io/ProxmoxVE/">Proxmox community post-install scripts</a> — Post-install automation</li>
+</ul>
+
+<h2 id="related-articles">Related Articles</h2>
+
+<ul>
+  <li><a href="/proxmox-zfs-boot-mirrors-part-1/">ZFS Boot Mirrors on Proxmox 8 - Part 1</a> — Same-size drive replacement</li>
+  <li><a href="/proxmox-zfs-boot-mirrors-part-2/">ZFS Boot Mirrors on Proxmox 8 - Part 2</a> — Emergency recovery from catastrophic dual-drive failure</li>
+  <li><a href="/proxmox-zfs-boot-mirror-smart-analysis/">Monitoring ZFS Boot Mirror Health in Proxmox 8 Clusters</a> — SMART monitoring and alerting</li>
+  <li><a href="/proxmox-ceph-guide/">Proxmox &amp; Ceph Homelab Guide</a> — All my Proxmox and Ceph articles in one place</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/proxmox/">proxmox</a>, 
+        
+          <a href="/tags/zfs/">zfs</a>, 
+        
+          <a href="/tags/storage/">storage</a>, 
+        
+          <a href="/tags/homelab/">homelab</a>, 
+        
+          <a href="/tags/hardware/">hardware</a>, 
+        
+          <a href="/tags/boot/">boot</a>, 
+        
+          <a href="/tags/mirror/">mirror</a>, 
+        
+          <a href="/tags/ssd/">ssd</a>, 
+        
+          <a href="/tags/uefi/">uefi</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/proxmox/">proxmox</a>, 
+        
+          <a href="/categories/zfs/">zfs</a>, 
+        
+          <a href="/categories/storage/">storage</a>, 
+        
+          <a href="/categories/homelab/">homelab</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

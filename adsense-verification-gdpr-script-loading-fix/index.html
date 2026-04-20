@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Fixing AdSense Verification Without Breaking GDPR: The Script Loading Mistake | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Fixing AdSense Verification Without Breaking GDPR: The Script Loading Mistake" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="How an overly strict GDPR cookie consent implementation prevented Google AdSense approval by hiding the verification script from crawlers, and the architectural fix that separates script loading from ad activation." />
+<meta property="og:description" content="How an overly strict GDPR cookie consent implementation prevented Google AdSense approval by hiding the verification script from crawlers, and the architectural fix that separates script loading from ad activation." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/adsense-verification-gdpr-script-loading-fix/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/adsense-verification-gdpr-script-loading-fix/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-04-06T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Fixing AdSense Verification Without Breaking GDPR: The Script Loading Mistake" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-04-06T00:00:00+00:00","datePublished":"2026-04-06T00:00:00+00:00","description":"How an overly strict GDPR cookie consent implementation prevented Google AdSense approval by hiding the verification script from crawlers, and the architectural fix that separates script loading from ad activation.","headline":"Fixing AdSense Verification Without Breaking GDPR: The Script Loading Mistake","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/adsense-verification-gdpr-script-loading-fix/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/adsense-verification-gdpr-script-loading-fix/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/adsense-verification-gdpr-script-loading-fix/">Fixing AdSense Verification Without Breaking GDPR: The Script Loading Mistake</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-04-06T00:00:00+00:00">April 06, 2026</time><span class="reading-time">8 min read</span></header>
+
+  <p>In September 2025, I <a href="/implementing-gdpr-compliance-jekyll-adsense/">implemented GDPR compliance</a> for this Jekyll site to satisfy Google AdSense requirements. The implementation worked — it passed the initial AdSense review. Then I got rejected anyway, repeatedly, for months. In <a href="/adsense-approval-failure-remediation/">March 2026</a> I started systematically debugging the rejections, and in <a href="/improving-eeat-jekyll-adsense/">April</a> I shifted focus to E-E-A-T signals.</p>
+
+<p>But there was a fundamental architectural problem hiding in plain sight the entire time: <strong>my GDPR implementation was so thorough that it hid the AdSense verification script from Google’s own crawler.</strong></p>
+
+<!-- excerpt-end -->
+
+<h2 id="the-original-architecture">The Original Architecture</h2>
+
+<p>When I built the GDPR consent system in September 2025, I designed it around a principle that seemed obviously correct: <em>no third-party scripts should load until the user consents</em>. The implementation had three layers:</p>
+
+<ol>
+  <li><strong>Passive includes</strong> in <code class="language-plaintext highlighter-rouge">&lt;head&gt;</code> — just initialized JavaScript arrays, loaded nothing</li>
+  <li><strong>Consent manager</strong> — detected user region, showed banner to EU visitors</li>
+  <li><strong>Dynamic script injection</strong> — only after consent, JavaScript would create <code class="language-plaintext highlighter-rouge">&lt;script&gt;</code> elements and inject them into the DOM</li>
+</ol>
+
+<p>Here’s what <code class="language-plaintext highlighter-rouge">_includes/adsense.html</code> looked like:</p>
+
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">&lt;!-- AdSense - Loaded conditionally based on consent --&gt;</span>
+<span class="nt">&lt;script&gt;</span>
+  <span class="nb">window</span><span class="p">.</span><span class="nx">adsbygoogle</span> <span class="o">=</span> <span class="nb">window</span><span class="p">.</span><span class="nx">adsbygoogle</span> <span class="o">||</span> <span class="p">[];</span>
+  <span class="c1">// AdSense script will be loaded by consent manager</span>
+<span class="nt">&lt;/script&gt;</span>
+</code></pre></div></div>
+
+<p>And in <code class="language-plaintext highlighter-rouge">cookie-consent.js</code>, the <code class="language-plaintext highlighter-rouge">loadAdSense()</code> function would dynamically create and inject the script after consent:</p>
+
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">function</span> <span class="nf">loadAdSense</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">if </span><span class="p">(</span><span class="nx">ADSENSE_ID</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="nb">document</span><span class="p">.</span><span class="nf">querySelector</span><span class="p">(</span><span class="dl">'</span><span class="s1">script[src*="adsbygoogle"]</span><span class="dl">'</span><span class="p">))</span> <span class="p">{</span>
+        <span class="kd">const</span> <span class="nx">script</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nf">createElement</span><span class="p">(</span><span class="dl">'</span><span class="s1">script</span><span class="dl">'</span><span class="p">);</span>
+        <span class="nx">script</span><span class="p">.</span><span class="k">async</span> <span class="o">=</span> <span class="kc">true</span><span class="p">;</span>
+        <span class="nx">script</span><span class="p">.</span><span class="nx">src</span> <span class="o">=</span> <span class="s2">`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=</span><span class="p">${</span><span class="nx">ADSENSE_ID</span><span class="p">}</span><span class="s2">`</span><span class="p">;</span>
+        <span class="nx">script</span><span class="p">.</span><span class="nx">crossOrigin</span> <span class="o">=</span> <span class="dl">'</span><span class="s1">anonymous</span><span class="dl">'</span><span class="p">;</span>
+        <span class="nx">script</span><span class="p">.</span><span class="nx">onload</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+            <span class="p">(</span><span class="nx">adsbygoogle</span> <span class="o">=</span> <span class="nb">window</span><span class="p">.</span><span class="nx">adsbygoogle</span> <span class="o">||</span> <span class="p">[]).</span><span class="nf">push</span><span class="p">({</span>
+                <span class="na">google_ad_client</span><span class="p">:</span> <span class="nx">ADSENSE_ID</span><span class="p">,</span>
+                <span class="na">enable_page_level_ads</span><span class="p">:</span> <span class="kc">true</span>
+            <span class="p">});</span>
+        <span class="p">};</span>
+        <span class="nb">document</span><span class="p">.</span><span class="nx">head</span><span class="p">.</span><span class="nf">appendChild</span><span class="p">(</span><span class="nx">script</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>This was clean, privacy-respecting, and completely wrong for AdSense approval.</p>
+
+<h2 id="the-problem-bots-dont-click-accept">The Problem: Bots Don’t Click “Accept”</h2>
+
+<p>Google’s AdSense verification bot crawls your site to confirm two things:</p>
+
+<ol>
+  <li>The <code class="language-plaintext highlighter-rouge">ads.txt</code> file contains your publisher ID</li>
+  <li>The AdSense script tag with your client ID is present in the page <code class="language-plaintext highlighter-rouge">&lt;head&gt;</code></li>
+</ol>
+
+<p>The bot reads raw HTML. It does not execute JavaScript. It does not interact with cookie consent banners. It does not wait for dynamic script injection.</p>
+
+<p>When the bot crawled my site, here’s what it saw in the HTML source:</p>
+
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nt">&lt;script&gt;</span>
+  <span class="nb">window</span><span class="p">.</span><span class="nx">adsbygoogle</span> <span class="o">=</span> <span class="nb">window</span><span class="p">.</span><span class="nx">adsbygoogle</span> <span class="o">||</span> <span class="p">[];</span>
+<span class="nt">&lt;/script&gt;</span>
+</code></pre></div></div>
+
+<p>That’s it. An empty array initialization. No reference to <code class="language-plaintext highlighter-rouge">pagead2.googlesyndication.com</code>. No client ID. From the bot’s perspective, AdSense wasn’t installed on the site at all.</p>
+
+<p>For non-EU visitors, my consent manager would auto-consent and inject the script immediately — so real users saw ads fine. But the bot? The bot saw nothing.</p>
+
+<h2 id="the-distinction-that-matters">The Distinction That Matters</h2>
+
+<p>The fix required understanding a distinction I’d missed: <strong>loading a script is not the same as activating it.</strong></p>
+
+<p>The AdSense JavaScript library (<code class="language-plaintext highlighter-rouge">adsbygoogle.js</code>) does two separate things:</p>
+
+<ol>
+  <li><strong>Loads and registers</strong> — The <code class="language-plaintext highlighter-rouge">&lt;script&gt;</code> tag downloads the library and makes it available</li>
+  <li><strong>Activates ads</strong> — Calling <code class="language-plaintext highlighter-rouge">adsbygoogle.push()</code> with your client config actually triggers ad serving</li>
+</ol>
+
+<p>Step 1 is what Google’s bot looks for during verification. Step 2 is what requires user consent under GDPR. These are independent operations, and my original implementation conflated them.</p>
+
+<h2 id="the-fix">The Fix</h2>
+
+<p>Two files changed. The <code class="language-plaintext highlighter-rouge">_includes/adsense.html</code> now contains the actual script tag:</p>
+
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">&lt;!-- AdSense verification script - always present for bot verification --&gt;</span>
+<span class="c">&lt;!-- Ad display is controlled by cookie-consent.js based on user consent --&gt;</span>
+<span class="nt">&lt;script </span><span class="na">async</span>
+  <span class="na">src=</span><span class="s">"https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX"</span>
+  <span class="na">crossorigin=</span><span class="s">"anonymous"</span><span class="nt">&gt;&lt;/script&gt;</span>
+<span class="nt">&lt;script&gt;</span><span class="nb">window</span><span class="p">.</span><span class="nx">adsbygoogle</span> <span class="o">=</span> <span class="nb">window</span><span class="p">.</span><span class="nx">adsbygoogle</span> <span class="o">||</span> <span class="p">[];</span><span class="nt">&lt;/script&gt;</span>
+</code></pre></div></div>
+
+<p>And <code class="language-plaintext highlighter-rouge">loadAdSense()</code> in <code class="language-plaintext highlighter-rouge">cookie-consent.js</code> was simplified — it no longer injects a script (it’s already there), it just activates ads after consent:</p>
+
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">function</span> <span class="nf">loadAdSense</span><span class="p">()</span> <span class="p">{</span>
+    <span class="k">if </span><span class="p">(</span><span class="nb">window</span><span class="p">.</span><span class="nx">location</span><span class="p">.</span><span class="nx">hostname</span> <span class="o">===</span> <span class="dl">'</span><span class="s1">localhost</span><span class="dl">'</span> <span class="o">||</span>
+        <span class="nb">window</span><span class="p">.</span><span class="nx">location</span><span class="p">.</span><span class="nx">hostname</span> <span class="o">===</span> <span class="dl">'</span><span class="s1">127.0.0.1</span><span class="dl">'</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="c1">// Script is already loaded in &lt;head&gt; via adsense.html.</span>
+    <span class="c1">// Only activate auto ads here after user consent.</span>
+    <span class="k">if </span><span class="p">(</span><span class="nx">ADSENSE_ID</span><span class="p">)</span> <span class="p">{</span>
+        <span class="p">(</span><span class="nx">adsbygoogle</span> <span class="o">=</span> <span class="nb">window</span><span class="p">.</span><span class="nx">adsbygoogle</span> <span class="o">||</span> <span class="p">[]).</span><span class="nf">push</span><span class="p">({</span>
+            <span class="na">google_ad_client</span><span class="p">:</span> <span class="nx">ADSENSE_ID</span><span class="p">,</span>
+            <span class="na">enable_page_level_ads</span><span class="p">:</span> <span class="kc">true</span>
+        <span class="p">});</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="is-this-still-gdpr-compliant">Is This Still GDPR Compliant?</h2>
+
+<p>Yes. Here’s why:</p>
+
+<p>Loading the AdSense library (<code class="language-plaintext highlighter-rouge">adsbygoogle.js</code>) does not, by itself, set cookies or collect personal data. It makes the ad-serving API available in the browser. Ads are only requested and cookies are only set when you call <code class="language-plaintext highlighter-rouge">adsbygoogle.push()</code> with the page-level ads configuration — and that still only happens after consent.</p>
+
+<p>The consent flow for each visitor type remains:</p>
+
+<p><strong>EU visitors:</strong></p>
+<ol>
+  <li>Page loads → AdSense library loads (no cookies, no tracking)</li>
+  <li>Consent banner appears → user chooses</li>
+  <li>“Accept All” → <code class="language-plaintext highlighter-rouge">adsbygoogle.push()</code> fires → ads appear</li>
+  <li>“Necessary Only” or “Decline” → <code class="language-plaintext highlighter-rouge">push()</code> never fires → no ads, no cookies</li>
+</ol>
+
+<p><strong>US visitors:</strong></p>
+<ol>
+  <li>Page loads → AdSense library loads</li>
+  <li>Auto-consent → <code class="language-plaintext highlighter-rouge">adsbygoogle.push()</code> fires immediately → ads appear</li>
+</ol>
+
+<p>The key insight: the GDPR requirement is consent before <em>processing personal data</em>, not consent before <em>loading a JavaScript file</em>. The script sitting idle in the browser doesn’t process anything until you tell it to.</p>
+
+<h2 id="the-broader-html-structure-fix">The Broader HTML Structure Fix</h2>
+
+<p>This change was part of a larger cleanup. The default layout (<code class="language-plaintext highlighter-rouge">_layouts/default.html</code>) also had no <code class="language-plaintext highlighter-rouge">&lt;head&gt;</code> or <code class="language-plaintext highlighter-rouge">&lt;body&gt;</code> tags — everything was dumped directly under <code class="language-plaintext highlighter-rouge">&lt;html&gt;</code>. Even if the AdSense script had been present, it wouldn’t have been in a proper <code class="language-plaintext highlighter-rouge">&lt;head&gt;</code> section for the bot to find.</p>
+
+<p>The full set of structural fixes:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Issue</th>
+      <th>Before</th>
+      <th>After</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">&lt;head&gt;</code> tag</td>
+      <td>Missing</td>
+      <td>Wraps all meta, styles, scripts</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">&lt;body&gt;</code> tag</td>
+      <td>Missing</td>
+      <td>Wraps all visible content</td>
+    </tr>
+    <tr>
+      <td>AdSense script</td>
+      <td>Dynamic JS injection only</td>
+      <td>Static <code class="language-plaintext highlighter-rouge">&lt;script&gt;</code> tag in <code class="language-plaintext highlighter-rouge">&lt;head&gt;</code></td>
+    </tr>
+    <tr>
+      <td>Ad activation</td>
+      <td>Bundled with script loading</td>
+      <td>Separate consent-gated <code class="language-plaintext highlighter-rouge">push()</code> call</td>
+    </tr>
+    <tr>
+      <td>Canonical tags</td>
+      <td>Duplicated (SEO plugin + manual)</td>
+      <td>Single tag from SEO plugin</td>
+    </tr>
+    <tr>
+      <td>Sidebar CSS</td>
+      <td><code class="language-plaintext highlighter-rouge">&lt;link&gt;</code> inside <code class="language-plaintext highlighter-rouge">&lt;aside&gt;</code> element</td>
+      <td><code class="language-plaintext highlighter-rouge">&lt;link&gt;</code> in <code class="language-plaintext highlighter-rouge">&lt;head&gt;</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="what-i-should-have-known">What I Should Have Known</h2>
+
+<p>Looking back at <a href="https://support.google.com/adsense/answer/9274634">Google’s AdSense setup documentation</a>, the instructions are explicit: “Copy the code and paste it between the <code class="language-plaintext highlighter-rouge">&lt;head&gt;</code> and <code class="language-plaintext highlighter-rouge">&lt;/head&gt;</code> tags of your page.” Not “dynamically inject it after consent.” Not “initialize an empty array.” Paste the script tag in the head.</p>
+
+<p>I was so focused on building a privacy-correct consent system that I forgot the most basic requirement: Google needs to see its own script in your HTML to verify you installed it.</p>
+
+<h2 id="timeline-of-the-adsense-journey">Timeline of the AdSense Journey</h2>
+
+<p>For context, here’s how this fits into the larger saga:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th>Event</th>
+      <th>Article</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Sep 2025</td>
+      <td>GDPR consent system built, initial AdSense review passed</td>
+      <td><a href="/implementing-gdpr-compliance-jekyll-adsense/">Implementing GDPR Compliance</a></td>
+    </tr>
+    <tr>
+      <td>Late 2025</td>
+      <td>Repeated AdSense rejections with vague “site isn’t ready” messages</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td>Mar 2026</td>
+      <td>Systematic debugging: sitemap 404s, missing contact page, thin content</td>
+      <td><a href="/adsense-approval-failure-remediation/">AdSense Approval Failure</a></td>
+    </tr>
+    <tr>
+      <td>Apr 2026</td>
+      <td>E-E-A-T improvements: author bios, structured data, Wikidata, content clusters</td>
+      <td><a href="/improving-eeat-jekyll-adsense/">Improving E-E-A-T Signals</a></td>
+    </tr>
+    <tr>
+      <td>Apr 2026</td>
+      <td>HTML structure fix and AdSense verification script fix</td>
+      <td>This article</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Each round of fixes addressed real problems. The sitemap 404s were real. The missing E-E-A-T signals were real. But the verification script issue may have been the original blocker all along — Google couldn’t even confirm AdSense was installed.</p>
+
+<h2 id="lessons-learned">Lessons Learned</h2>
+
+<p><strong>Privacy compliance and platform requirements can conflict.</strong> The GDPR-correct approach (load nothing without consent) directly contradicted the AdSense-correct approach (always have the script tag present). The solution was understanding the granularity: load the library always, activate it conditionally.</p>
+
+<p><strong>Bots see HTML, not JavaScript.</strong> Any verification system that depends on a crawler seeing something on your page needs that something in the raw HTML. Dynamic injection is invisible to most bots.</p>
+
+<p><strong>Valid HTML structure matters.</strong> Missing <code class="language-plaintext highlighter-rouge">&lt;head&gt;</code> and <code class="language-plaintext highlighter-rouge">&lt;body&gt;</code> tags didn’t break any browser rendering — browsers are forgiving. But bots that parse HTML structurally (looking for scripts specifically in <code class="language-plaintext highlighter-rouge">&lt;head&gt;</code>) will miss things that aren’t where they expect them.</p>
+
+<p><strong>Test from the bot’s perspective.</strong> <code class="language-plaintext highlighter-rouge">curl -s https://yoursite.com | grep adsbygoogle</code> would have caught this immediately. I was testing in browsers where the consent manager ran JavaScript and everything looked fine.</p>
+
+<h2 id="related-articles">Related Articles</h2>
+
+<ul>
+  <li><a href="/implementing-gdpr-compliance-jekyll-adsense/">Implementing GDPR Compliance for Jekyll Sites</a> — The original consent system implementation</li>
+  <li><a href="/adsense-approval-failure-remediation/">Google AdSense Approval Failure: Debugging the ‘Site Isn’t Ready’ Rejection</a> — Sitemap, contact page, and thin content fixes</li>
+  <li><a href="/improving-eeat-jekyll-adsense/">Improving E-E-A-T Signals for Google AdSense Approval on Jekyll</a> — Author attribution, structured data, and Wikidata</li>
+  <li><a href="/jekyll-seo-sitemap-canonical-url-fixes/">Jekyll SEO, Sitemap, and Canonical URL Fixes</a> — Earlier SEO work</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/gdpr/">gdpr</a>, 
+        
+          <a href="/tags/jekyll/">jekyll</a>, 
+        
+          <a href="/tags/adsense/">adsense</a>, 
+        
+          <a href="/tags/analytics/">analytics</a>, 
+        
+          <a href="/tags/privacy/">privacy</a>, 
+        
+          <a href="/tags/compliance/">compliance</a>, 
+        
+          <a href="/tags/javascript/">javascript</a>, 
+        
+          <a href="/tags/seo/">seo</a>, 
+        
+          <a href="/tags/debugging/">debugging</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/web-development/">web-development</a>, 
+        
+          <a href="/categories/privacy/">privacy</a>, 
+        
+          <a href="/categories/jekyll/">jekyll</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

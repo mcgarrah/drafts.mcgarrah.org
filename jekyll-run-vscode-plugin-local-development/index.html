@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Jekyll Run Plugin: Local Development Settings That Actually Work | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Jekyll Run Plugin: Local Development Settings That Actually Work" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="Complete guide to configuring the Jekyll Run VS Code extension for local Jekyll development. Covers command-line arguments, settings precedence across workspace, machine, and multi-root workspace files, the _config.yml future flag trap, and a fallback bash script for when the extension misbehaves." />
+<meta property="og:description" content="Complete guide to configuring the Jekyll Run VS Code extension for local Jekyll development. Covers command-line arguments, settings precedence across workspace, machine, and multi-root workspace files, the _config.yml future flag trap, and a fallback bash script for when the extension misbehaves." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/jekyll-run-vscode-plugin-local-development/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/jekyll-run-vscode-plugin-local-development/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-05-11T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Jekyll Run Plugin: Local Development Settings That Actually Work" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-05-11T00:00:00+00:00","datePublished":"2026-05-11T00:00:00+00:00","description":"Complete guide to configuring the Jekyll Run VS Code extension for local Jekyll development. Covers command-line arguments, settings precedence across workspace, machine, and multi-root workspace files, the _config.yml future flag trap, and a fallback bash script for when the extension misbehaves.","headline":"Jekyll Run Plugin: Local Development Settings That Actually Work","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/jekyll-run-vscode-plugin-local-development/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/jekyll-run-vscode-plugin-local-development/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/jekyll-run-vscode-plugin-local-development/">Jekyll Run Plugin: Local Development Settings That Actually Work</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-05-11T00:00:00+00:00">May 11, 2026</time><span class="reading-time">8 min read</span></header>
+
+  <p>The <a href="https://marketplace.visualstudio.com/items?itemName=Dedsec727.jekyll-run">Jekyll Run</a> VS Code extension (Dedsec727.jekyll-run) gives you a one-click button to build and serve your Jekyll site. It works well for basic use, but if you write future-dated posts, use drafts, or run a multi-root workspace, the defaults will bite you.</p>
+
+<p>This post covers the configuration I use, the settings precedence that tripped me up, and a bash script fallback for when the extension gets confused.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="why-jekyll-run">Why Jekyll Run</h2>
+
+<p>Without the extension, local development means opening a terminal and running:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bundle <span class="nb">exec </span>jekyll serve <span class="nt">--trace</span> <span class="nt">--drafts</span> <span class="nt">--future</span> <span class="nt">--unpublished</span> <span class="nt">--livereload</span> <span class="nt">--incremental</span>
+</code></pre></div></div>
+
+<p>Jekyll Run wraps this into a button in the VS Code status bar. Click to start, click to stop. It picks up your workspace settings for command-line arguments and handles the process lifecycle.</p>
+
+<p>For a blog with 130+ posts where I’m constantly previewing drafts and future-dated articles, the convenience is worth the occasional quirk.</p>
+
+<h2 id="the-flags-that-matter">The Flags That Matter</h2>
+
+<p>Here’s what each flag does and why I use all of them:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Flag</th>
+      <th>Purpose</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">--trace</code></td>
+      <td>Show full Ruby backtraces on errors instead of cryptic one-liners</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">--drafts</code></td>
+      <td>Render files in <code class="language-plaintext highlighter-rouge">_drafts/</code> as if they were published</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">--future</code></td>
+      <td>Include posts with dates in the future</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">--unpublished</code></td>
+      <td>Render posts with <code class="language-plaintext highlighter-rouge">published: false</code> in front matter</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">--livereload</code></td>
+      <td>Auto-refresh the browser when files change</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">--incremental</code></td>
+      <td>Only rebuild changed pages (faster, but occasionally stale)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The critical ones are <code class="language-plaintext highlighter-rouge">--future</code> and <code class="language-plaintext highlighter-rouge">--drafts</code>. Without them, you can’t preview the content you’re actively writing.</p>
+
+<h2 id="configuring-the-extension">Configuring the Extension</h2>
+
+<p>The extension reads its command-line arguments from the <code class="language-plaintext highlighter-rouge">jekyll-run.commandLineArguments</code> setting. Add this to your workspace’s <code class="language-plaintext highlighter-rouge">.vscode/settings.json</code>:</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+    </span><span class="nl">"jekyll-run.commandLineArguments"</span><span class="p">:</span><span class="w"> </span><span class="s2">"--trace --drafts --future --unpublished --livereload --incremental"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"jekyll-run.stopServerOnExit"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">stopServerOnExit</code> setting kills the Jekyll process when you close VS Code, preventing orphaned processes that block port 4000 on the next launch.</p>
+
+<h2 id="settings-precedence-where-it-gets-tricky">Settings Precedence: Where It Gets Tricky</h2>
+
+<p>VS Code settings come from multiple sources, and higher-priority settings silently override lower ones. For the Jekyll Run extension, the precedence is:</p>
+
+<ol>
+  <li><strong>Multi-root workspace file</strong> (<code class="language-plaintext highlighter-rouge">.code-workspace</code>) — highest priority</li>
+  <li><strong>Workspace folder settings</strong> (<code class="language-plaintext highlighter-rouge">.vscode/settings.json</code>)</li>
+  <li><strong>User settings</strong> (<code class="language-plaintext highlighter-rouge">~/.vscode-server/data/User/settings.json</code>)</li>
+  <li><strong>Machine settings</strong> (<code class="language-plaintext highlighter-rouge">~/.vscode-server/data/Machine/settings.json</code>)</li>
+</ol>
+
+<h3 id="the-multi-root-workspace-trap">The Multi-Root Workspace Trap</h3>
+
+<p>If you use a multi-root workspace (multiple folders in one VS Code window), the <code class="language-plaintext highlighter-rouge">.code-workspace</code> file’s settings override per-folder <code class="language-plaintext highlighter-rouge">.vscode/settings.json</code> files. An empty settings block in the workspace file:</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+    </span><span class="nl">"folders"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+        </span><span class="p">{</span><span class="w"> </span><span class="nl">"path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"my-blog"</span><span class="w"> </span><span class="p">},</span><span class="w">
+        </span><span class="p">{</span><span class="w"> </span><span class="nl">"path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"resume"</span><span class="w"> </span><span class="p">}</span><span class="w">
+    </span><span class="p">],</span><span class="w">
+    </span><span class="nl">"settings"</span><span class="p">:</span><span class="w"> </span><span class="p">{}</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>…means the extension falls through to machine or user settings, which may not have your flags. The fix is to add the settings explicitly:</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+    </span><span class="nl">"folders"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+        </span><span class="p">{</span><span class="w"> </span><span class="nl">"path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"my-blog"</span><span class="w"> </span><span class="p">},</span><span class="w">
+        </span><span class="p">{</span><span class="w"> </span><span class="nl">"path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"resume"</span><span class="w"> </span><span class="p">}</span><span class="w">
+    </span><span class="p">],</span><span class="w">
+    </span><span class="nl">"settings"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+        </span><span class="nl">"jekyll-run.commandLineArguments"</span><span class="p">:</span><span class="w"> </span><span class="s2">"--trace --drafts --future --unpublished --livereload --incremental"</span><span class="p">,</span><span class="w">
+        </span><span class="nl">"jekyll-run.stopServerOnExit"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p><strong>macOS users:</strong> If you see <code class="language-plaintext highlighter-rouge">TypeError: Cannot read properties of null (reading 'toString')</code> in a multi-root workspace, the problem is deeper than settings — it’s related to macOS GUI PATH inheritance and Ruby version management. See <a href="/jekyll-run-plugin-multiroot-workspace-bug/">Jekyll Run Plugin: Fixing the Multi-Root Workspace Crash</a> for the full diagnosis and fix.</p>
+
+<h3 id="the-machine-settings-trap">The Machine Settings Trap</h3>
+
+<p>On VS Code Remote (SSH, WSL, etc.), machine settings live at <code class="language-plaintext highlighter-rouge">~/.vscode-server/data/Machine/settings.json</code> on the remote host. If someone — or an extension update — writes a <code class="language-plaintext highlighter-rouge">jekyll-run.commandLineArguments</code> value there with fewer flags, it can override your workspace settings depending on how the extension resolves precedence.</p>
+
+<p>Check what’s actually there:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cat</span> ~/.vscode-server/data/Machine/settings.json
+</code></pre></div></div>
+
+<h3 id="diagnosing-which-settings-win">Diagnosing Which Settings Win</h3>
+
+<p>The fastest way to confirm what the extension is actually using:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ps aux | <span class="nb">grep </span>jekyll | <span class="nb">grep</span> <span class="nt">-v</span> <span class="nb">grep</span>
+</code></pre></div></div>
+
+<p>This shows the exact command line. If you see <code class="language-plaintext highlighter-rouge">--trace --drafts</code> but not <code class="language-plaintext highlighter-rouge">--future</code>, your workspace settings aren’t being picked up.</p>
+
+<h2 id="the-_configyml-trap">The _config.yml Trap</h2>
+
+<p>Even with <code class="language-plaintext highlighter-rouge">--future</code> in your CLI flags, Jekyll will ignore it if <code class="language-plaintext highlighter-rouge">_config.yml</code> explicitly sets:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">future</span><span class="pi">:</span> <span class="kc">false</span>
+</code></pre></div></div>
+
+<p>The config file value <strong>overrides</strong> the command-line flag. This is counterintuitive — you’d expect CLI flags to win — but that’s how Jekyll works.</p>
+
+<p>The fix is to not set <code class="language-plaintext highlighter-rouge">future</code> in <code class="language-plaintext highlighter-rouge">_config.yml</code> at all. The default is <code class="language-plaintext highlighter-rouge">false</code>, which means:</p>
+
+<ul>
+  <li><strong>Production builds</strong> (GitHub Actions without <code class="language-plaintext highlighter-rouge">--future</code>) won’t publish future posts</li>
+  <li><strong>Local development</strong> (with <code class="language-plaintext highlighter-rouge">--future</code> flag) will show them</li>
+</ul>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Don't do this — it overrides the --future CLI flag</span>
+<span class="c1"># future: false</span>
+
+<span class="c1"># Do this — let the CLI flag control it</span>
+<span class="c1"># (just leave it out entirely, or comment it)</span>
+</code></pre></div></div>
+
+<p>This applies to <code class="language-plaintext highlighter-rouge">show_drafts</code> and <code class="language-plaintext highlighter-rouge">unpublished</code> as well. If you set them explicitly in <code class="language-plaintext highlighter-rouge">_config.yml</code>, the CLI flags become useless.</p>
+
+<h2 id="the-draft-and-unpublished-visibility-trap">The Draft and Unpublished Visibility Trap</h2>
+
+<p>This one cost me hours. The <code class="language-plaintext highlighter-rouge">--drafts</code> and <code class="language-plaintext highlighter-rouge">--unpublished</code> flags make Jekyll <strong>render</strong> draft files and posts with <code class="language-plaintext highlighter-rouge">published: false</code> — but they don’t appear in <code class="language-plaintext highlighter-rouge">site.posts</code>. That means:</p>
+
+<ul>
+  <li>They won’t show in your archive page</li>
+  <li>They won’t show in tag or category listings</li>
+  <li>They won’t show on the homepage pagination</li>
+  <li>They <strong>are</strong> accessible by direct URL</li>
+</ul>
+
+<p>The files exist in <code class="language-plaintext highlighter-rouge">_site/</code>. Jekyll built them. But any template that iterates <code class="language-plaintext highlighter-rouge">site.posts</code> (which is nearly every listing page) silently excludes them.</p>
+
+<h3 id="how-to-confirm-they-exist">How to Confirm They Exist</h3>
+
+<p>Check the build output directly:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">ls </span>_site/your-draft-slug/
+</code></pre></div></div>
+
+<p>If <code class="language-plaintext highlighter-rouge">index.html</code> is there, Jekyll rendered it. You can view it at <code class="language-plaintext highlighter-rouge">http://127.0.0.1:4000/your-draft-slug/</code>. It just won’t appear in any listing.</p>
+
+<h3 id="draft-sorting-theyre-at-the-bottom-not-the-top">Draft Sorting: They’re at the Bottom, Not the Top</h3>
+
+<p>Even when drafts do appear in <code class="language-plaintext highlighter-rouge">site.posts</code>, they show up <strong>at the end of the archive</strong> — after your oldest post. You’ll scroll past 100+ articles looking for your new draft at the top and conclude it’s missing.</p>
+
+<p>Jekyll appends drafts after all regular posts in <code class="language-plaintext highlighter-rouge">site.posts</code> rather than sorting them into chronological position by their assigned date. So a draft dated 2026-05-10 appears after a post from 2001, not at the top of the list where you’d expect it.</p>
+
+<p>Check the bottom of your archive page, not the top.</p>
+
+<h3 id="the-workaround">The Workaround</h3>
+
+<p>Set <code class="language-plaintext highlighter-rouge">published: true</code> in your draft’s front matter. The file is still in <code class="language-plaintext highlighter-rouge">_drafts/</code> so it won’t deploy to production (GitHub Actions doesn’t use <code class="language-plaintext highlighter-rouge">--drafts</code>), but locally it will appear in all listings.</p>
+
+<p>The <code class="language-plaintext highlighter-rouge">published: false</code> flag is useful for posts in <code class="language-plaintext highlighter-rouge">_posts/</code> that you want to temporarily hide. For files in <code class="language-plaintext highlighter-rouge">_drafts/</code>, it’s counterproductive — you’re already using the drafts folder to prevent publication, and adding <code class="language-plaintext highlighter-rouge">published: false</code> makes them invisible even in local development.</p>
+
+<h2 id="the-bash-script-fallback">The Bash Script Fallback</h2>
+
+<p>The Jekyll Run extension occasionally gets into a bad state — it thinks a server is running when nothing is on port 4000. When that happens, I fall back to a bash script:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+bundle <span class="nb">exec </span>jekyll serve <span class="nt">--trace</span> <span class="nt">--drafts</span> <span class="nt">--future</span> <span class="nt">--unpublished</span> <span class="nt">--livereload</span> <span class="nt">--incremental</span>
+</code></pre></div></div>
+
+<p>Save this as <code class="language-plaintext highlighter-rouge">start-jekyll.sh</code> in your project root. When the extension misbehaves:</p>
+
+<ol>
+  <li>Try <strong>Jekyll Run: Stop Server</strong> from the Command Palette (<code class="language-plaintext highlighter-rouge">Ctrl+Shift+P</code>)</li>
+  <li>If that doesn’t work, run <strong>Developer: Reload Window</strong></li>
+  <li>If that doesn’t work, use the script: <code class="language-plaintext highlighter-rouge">bash start-jekyll.sh</code></li>
+</ol>
+
+<h3 id="clearing-stale-state">Clearing Stale State</h3>
+
+<p>If you’re getting build errors that don’t match your current code, incremental builds may be serving cached content. Clear everything:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">rm</span> <span class="nt">-rf</span> .jekyll-cache _site <span class="o">&amp;&amp;</span> bash start-jekyll.sh
+</code></pre></div></div>
+
+<p>This forces a full rebuild from scratch.</p>
+
+<h2 id="my-complete-setup">My Complete Setup</h2>
+
+<p>For reference, here’s every file involved in my local development configuration:</p>
+
+<p><strong><code class="language-plaintext highlighter-rouge">.vscode/settings.json</code></strong> (per workspace folder):</p>
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+    </span><span class="nl">"jekyll-run.commandLineArguments"</span><span class="p">:</span><span class="w"> </span><span class="s2">"--trace --drafts --future --unpublished --livereload --incremental"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"jekyll-run.stopServerOnExit"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p><strong><code class="language-plaintext highlighter-rouge">blog-workspace.code-workspace</code></strong> (multi-root workspace):</p>
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+    </span><span class="nl">"folders"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+        </span><span class="p">{</span><span class="w"> </span><span class="nl">"path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mcgarrah.github.io"</span><span class="w"> </span><span class="p">},</span><span class="w">
+        </span><span class="p">{</span><span class="w"> </span><span class="nl">"path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"resume"</span><span class="w"> </span><span class="p">}</span><span class="w">
+    </span><span class="p">],</span><span class="w">
+    </span><span class="nl">"settings"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+        </span><span class="nl">"jekyll-run.commandLineArguments"</span><span class="p">:</span><span class="w"> </span><span class="s2">"--trace --drafts --future --unpublished --livereload --incremental"</span><span class="p">,</span><span class="w">
+        </span><span class="nl">"jekyll-run.stopServerOnExit"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p><strong><code class="language-plaintext highlighter-rouge">start-jekyll.sh</code></strong> (fallback script):</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+bundle <span class="nb">exec </span>jekyll serve <span class="nt">--trace</span> <span class="nt">--drafts</span> <span class="nt">--future</span> <span class="nt">--unpublished</span> <span class="nt">--livereload</span> <span class="nt">--incremental</span>
+</code></pre></div></div>
+
+<p><strong><code class="language-plaintext highlighter-rouge">_config.yml</code></strong> (no explicit <code class="language-plaintext highlighter-rouge">future</code> setting):</p>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Future posts controlled by CLI --future flag</span>
+<span class="c1"># Default is false, so production builds exclude future posts</span>
+<span class="c1"># Local development uses --future to preview them</span>
+</code></pre></div></div>
+
+<h2 id="related-posts">Related Posts</h2>
+
+<ul>
+  <li><a href="/github-pages-jekyll-locally/">Running GitHub Pages Jekyll Locally</a> — Initial local development setup</li>
+  <li><a href="/jekyll-markdown-feature-reference/">How the Sausage Is Made: Every Feature Powering This Jekyll Blog</a> — Complete feature reference</li>
+</ul>
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://marketplace.visualstudio.com/items?itemName=Dedsec727.jekyll-run">Jekyll Run Extension</a> — VS Code Marketplace</li>
+  <li><a href="https://jekyllrb.com/docs/configuration/options/">Jekyll Configuration Options</a> — Official docs on CLI flags and config precedence</li>
+  <li><a href="https://code.visualstudio.com/docs/getstarted/settings#_settings-precedence">VS Code Settings Precedence</a> — How VS Code resolves settings from multiple sources</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/jekyll/">jekyll</a>, 
+        
+          <a href="/tags/vscode/">vscode</a>, 
+        
+          <a href="/tags/local-development/">local-development</a>, 
+        
+          <a href="/tags/github-pages/">github-pages</a>, 
+        
+          <a href="/tags/future-posts/">future-posts</a>, 
+        
+          <a href="/tags/drafts/">drafts</a>, 
+        
+          <a href="/tags/configuration/">configuration</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/web-development/">web-development</a>, 
+        
+          <a href="/categories/technical/">technical</a>, 
+        
+          <a href="/categories/jekyll/">jekyll</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

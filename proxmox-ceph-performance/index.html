@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Optimizing Ceph Performance in Proxmox Homelab | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Optimizing Ceph Performance in Proxmox Homelab" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="Performance tuning Ceph in a homelab environment presents unique challenges, especially when running on USB storage and constrained hardware. After dealing with performance issues during cluster rebalancing and OSD expansion, I’ve learned valuable lessons about mClock configuration, IOPS optimization, and the realities of USB 3.0 storage performance." />
+<meta property="og:description" content="Performance tuning Ceph in a homelab environment presents unique challenges, especially when running on USB storage and constrained hardware. After dealing with performance issues during cluster rebalancing and OSD expansion, I’ve learned valuable lessons about mClock configuration, IOPS optimization, and the realities of USB 3.0 storage performance." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/proxmox-ceph-performance/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/proxmox-ceph-performance/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2025-10-12T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Optimizing Ceph Performance in Proxmox Homelab" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-04-14T00:00:00+00:00","datePublished":"2025-10-12T00:00:00+00:00","description":"Performance tuning Ceph in a homelab environment presents unique challenges, especially when running on USB storage and constrained hardware. After dealing with performance issues during cluster rebalancing and OSD expansion, I’ve learned valuable lessons about mClock configuration, IOPS optimization, and the realities of USB 3.0 storage performance.","headline":"Optimizing Ceph Performance in Proxmox Homelab","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/proxmox-ceph-performance/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/proxmox-ceph-performance/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/proxmox-ceph-performance/">Optimizing Ceph Performance in Proxmox Homelab</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2025-10-12T00:00:00+00:00">October 12, 2025</time><span class="reading-time">6 min read</span></header>
+
+  <p>Performance tuning Ceph in a homelab environment presents unique challenges, especially when running on USB storage and constrained hardware. After dealing with performance issues during cluster rebalancing and OSD expansion, I’ve learned valuable lessons about mClock configuration, IOPS optimization, and the realities of USB 3.0 storage performance.</p>
+
+<p><a href="/assets/images/ceph-performance-osds-new-node.png" target="_blank"><img src="/assets/images/ceph-performance-osds-new-node.png" alt="Ceph Performance and Rebalance" width="30%" height="30%" style="display:block; margin-left:auto; margin-right:auto" /></a></p>
+
+<!-- excerpt-end -->
+
+<h2 id="the-performance-challenge">The Performance Challenge</h2>
+
+<p>I encountered two interconnected performance issues while expanding my cluster from three to four nodes:</p>
+
+<ol>
+  <li><strong>Inconsistent mClock IOPS settings</strong>: Some OSDs had missing or incorrect <code class="language-plaintext highlighter-rouge">osd_mclock_max_capacity_iops_hdd</code> values</li>
+  <li><strong>Major cluster rebalancing</strong>: Moving from 3 nodes with 4 OSDs each to 4 nodes with 3 OSDs each</li>
+</ol>
+
+<p>The rebalancing process was taking much longer than expected, and I suspected the inconsistent mClock settings were contributing to the performance bottleneck.</p>
+
+<h2 id="understanding-mclock-in-ceph">Understanding mClock in Ceph</h2>
+
+<p>The <a href="https://docs.ceph.com/en/reef/rados/configuration/mclock-config-ref/#mclock-config-reference">mClock Config Reference</a> explains how Ceph implements the <a href="https://www.usenix.org/legacy/event/osdi10/tech/full_papers/Gulati.pdf">dmClock algorithm</a> for scheduling storage activities.</p>
+
+<h3 id="what-is-mclock">What is mClock?</h3>
+
+<p>mClock is Ceph’s quality of service (QoS) scheduler that manages IOPS allocation between different operation types:</p>
+
+<ul>
+  <li><strong>Client operations</strong>: User-initiated reads and writes</li>
+  <li><strong>Background recovery</strong>: Data movement during rebalancing</li>
+  <li><strong>Scrubbing</strong>: Data integrity checks</li>
+  <li><strong>Snap trimming</strong>: Snapshot cleanup operations</li>
+</ul>
+
+<h3 id="mclock-profiles">mClock Profiles</h3>
+
+<p>Rather than manually tuning individual parameters, Ceph provides three predefined profiles:</p>
+
+<ul>
+  <li><strong><code class="language-plaintext highlighter-rouge">balanced</code></strong> (default): Equal priority for client and background operations</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">high_client_ops</code></strong>: Prioritizes client operations over background tasks</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">high_recovery_ops</code></strong>: Prioritizes recovery operations for faster rebalancing</li>
+</ul>
+
+<h2 id="diagnosing-mclock-configuration-issues">Diagnosing mClock Configuration Issues</h2>
+
+<p>Check your current mClock settings:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@harlan:~#</span><span class="w"> </span>ceph config dump | <span class="nb">grep </span>mclock
+<span class="go">WHO    MASK  LEVEL     OPTION                                             VALUE      RO
+osd.0        basic     osd_mclock_max_capacity_iops_hdd                   86.136079
+osd.1        basic     osd_mclock_max_capacity_iops_hdd                   87.204995
+osd.4        basic     osd_mclock_max_capacity_iops_hdd                   89.152214
+</span></code></pre></div></div>
+
+<h3 id="the-problem-missing-iops-values">The Problem: Missing IOPS Values</h3>
+
+<p>In my case, some OSDs were missing the <code class="language-plaintext highlighter-rouge">osd_mclock_max_capacity_iops_hdd</code> setting entirely. This happened when:</p>
+
+<ul>
+  <li>Adding new OSDs to an existing cluster</li>
+  <li>Ceph’s automatic capacity detection failed</li>
+  <li>Hardware changes affected the initial benchmarking</li>
+</ul>
+
+<h3 id="comparing-performance-across-clusters">Comparing Performance Across Clusters</h3>
+
+<p>My test cluster showed significantly different IOPS values:</p>
+
+<p><strong>Test Cluster (Dell Wyse 3040s):</strong></p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@pve1:~#</span><span class="w"> </span>ceph config dump | <span class="nb">grep </span>mclock
+<span class="go">osd.0         basic     osd_mclock_max_capacity_iops_hdd       194.542100        
+osd.1         basic     osd_mclock_max_capacity_iops_hdd       192.359779        
+osd.2         basic     osd_mclock_max_capacity_iops_hdd       205.899236        
+</span></code></pre></div></div>
+
+<p><strong>After Adding New USB Drives:</strong></p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="go">osd.3         basic     osd_mclock_max_capacity_iops_hdd       339.211615        
+osd.5         basic     osd_mclock_max_capacity_iops_hdd       340.816549        
+osd.6         basic     osd_mclock_max_capacity_iops_hdd       326.667183        
+</span></code></pre></div></div>
+
+<p>The newer USB drives (OSDs 3, 5, 6) showed significantly higher IOPS capacity, likely due to:</p>
+
+<ul>
+  <li>Better USB 3.0 interface utilization</li>
+  <li>Newer drive firmware</li>
+  <li>Different USB controller chipsets</li>
+</ul>
+
+<h2 id="benchmarking-osd-performance">Benchmarking OSD Performance</h2>
+
+<p>Use Ceph’s built-in benchmarking to test individual OSD performance:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@harlan:~#</span><span class="w"> </span>ceph tell osd.0 bench 12288000 4096 4194304 100
+<span class="go">{
+    "bytes_written": 12288000,
+    "blocksize": 4096,
+    "elapsed_sec": 2.868101647,
+    "bytes_per_sec": 4284366.9828972416,
+    "iops": 1045.9880329338969
+}
+</span></code></pre></div></div>
+
+<p><strong>Performance Comparison:</strong></p>
+
+<p><strong>Main Cluster (Good Performance):</strong></p>
+
+<ul>
+  <li><strong>IOPS</strong>: 1,045</li>
+  <li><strong>Throughput</strong>: 4.28 MB/s</li>
+  <li><strong>Latency</strong>: Low and consistent</li>
+</ul>
+
+<p><strong>Test Cluster (Constrained Performance):</strong></p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@pve1:~#</span><span class="w"> </span>ceph tell osd.0 bench 12288000 4096 4194304 100
+<span class="go">{
+    "bytes_written": 12288000,
+    "blocksize": 4096,
+    "elapsed_sec": 18.758997973,
+    "bytes_per_sec": 655045.64890332799,
+    "iops": 159.92325412678906
+}
+</span></code></pre></div></div>
+
+<ul>
+  <li><strong>IOPS</strong>: 159 (6.5x slower)</li>
+  <li><strong>Throughput</strong>: 655 KB/s (6.5x slower)</li>
+  <li><strong>Latency</strong>: Significantly higher</li>
+</ul>
+
+<h2 id="usb-30-performance-realities">USB 3.0 Performance Realities</h2>
+
+<h3 id="theoretical-vs-actual-performance">Theoretical vs. Actual Performance</h3>
+
+<p><strong>USB 3.0 Specifications:</strong></p>
+
+<ul>
+  <li>USB 3.0: 5 Gbps theoretical (625 MB/s)</li>
+  <li>USB 3.1: 10 Gbps theoretical (1.25 GB/s)</li>
+  <li>USB 3.2: 20 Gbps theoretical (2.5 GB/s)</li>
+</ul>
+
+<p><strong>Real-World Performance:</strong></p>
+
+<ul>
+  <li>Protocol overhead reduces actual throughput by 15-20%</li>
+  <li>USB-to-SATA bridge limitations</li>
+  <li>Drive-specific performance characteristics</li>
+  <li>USB controller quality and implementation</li>
+</ul>
+
+<h3 id="why-10-16-mibs-transfer-rates">Why 10-16 MiB/s Transfer Rates?</h3>
+
+<p>Several factors limit USB drive performance in Ceph:</p>
+
+<ol>
+  <li><strong>Random I/O patterns</strong>: Ceph generates lots of small, random writes</li>
+  <li><strong>USB protocol overhead</strong>: Especially problematic for small block sizes</li>
+  <li><strong>Drive caching</strong>: USB drives often have limited write caches</li>
+  <li><strong>Concurrent operations</strong>: Multiple OSDs competing for USB bandwidth</li>
+</ol>
+
+<p><a href="/assets/images/ceph-recovery-rebalance-homelab.png" target="_blank"><img src="/assets/images/ceph-recovery-rebalance-homelab.png" alt="Ceph Recovery and Rebalance" width="30%" height="30%" style="display:block; margin-left:auto; margin-right:auto" /></a></p>
+
+<h2 id="optimizing-mclock-for-rebalancing">Optimizing mClock for Rebalancing</h2>
+
+<h3 id="using-mclock-profiles">Using mClock Profiles</h3>
+
+<p>Instead of manually adjusting individual parameters, use mClock profiles:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Enable high recovery operations during rebalancing</span>
+ceph config <span class="nb">set </span>global osd_mclock_profile high_recovery_ops
+
+<span class="c"># Monitor rebalancing progress</span>
+ceph status
+
+<span class="c"># Return to balanced profile after completion</span>
+ceph config <span class="nb">set </span>global osd_mclock_profile balanced
+</code></pre></div></div>
+
+<h3 id="manual-iops-configuration">Manual IOPS Configuration</h3>
+
+<p>If automatic detection fails, manually set IOPS values:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Set IOPS for specific OSD</span>
+ceph config <span class="nb">set </span>osd.X osd_mclock_max_capacity_iops_hdd 200
+
+<span class="c"># Set globally for all HDDs</span>
+ceph config <span class="nb">set </span>global osd_mclock_max_capacity_iops_hdd 200
+</code></pre></div></div>
+
+<h2 id="monitoring-performance-during-operations">Monitoring Performance During Operations</h2>
+
+<h3 id="real-time-io-statistics">Real-time I/O Statistics</h3>
+
+<p>Monitor cluster I/O in real-time:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@harlan:~#</span><span class="w"> </span>ceph iostat <span class="nt">-p</span> 5
+<span class="go">+-------------------------+-------------------------+-------------------------+-------------------------+-------------------------+-------------------------+
+|                    Read |                   Write |                   Total |               Read IOPS |              Write IOPS |              Total IOPS |
++-------------------------+-------------------------+-------------------------+-------------------------+-------------------------+-------------------------+
+|                   0 B/s |                   0 B/s |                   0 B/s |                       0 |                       0 |                       0 |
+</span></code></pre></div></div>
+
+<p>During active rebalancing, you should see significant write activity as data moves between OSDs.</p>
+
+<h3 id="performance-monitoring-commands">Performance Monitoring Commands</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check cluster performance</span>
+ceph status
+ceph osd perf
+
+<span class="c"># Monitor individual OSD performance</span>
+ceph daemon osd.X perf dump
+
+<span class="c"># Check rebalancing progress</span>
+ceph pg dump | <span class="nb">grep </span>active+clean
+</code></pre></div></div>
+
+<h2 id="lessons-learned">Lessons Learned</h2>
+
+<h3 id="what-worked">What Worked</h3>
+
+<ol>
+  <li><strong>mClock profiles are better than manual tuning</strong>: Use <code class="language-plaintext highlighter-rouge">high_recovery_ops</code> during rebalancing</li>
+  <li><strong>Consistent hardware helps</strong>: Try to use similar USB drives across OSDs</li>
+  <li><strong>Monitor during changes</strong>: Watch performance metrics when adding OSDs</li>
+  <li><strong>Patience with USB storage</strong>: Accept that USB drives will be slower than enterprise SSDs</li>
+</ol>
+
+<h3 id="what-didnt-work">What Didn’t Work</h3>
+
+<ol>
+  <li><strong>Ignoring mClock settings</strong>: Missing IOPS values significantly impact performance</li>
+  <li><strong>Mixing drive types</strong>: Different USB drives create performance imbalances</li>
+  <li><strong>Expecting SSD performance</strong>: USB drives have inherent limitations</li>
+</ol>
+
+<h3 id="performance-bottlenecks-identified">Performance Bottlenecks Identified</h3>
+
+<ol>
+  <li><strong>USB interface limitations</strong>: Even USB 3.0 struggles with Ceph’s I/O patterns</li>
+  <li><strong>Network bandwidth</strong>: 1Gbps networking can become a bottleneck</li>
+  <li><strong>CPU constraints</strong>: Dell Wyse 3040s have limited processing power</li>
+  <li><strong>Memory pressure</strong>: 2GB RAM is tight for Ceph operations</li>
+</ol>
+
+<h2 id="recommendations-for-homelab-ceph">Recommendations for Homelab Ceph</h2>
+
+<h3 id="hardware-considerations">Hardware Considerations</h3>
+
+<ol>
+  <li><strong>Use consistent USB drives</strong>: Same model/manufacturer when possible</li>
+  <li><strong>Prefer USB 3.1/3.2</strong>: Better performance than USB 3.0</li>
+  <li><strong>Consider USB-C interfaces</strong>: Often have better controllers</li>
+  <li><strong>Monitor drive health</strong>: USB drives can fail without warning</li>
+</ol>
+
+<h3 id="configuration-best-practices">Configuration Best Practices</h3>
+
+<ol>
+  <li><strong>Set appropriate mClock profiles</strong>: Use <code class="language-plaintext highlighter-rouge">high_recovery_ops</code> during maintenance</li>
+  <li><strong>Monitor IOPS settings</strong>: Ensure all OSDs have proper capacity values</li>
+  <li><strong>Plan rebalancing windows</strong>: USB storage makes operations slower</li>
+  <li><strong>Use <a href="/proxmox-ceph-homelab-settings/">optimized scrubbing schedules</a></strong>: Reduce wear on USB drives</li>
+</ol>
+
+<h3 id="performance-expectations">Performance Expectations</h3>
+
+<ul>
+  <li><strong>Sequential throughput</strong>: 20-40 MB/s per USB drive</li>
+  <li><strong>Random IOPS</strong>: 100-300 IOPS per USB drive</li>
+  <li><strong>Rebalancing time</strong>: Plan for 2-3x longer than SSD-based clusters</li>
+  <li><strong>Recovery operations</strong>: Expect slower rebuild times after failures</li>
+</ul>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>Optimizing Ceph performance in a homelab requires understanding the limitations of your hardware and adjusting expectations accordingly. While USB storage will never match enterprise SSD performance, proper mClock configuration and realistic expectations can deliver a functional distributed storage system.</p>
+
+<p>Key takeaways:</p>
+
+<ul>
+  <li>Use mClock profiles instead of manual parameter tuning</li>
+  <li>Monitor and correct missing IOPS capacity values</li>
+  <li>Accept USB storage limitations but optimize within those constraints</li>
+  <li>Plan maintenance windows appropriately for slower operations</li>
+</ul>
+
+<p>The performance may not be enterprise-grade, but for homelab use cases like media storage, backup, and learning Ceph administration, USB-based clusters can provide valuable experience with distributed storage concepts.</p>
+
+<p>For more Ceph optimization guidance, see my articles on <a href="/proxmox-ceph-nearfull/">Ceph nearfull management</a> and <a href="/proxmox-8-dell-wyse-3040-upgrade/">ProxMox 8.2.4 Upgrade on Dell Wyse 3040s</a>.</p>
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://docs.ceph.com/en/reef/rados/configuration/mclock-config-ref/">Ceph mClock Configuration Reference</a></li>
+  <li><a href="https://www.usenix.org/legacy/event/osdi10/tech/full_papers/Gulati.pdf">dmClock Algorithm Paper</a></li>
+  <li><a href="https://forum.proxmox.com/threads/when-adding-a-new-osd-to-ceph-the-osd_mclock_max_capacity_iops_-hdd-ssd-values-do-not-appear-in-the-configuration-database.129132/post-697088">Proxmox Forum: mClock IOPS Issues</a></li>
+  <li><a href="https://www.ibm.com/docs/en/storage-ceph/7?topic=scheduler-ceph-osd-capacity-determination">IBM Ceph OSD Capacity Determination</a></li>
+</ul>
+
+<h2 id="related-posts">Related Posts</h2>
+
+<ul>
+  <li><a href="/proxmox-ceph-homelab-settings/">Proxmox Ceph Settings for the Homelab</a> — Base Ceph configuration and scrub tuning</li>
+  <li><a href="/proxmox-ceph-nearfull/">Managing Ceph Nearfull Warnings</a> — Capacity management under pressure</li>
+  <li><a href="/ceph-ssd-wal-db-usb-storage/">Hybrid Ceph Storage: SSD WAL/DB Acceleration</a> — SSD acceleration for USB-based OSDs</li>
+  <li><a href="/usb-drive-smart/">Enabling SMART Monitoring on Seagate USB Drives</a> — Health monitoring for USB Ceph drives</li>
+  <li><a href="/homelab-storage-economics/">Homelab Storage Economics: Ceph vs Single Drive</a> — Cost analysis of distributed storage</li>
+  <li><a href="/linux-disk-io-quick-tests/">Linux Disk I/O Performance in the Homelab</a> — Benchmarking methods for storage</li>
+  <li><a href="/proxmox-ceph-guide/">Proxmox &amp; Ceph Homelab Guide</a> — All Proxmox and Ceph articles</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/proxmox/">proxmox</a>, 
+        
+          <a href="/tags/ceph/">ceph</a>, 
+        
+          <a href="/tags/performance/">performance</a>, 
+        
+          <a href="/tags/mclock/">mclock</a>, 
+        
+          <a href="/tags/iops/">iops</a>, 
+        
+          <a href="/tags/optimization/">optimization</a>, 
+        
+          <a href="/tags/homelab/">homelab</a>, 
+        
+          <a href="/tags/dell-wyse-3040/">dell-wyse-3040</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/technical/">technical</a>, 
+        
+          <a href="/categories/homelab/">homelab</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

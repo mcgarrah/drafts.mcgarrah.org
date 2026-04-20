@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>SASS Circular Dependency Nightmare: Lessons from Jekyll Architecture | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="SASS Circular Dependency Nightmare: Lessons from Jekyll Architecture" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="How a simple print stylesheet addition turned into a deep dive into SASS module architecture and the perils of circular dependencies." />
+<meta property="og:description" content="How a simple print stylesheet addition turned into a deep dive into SASS module architecture and the perils of circular dependencies." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/sass-circular-dependency-nightmare/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/sass-circular-dependency-nightmare/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2025-12-14T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="SASS Circular Dependency Nightmare: Lessons from Jekyll Architecture" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-04-14T00:00:00+00:00","datePublished":"2025-12-14T00:00:00+00:00","description":"How a simple print stylesheet addition turned into a deep dive into SASS module architecture and the perils of circular dependencies.","headline":"SASS Circular Dependency Nightmare: Lessons from Jekyll Architecture","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/sass-circular-dependency-nightmare/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/sass-circular-dependency-nightmare/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = isDarkMode ? 'dark' : 'default';
+  mermaid.initialize({ startOnLoad: true, theme: theme });
+  await mermaid.run({ querySelector: '.language-mermaid' });
+</script>
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/sass-circular-dependency-nightmare/">SASS Circular Dependency Nightmare: Lessons from Jekyll Architecture</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2025-12-14T00:00:00+00:00">December 14, 2025</time><span class="reading-time">8 min read</span></header>
+
+  <p>What started as a simple task to add a print stylesheet to my Jekyll website turned into a multi-hour debugging session that taught me valuable lessons about SASS module architecture. Here’s the story of how circular dependencies can break your build and how to fix them properly.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="the-innocent-beginning">The Innocent Beginning</h2>
+
+<p>I wanted to add a print stylesheet to optimize my blog posts for printing. Simple enough, right? Create a <code class="language-plaintext highlighter-rouge">print.sass</code> file, add some <code class="language-plaintext highlighter-rouge">@media print</code> rules, and import it into the main stylesheet. What could go wrong?</p>
+
+<div class="language-sass highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// _sass/print.sass</span>
+<span class="k">@use</span> <span class="s2">"main"</span> <span class="nt">as</span> <span class="o">*</span>
+
+<span class="k">@media</span> <span class="n">print</span>
+  <span class="nt">nav</span><span class="o">,</span> <span class="nt">aside</span><span class="o">,</span> <span class="nt">footer</span>
+    <span class="nl">display</span><span class="p">:</span> <span class="nb">none</span> <span class="o">!</span><span class="n">important</span>
+  <span class="c1">// ... more print styles</span>
+</code></pre></div></div>
+
+<h2 id="the-first-error">The First Error</h2>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Error: Module loop: this module is already being loaded.
+</code></pre></div></div>
+
+<p>This cryptic error message was my introduction to SASS circular dependencies. The problem was clear in hindsight but took time to understand:</p>
+
+<ol>
+  <li><code class="language-plaintext highlighter-rouge">main.sass</code> imports <code class="language-plaintext highlighter-rouge">print.sass</code></li>
+  <li><code class="language-plaintext highlighter-rouge">print.sass</code> imports <code class="language-plaintext highlighter-rouge">main.sass</code> (for variables)</li>
+  <li>SASS detects the circular dependency and refuses to compile</li>
+</ol>
+
+<h2 id="the-quick-fix-that-made-things-worse">The Quick Fix That Made Things Worse</h2>
+
+<p>My first attempt was to move the print styles directly into <code class="language-plaintext highlighter-rouge">main.sass</code> but this just felt wrong… but I was in a hurry. This “fixed” the immediate problem but created a larger architectural issue. Then I needed to add Google Custom Search styling (after implementing <a href="/2025/12/07/adding-google-custom-search-jekyll.html">Google Custom Search functionality</a> the week before) and hit the same problem again. That feeling of wrongness pervaded the whole things and I knew I had a problem I needed to fix.</p>
+
+<div class="language-sass highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// _sass/google-search.sass</span>
+<span class="k">@use</span> <span class="s2">"main"</span> <span class="nt">as</span> <span class="o">*</span>  <span class="o">//</span> <span class="nt">Another</span> <span class="nt">circular</span> <span class="nt">dependency</span><span class="o">!</span>
+</code></pre></div></div>
+
+<p>Each time I tried to create a modular SASS file that needed variables, I created another circular dependency. The pattern was clear: <strong>any module that needed shared variables would create a circular dependency if it imported from <code class="language-plaintext highlighter-rouge">main.sass</code></strong>.</p>
+
+<h2 id="understanding-the-root-problem">Understanding the Root Problem</h2>
+
+<p>So take a deep breath and back away from the problem. Often I need a break when fixing something this because I get so invested in the current that I miss the possible. After a break I could see the issue wasn’t with individual files—it was with the overall architecture. My original structure looked like this:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>_sass/
+├── main.sass          # Variables + imports everything else
+├── basic.sass         # Imports main for variables
+├── layout.sass        # Imports main for variables
+├── print.sass         # Imports main for variables (CIRCULAR!)
+└── google-search.sass # Imports main for variables (CIRCULAR!)
+</code></pre></div></div>
+
+<p>The problem: <code class="language-plaintext highlighter-rouge">main.sass</code> was trying to be both the <strong>variable provider</strong> and the <strong>module aggregator</strong>. This dual role created circular dependencies whenever new modules needed variables.</p>
+
+<h2 id="the-proper-solution">The Proper Solution</h2>
+
+<p>The fix required separating concerns into a proper SASS architecture:</p>
+
+<h3 id="step-1-extract-variables">Step 1: Extract Variables</h3>
+
+<p>Create a dedicated variables file that never imports anything:</p>
+
+<div class="language-sass highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// _sass/variables.sass</span>
+<span class="k">@use</span> <span class="s2">"sass:color"</span>
+
+<span class="nv">$font-size</span><span class="p">:</span> <span class="nf">calc</span><span class="p">(</span><span class="m">0</span><span class="mi">.8rem</span> <span class="o">+</span> <span class="m">0</span><span class="mi">.2vw</span><span class="p">)</span> <span class="o">!</span><span class="nb">default</span>
+<span class="nv">$font-weight</span><span class="p">:</span> <span class="m">400</span> <span class="o">!</span><span class="nb">default</span>
+<span class="nv">$font-family</span><span class="p">:</span> <span class="s2">"PT Sans"</span><span class="o">,</span> <span class="o">-</span><span class="n">apple-system</span><span class="o">,</span> <span class="s2">"Helvetica Neue"</span><span class="o">,</span> <span class="s2">"Segoe UI"</span><span class="o">,</span> <span class="s2">"Roboto"</span><span class="o">,</span> <span class="nb">sans-serif</span> <span class="o">!</span><span class="nb">default</span>
+<span class="nv">$link-color</span><span class="p">:</span> <span class="mh">#68f</span> <span class="o">!</span><span class="nb">default</span>
+<span class="nv">$dark</span><span class="p">:</span> <span class="mh">#212228</span> <span class="o">!</span><span class="nb">default</span>
+<span class="nv">$light</span><span class="p">:</span> <span class="mh">#ffffff</span> <span class="o">!</span><span class="nb">default</span>
+
+<span class="k">@function</span> <span class="nf">reduce</span><span class="p">(</span><span class="nv">$percent</span><span class="p">)</span>
+  <span class="k">@return</span> <span class="nf">rgba</span><span class="p">(</span><span class="nb">color</span><span class="o">.</span><span class="nf">mix</span><span class="p">(</span><span class="nv">$dark</span><span class="o">,</span> <span class="nv">$light</span><span class="p">)</span><span class="o">,</span> <span class="nf">calc</span><span class="p">(</span><span class="nv">$percent</span> <span class="o">/</span> <span class="m">100</span><span class="p">))</span>
+</code></pre></div></div>
+
+<h3 id="step-2-update-all-modules">Step 2: Update All Modules</h3>
+
+<p>Every module that needs variables imports from the variables file:</p>
+
+<div class="language-sass highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// _sass/print.sass</span>
+<span class="k">@use</span> <span class="s2">"variables"</span> <span class="nt">as</span> <span class="o">*</span>  <span class="nn">#</span> <span class="nt">No</span> <span class="nt">circular</span> <span class="nt">dependency</span><span class="o">!</span>
+
+<span class="k">@media</span> <span class="n">print</span>
+  <span class="nt">body</span>
+    <span class="nl">background</span><span class="p">:</span> <span class="nv">$light</span> <span class="o">!</span><span class="n">important</span>
+    <span class="nl">color</span><span class="p">:</span> <span class="nv">$dark</span> <span class="o">!</span><span class="n">important</span>
+</code></pre></div></div>
+
+<h3 id="step-3-reorganize-main-module">Step 3: Reorganize Main Module</h3>
+
+<p>The main module becomes purely an aggregator:</p>
+
+<div class="language-sass highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// _sass/main.sass</span>
+<span class="k">@use</span> <span class="s2">"variables"</span> <span class="nt">as</span> <span class="o">*</span>
+<span class="k">@use</span> <span class="s2">"copy-button"</span>
+<span class="k">@use</span> <span class="s2">"comments"</span>
+<span class="k">@use</span> <span class="s2">"tags-categories"</span>
+<span class="k">@use</span> <span class="s2">"reading-time"</span>
+<span class="k">@use</span> <span class="s2">"google-search"</span>
+<span class="k">@use</span> <span class="s2">"print"</span>
+</code></pre></div></div>
+
+<h3 id="step-4-fix-import-chains">Step 4: Fix Import Chains</h3>
+
+<p>Update all files that were importing variables through other modules:</p>
+
+<div class="language-sass highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// _sass/basic.sass</span>
+<span class="k">@use</span> <span class="s2">"variables"</span> <span class="nt">as</span> <span class="o">*</span>  <span class="nn">#</span> <span class="nt">Direct</span> <span class="nt">import</span><span class="o">,</span> <span class="nt">not</span> <span class="nt">through</span> <span class="nt">main</span>
+
+<span class="c1">// assets/css/frame.sass</span>
+<span class="k">@use</span> <span class="s2">"../../_sass/variables"</span> <span class="nt">as</span> <span class="o">*</span>  <span class="nn">#</span> <span class="nt">Direct</span> <span class="nt">path</span> <span class="nt">to</span> <span class="nt">variables</span>
+</code></pre></div></div>
+
+<h2 id="the-hidden-gotcha">The Hidden Gotcha</h2>
+
+<p>Even after fixing the architecture, I encountered another issue: some files were still importing from the old structure. The build would succeed, but the styling would be completely broken because modules weren’t being loaded in the right order.</p>
+
+<p>The key insight: <strong>SASS module loading is order-dependent</strong>. The <code class="language-plaintext highlighter-rouge">_sass/index.sass</code> file needed to forward modules in the correct sequence:</p>
+
+<div class="language-sass highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// _sass/index.sass</span>
+<span class="k">@forward</span> <span class="s2">"variables"</span>  <span class="nn">#</span> <span class="nt">Must</span> <span class="nt">be</span> <span class="nt">first</span><span class="o">!</span>
+<span class="k">@forward</span> <span class="s2">"main"</span>
+<span class="k">@forward</span> <span class="s2">"font"</span>
+<span class="k">@forward</span> <span class="s2">"basic"</span>
+<span class="k">@forward</span> <span class="s2">"layout"</span>
+<span class="k">@forward</span> <span class="s2">"classes"</span>
+</code></pre></div></div>
+
+<h2 id="lessons-learned">Lessons Learned</h2>
+
+<h3 id="1-separate-concerns-early">1. Separate Concerns Early</h3>
+
+<p>Don’t let one file serve multiple architectural roles. Variables should live in their own module that never imports anything else.</p>
+
+<h3 id="2-understand-sass-module-loading">2. Understand SASS Module Loading</h3>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">@use</code> creates a dependency</li>
+  <li><code class="language-plaintext highlighter-rouge">@forward</code> re-exports modules</li>
+  <li>Circular dependencies are detected and blocked</li>
+  <li>Loading order matters for proper cascade</li>
+</ul>
+
+<h3 id="3-plan-your-architecture">3. Plan Your Architecture</h3>
+
+<p>Before adding new SASS modules, consider:</p>
+
+<ul>
+  <li>What variables/functions do they need?</li>
+  <li>Where will they be imported from?</li>
+  <li>Will this create any circular dependencies?</li>
+</ul>
+
+<h3 id="4-use-consistent-naming">4. Use Consistent Naming</h3>
+
+<p>Stick to one naming convention. I had issues with <code class="language-plaintext highlighter-rouge">_variables.sass</code> vs <code class="language-plaintext highlighter-rouge">variables.sass</code> that caused additional import errors.</p>
+
+<h2 id="the-final-architecture">The Final Architecture</h2>
+
+<p>The working structure that eliminates circular dependencies:</p>
+
+<pre><code class="language-mermaid">graph TD
+    %% Variables - Foundation Layer (imports nothing)
+    V["🔧 variables.sass&lt;br/&gt;Pure variables &amp; functions&lt;br/&gt;(imports nothing)"]
+    
+    %% Core Modules - Import variables directly
+    B["📄 basic.sass"]
+    L["📐 layout.sass"]
+    C["🎨 classes.sass"]
+    F["🔤 font.sass"]
+    
+    %% Feature Modules - Import variables directly
+    P["🖨️ print.sass"]
+    G["🔍 google-search.sass"]
+    CB["📋 copy-button.sass"]
+    CM["💬 comments.sass"]
+    TC["🏷️ tags-categories.sass"]
+    RT["⏱️ reading-time.sass"]
+    
+    %% Aggregator Layer
+    M["📦 main.sass&lt;br/&gt;Module aggregator"]
+    I["🔄 index.sass&lt;br/&gt;Module forwarder"]
+    
+    %% Entry Points
+    AI["🌐 assets/css/index.sass&lt;br/&gt;Main entry point"]
+    AF["🖼️ assets/css/frame.sass"]
+    AS["📱 assets/css/sidebar.sass"]
+    
+    %% Dependencies - Variables to modules
+    V --&gt; B
+    V --&gt; L
+    V --&gt; C
+    V --&gt; F
+    V --&gt; P
+    V --&gt; G
+    V --&gt; CB
+    V --&gt; CM
+    V --&gt; TC
+    V --&gt; RT
+    V --&gt; M
+    V --&gt; AF
+    V --&gt; AS
+    
+    %% Main aggregates feature modules
+    M --&gt; CB
+    M --&gt; CM
+    M --&gt; TC
+    M --&gt; RT
+    M --&gt; G
+    M --&gt; P
+    
+    %% Index forwards everything
+    I --&gt; V
+    I --&gt; M
+    I --&gt; F
+    I --&gt; B
+    I --&gt; L
+    I --&gt; C
+    
+    %% Entry points
+    AI --&gt; I
+    
+    %% Styling
+    classDef foundation fill:#e1f5fe,stroke:#01579b,stroke-width:3px
+    classDef core fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef feature fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef aggregator fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef entry fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    
+    class V foundation
+    class B,L,C,F core
+    class P,G,CB,CM,TC,RT feature
+    class M,I aggregator
+    class AI,AF,AS entry
+</code></pre>
+
+<h3 id="architecture-layers">Architecture Layers</h3>
+
+<ol>
+  <li><strong>Foundation Layer</strong> (🔧): <code class="language-plaintext highlighter-rouge">variables.sass</code> - Pure variables and functions, imports nothing</li>
+  <li><strong>Core Modules</strong> (📄🎨): Basic styling modules that form the foundation</li>
+  <li><strong>Feature Modules</strong> (🖨️🔍): Specific functionality modules</li>
+  <li><strong>Aggregator Layer</strong> (📦🔄): Combines and forwards modules</li>
+  <li><strong>Entry Points</strong> (🌐🖼️): Final CSS files served to browsers</li>
+</ol>
+
+<h3 id="file-structure">File Structure</h3>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>_sass/
+├── variables.sass     # Pure variables/functions (imports nothing)
+├── main.sass          # Module aggregator (imports variables + modules)
+├── index.sass         # Module forwarder (forwards everything)
+├── basic.sass         # Imports variables directly
+├── layout.sass        # Imports variables directly
+├── print.sass         # Imports variables directly
+└── google-search.sass # Imports variables directly
+
+assets/css/
+├── index.sass         # Imports _sass/index (gets everything)
+├── frame.sass         # Imports _sass/variables directly
+└── sidebar.sass       # Imports _sass/variables directly
+</code></pre></div></div>
+
+<h2 id="key-principles">Key Principles</h2>
+
+<ol>
+  <li><strong>Variables module imports nothing</strong> - Prevents circular dependencies</li>
+  <li><strong>Feature modules import variables directly</strong> - No dependency chains</li>
+  <li><strong>Main module aggregates everything</strong> - Single import point</li>
+  <li><strong>Index module forwards everything</strong> - Clean public interface</li>
+</ol>
+
+<h2 id="repository-reference">Repository Reference</h2>
+
+<p>You can see the complete implementation in my <a href="https://github.com/mcgarrah/mcgarrah.github.io">Jekyll website repository</a>. The key files to examine:</p>
+
+<ul>
+  <li><a href="https://github.com/mcgarrah/mcgarrah.github.io/blob/main/_sass/variables.sass"><code class="language-plaintext highlighter-rouge">_sass/variables.sass</code></a> - Pure variables</li>
+  <li><a href="https://github.com/mcgarrah/mcgarrah.github.io/blob/main/_sass/main.sass"><code class="language-plaintext highlighter-rouge">_sass/main.sass</code></a> - Module aggregator</li>
+  <li><a href="https://github.com/mcgarrah/mcgarrah.github.io/blob/main/_sass/index.sass"><code class="language-plaintext highlighter-rouge">_sass/index.sass</code></a> - Module forwarder</li>
+  <li><a href="https://github.com/mcgarrah/mcgarrah.github.io/commits/main">Commit history</a> - Shows the refactoring process</li>
+</ul>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>What seemed like a simple styling addition revealed fundamental architectural problems in my SASS organization. The circular dependency errors were actually helpful—they forced me to create a more maintainable and scalable stylesheet architecture.</p>
+
+<p>The key takeaway: <strong>treat SASS modules like any other code architecture</strong>. Separate concerns, avoid circular dependencies, and plan your import hierarchy before you start adding new modules.</p>
+
+<p>Now adding new stylesheets is straightforward: create the module, import variables if needed, and add it to the main aggregator. No more circular dependency nightmares.</p>
+
+<hr />
+
+<p><em>This refactoring was part of ongoing improvements to my Jekyll website. You can see the complete implementation and follow similar patterns in your own projects.</em></p>
+
+<h2 id="related-posts">Related Posts</h2>
+
+<ul>
+  <li><a href="/jekyll-website-optimization-part-1/">Jekyll Website Optimization Part 1</a> — The optimization work that led to this refactoring</li>
+  <li><a href="/jekyll-theme-missing-head-body-tags/">Jekyll Theme Missing Head and Body Tags</a> — Another theme architecture issue</li>
+  <li><a href="/jekyll-markdown-feature-reference/">How the Sausage Is Made</a> — Complete feature reference for this blog</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/sass/">sass</a>, 
+        
+          <a href="/tags/jekyll/">jekyll</a>, 
+        
+          <a href="/tags/circular-dependency/">circular-dependency</a>, 
+        
+          <a href="/tags/architecture/">architecture</a>, 
+        
+          <a href="/tags/debugging/">debugging</a>, 
+        
+          <a href="/tags/github-pages/">github-pages</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/web-development/">web-development</a>, 
+        
+          <a href="/categories/technical/">technical</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

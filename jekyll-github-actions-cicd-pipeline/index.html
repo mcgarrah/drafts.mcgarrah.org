@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>The CI/CD Pipeline Behind This Jekyll Blog | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="The CI/CD Pipeline Behind This Jekyll Blog" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="A complete walkthrough of the GitHub Actions CI/CD pipeline for a Jekyll blog on GitHub Pages: custom build and deploy with scheduled future posts, CodeQL security scanning, SEO health checks with Lighthouse CI, Dependabot dependency management, and the lessons learned building it over two years." />
+<meta property="og:description" content="A complete walkthrough of the GitHub Actions CI/CD pipeline for a Jekyll blog on GitHub Pages: custom build and deploy with scheduled future posts, CodeQL security scanning, SEO health checks with Lighthouse CI, Dependabot dependency management, and the lessons learned building it over two years." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/jekyll-github-actions-cicd-pipeline/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/jekyll-github-actions-cicd-pipeline/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-05-08T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="The CI/CD Pipeline Behind This Jekyll Blog" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-05-08T00:00:00+00:00","datePublished":"2026-05-08T00:00:00+00:00","description":"A complete walkthrough of the GitHub Actions CI/CD pipeline for a Jekyll blog on GitHub Pages: custom build and deploy with scheduled future posts, CodeQL security scanning, SEO health checks with Lighthouse CI, Dependabot dependency management, and the lessons learned building it over two years.","headline":"The CI/CD Pipeline Behind This Jekyll Blog","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/jekyll-github-actions-cicd-pipeline/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/jekyll-github-actions-cicd-pipeline/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/jekyll-github-actions-cicd-pipeline/">The CI/CD Pipeline Behind This Jekyll Blog</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-05-08T00:00:00+00:00">May 08, 2026</time><span class="reading-time">12 min read</span></header>
+
+  <p>Most Jekyll blogs on GitHub Pages use the default build. Push to main, GitHub builds it, done. That worked for me too — until I needed custom plugins, scheduled future posts, and wanted to stop deploying broken sitemaps. Now I have three GitHub Actions workflows, Dependabot watching three package ecosystems, and a Lighthouse config that blocks my own ad scripts.</p>
+
+<p>Here’s how it all fits together.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="the-pipeline-at-a-glance">The Pipeline at a Glance</h2>
+
+<pre><code class="language-mermaid">graph LR
+    A[git push to main] --&gt; B[Jekyll Build &amp; Deploy]
+    A --&gt; C[CodeQL Security Scan]
+    A --&gt; D[SEO Health Check]
+    E[Daily 00:05 UTC] --&gt; B
+    F[Weekly Friday 02:43 UTC] --&gt; C
+    G[Weekly Monday 06:00 UTC] --&gt; D
+    H[Dependabot] --&gt; I[PRs for dependency updates]
+    I --&gt; A
+</code></pre>
+
+<table>
+  <thead>
+    <tr>
+      <th>Workflow</th>
+      <th>File</th>
+      <th>Triggers</th>
+      <th>Purpose</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Build &amp; Deploy</td>
+      <td><code class="language-plaintext highlighter-rouge">jekyll.yml</code></td>
+      <td>Push, daily cron, manual</td>
+      <td>Build site, validate sitemap, deploy to GitHub Pages</td>
+    </tr>
+    <tr>
+      <td>CodeQL</td>
+      <td><code class="language-plaintext highlighter-rouge">codeql.yml</code></td>
+      <td>Push, PR, weekly cron</td>
+      <td>Security scanning of GitHub Actions workflows</td>
+    </tr>
+    <tr>
+      <td>SEO Health Check</td>
+      <td><code class="language-plaintext highlighter-rouge">seo-health-check.yml</code></td>
+      <td>Push (path-filtered), weekly cron, manual</td>
+      <td>Lighthouse CI, link checking, SEO validation</td>
+    </tr>
+    <tr>
+      <td>Dependabot</td>
+      <td><code class="language-plaintext highlighter-rouge">dependabot.yml</code></td>
+      <td>Daily (Actions, Bundler), weekly (npm)</td>
+      <td>Dependency update PRs</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="workflow-1-build-and-deploy">Workflow 1: Build and Deploy</h2>
+
+<p>This is the core workflow. It replaced the default GitHub Pages build in August 2024 when I needed custom plugins that aren’t in the <a href="https://pages.github.com/versions/">GitHub Pages whitelist</a>.</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">name</span><span class="pi">:</span> <span class="s">Deploy Jekyll site to Pages</span>
+
+<span class="na">on</span><span class="pi">:</span>
+  <span class="na">push</span><span class="pi">:</span>
+    <span class="na">branches</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">main"</span><span class="pi">]</span>
+  <span class="na">schedule</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">cron</span><span class="pi">:</span> <span class="s1">'</span><span class="s">5</span><span class="nv"> </span><span class="s">0</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*'</span>
+  <span class="na">workflow_dispatch</span><span class="pi">:</span>
+
+<span class="na">permissions</span><span class="pi">:</span>
+  <span class="na">contents</span><span class="pi">:</span> <span class="s">read</span>
+  <span class="na">pages</span><span class="pi">:</span> <span class="s">write</span>
+  <span class="na">id-token</span><span class="pi">:</span> <span class="s">write</span>
+
+<span class="na">concurrency</span><span class="pi">:</span>
+  <span class="na">group</span><span class="pi">:</span> <span class="s2">"</span><span class="s">pages"</span>
+  <span class="na">cancel-in-progress</span><span class="pi">:</span> <span class="kc">false</span>
+</code></pre></div></div>
+
+<h3 id="why-a-custom-build">Why a Custom Build?</h3>
+
+<p>The default GitHub Pages Jekyll build is convenient but limiting:</p>
+
+<ul>
+  <li><strong>No custom plugins</strong> — Only <a href="https://pages.github.com/versions/">whitelisted gems</a> run. My <a href="/jekyll-tag-category-generator-plugin/">tag/category generator</a> and <a href="/jekyll-pandoc-exports-plugin/">Pandoc exports plugin</a> need a custom build.</li>
+  <li><strong>No Ruby version pinning</strong> — GitHub controls the Ruby version. I pin to 3.2.6 for reproducibility.</li>
+  <li><strong>No build validation</strong> — The default build deploys whatever Jekyll produces. I validate the sitemap before deploying.</li>
+</ul>
+
+<h3 id="scheduled-builds-for-future-posts">Scheduled Builds for Future Posts</h3>
+
+<p>The <code class="language-plaintext highlighter-rouge">schedule</code> trigger is the key feature that makes future-dated posts work:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">schedule</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">cron</span><span class="pi">:</span> <span class="s1">'</span><span class="s">5</span><span class="nv"> </span><span class="s">0</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*'</span>  <span class="c1"># 00:05 UTC daily (8:05 PM EST)</span>
+</code></pre></div></div>
+
+<p>See <a href="https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#schedule">GitHub’s scheduled events documentation</a> for cron syntax details.</p>
+
+<p>Jekyll’s <code class="language-plaintext highlighter-rouge">future: false</code> setting (the default) excludes posts with dates in the future from the build output. When a post’s date arrives, the next build picks it up. The daily cron at 00:05 UTC means a post dated <code class="language-plaintext highlighter-rouge">2026-05-15</code> will go live within 24 hours of that date — close enough for a blog.</p>
+
+<p>Without this, I’d have to manually push a commit or trigger a build on the day I want a post to go live.</p>
+
+<h3 id="the---future-flag-gotcha">The <code class="language-plaintext highlighter-rouge">--future</code> Flag Gotcha</h3>
+
+<p>During local development, <code class="language-plaintext highlighter-rouge">bundle exec jekyll serve</code> also respects <code class="language-plaintext highlighter-rouge">future: false</code> — future-dated posts won’t render locally unless you add the <code class="language-plaintext highlighter-rouge">--future</code> flag:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bundle <span class="nb">exec </span>jekyll serve <span class="nt">--future</span>
+</code></pre></div></div>
+
+<p>This confused me early on. I’d write a post with tomorrow’s date, run the local server, and the post wouldn’t appear. The <code class="language-plaintext highlighter-rouge">future: false</code> config setting only controls the <em>build output</em>, not whether the file is recognized. The <code class="language-plaintext highlighter-rouge">--future</code> flag overrides it for local previewing. In production, the daily cron handles it — you never need <code class="language-plaintext highlighter-rouge">future: true</code> in <code class="language-plaintext highlighter-rouge">_config.yml</code>.</p>
+
+<h3 id="sitemap-validation">Sitemap Validation</h3>
+
+<p>After discovering that a bad build once deployed a sitemap full of <code class="language-plaintext highlighter-rouge">localhost</code> URLs, I added a pre-deploy validation step:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Validate sitemap URLs</span>
+  <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+    <span class="s">if grep -q 'localhost' ./_site/sitemap.xml; then</span>
+      <span class="s">echo "::error::sitemap.xml contains localhost URLs"</span>
+      <span class="s">grep 'localhost' ./_site/sitemap.xml | head -5</span>
+      <span class="s">exit 1</span>
+    <span class="s">fi</span>
+    <span class="s">echo "Sitemap OK: all URLs use production domain"</span>
+</code></pre></div></div>
+
+<p>This is a cheap check that has saved me at least once. The <code class="language-plaintext highlighter-rouge">JEKYLL_ENV: production</code> environment variable is also critical — without it, Jekyll may use development URLs.</p>
+
+<h3 id="build-steps">Build Steps</h3>
+
+<p>The full build job:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">jobs</span><span class="pi">:</span>
+  <span class="na">build</span><span class="pi">:</span>
+    <span class="na">runs-on</span><span class="pi">:</span> <span class="s">ubuntu-latest</span>
+    <span class="na">steps</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/checkout@v6</span>
+      <span class="pi">-</span> <span class="na">uses</span><span class="pi">:</span> <span class="s">ruby/setup-ruby@v1.300.0</span>
+        <span class="na">with</span><span class="pi">:</span>
+          <span class="na">ruby-version</span><span class="pi">:</span> <span class="s1">'</span><span class="s">3.2.6'</span>
+          <span class="na">bundler-cache</span><span class="pi">:</span> <span class="kc">true</span>
+          <span class="na">cache-version</span><span class="pi">:</span> <span class="m">1</span>
+      <span class="pi">-</span> <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/configure-pages@v6</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Build with Jekyll</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="s">bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}"</span>
+        <span class="na">env</span><span class="pi">:</span>
+          <span class="na">JEKYLL_ENV</span><span class="pi">:</span> <span class="s">production</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Validate sitemap URLs</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+          <span class="s">if grep -q 'localhost' ./_site/sitemap.xml; then</span>
+            <span class="s">echo "::error::sitemap.xml contains localhost URLs"</span>
+            <span class="s">exit 1</span>
+          <span class="s">fi</span>
+      <span class="pi">-</span> <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/upload-pages-artifact@v4</span>
+</code></pre></div></div>
+
+<p>Key details:</p>
+
+<ul>
+  <li><strong><code class="language-plaintext highlighter-rouge">bundler-cache: true</code></strong> — Caches installed gems between runs. Cuts build time significantly.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">cache-version: 1</code></strong> — Increment this to force a fresh gem install if the cache gets corrupted.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">configure-pages</code></strong> — Sets the base path for GitHub Pages. Required for correct URL generation.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">cancel-in-progress: false</code></strong> — Don’t cancel a running deployment if a new push arrives. Let it finish.</li>
+</ul>
+
+<h3 id="evolution">Evolution</h3>
+
+<p>The build workflow has been through nine commits since August 2024:</p>
+
+<ol>
+  <li><strong>Aug 2024</strong> — Initial creation, replacing default GitHub Pages build</li>
+  <li><strong>Jan 2025</strong> — Ruby version updates and deploy comments</li>
+  <li><strong>May 2025</strong> — Fix caching issues during build</li>
+  <li><strong>Sep 2025</strong> — Add scheduled daily builds for future posts</li>
+  <li><strong>Sep 2025</strong> — Dependabot bumps for checkout and upload-pages-artifact</li>
+  <li><strong>Apr 2026</strong> — Add sitemap localhost validation</li>
+  <li><strong>Apr 2026</strong> — Update all actions to Node 24 compatible versions</li>
+</ol>
+
+<h2 id="workflow-2-codeql-security-scanning">Workflow 2: CodeQL Security Scanning</h2>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">name</span><span class="pi">:</span> <span class="s2">"</span><span class="s">CodeQL</span><span class="nv"> </span><span class="s">Advanced"</span>
+
+<span class="na">on</span><span class="pi">:</span>
+  <span class="na">push</span><span class="pi">:</span>
+    <span class="na">branches</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">main"</span><span class="pi">]</span>
+  <span class="na">pull_request</span><span class="pi">:</span>
+    <span class="na">branches</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">main"</span><span class="pi">]</span>
+  <span class="na">schedule</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">cron</span><span class="pi">:</span> <span class="s1">'</span><span class="s">43</span><span class="nv"> </span><span class="s">2</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">5'</span>  <span class="c1"># Weekly Friday at 02:43 UTC</span>
+</code></pre></div></div>
+
+<h3 id="what-does-codeql-scan-on-a-jekyll-blog">What Does CodeQL Scan on a Jekyll Blog?</h3>
+
+<p>Not much, honestly. The initial setup in September 2025 included Ruby and JavaScript language analysis, but those were removed the same day — CodeQL’s Ruby analysis isn’t useful for Jekyll plugins (they’re too simple), and the JavaScript is mostly CDN-loaded.</p>
+
+<p>What remains is <strong>GitHub Actions workflow analysis</strong> (<code class="language-plaintext highlighter-rouge">language: actions</code>), which scans the workflow YAML files themselves for security issues like:</p>
+
+<ul>
+  <li>Untrusted input in <code class="language-plaintext highlighter-rouge">run</code> steps</li>
+  <li>Missing permission restrictions</li>
+  <li>Vulnerable action versions</li>
+  <li>Script injection via <code class="language-plaintext highlighter-rouge">${{ }}</code> expressions</li>
+</ul>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">strategy</span><span class="pi">:</span>
+  <span class="na">fail-fast</span><span class="pi">:</span> <span class="kc">false</span>
+  <span class="na">matrix</span><span class="pi">:</span>
+    <span class="na">include</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">language</span><span class="pi">:</span> <span class="s">actions</span>
+      <span class="na">build-mode</span><span class="pi">:</span> <span class="s">none</span>
+</code></pre></div></div>
+
+<h3 id="is-it-worth-it">Is It Worth It?</h3>
+
+<p>For a static blog? Marginally. The Actions language scanner has caught zero issues so far. But it’s free, runs weekly, and takes under a minute. The real value is that it’s already configured — if I add more complex JavaScript or Ruby in the future, I can re-enable those language scanners with one line change.</p>
+
+<h2 id="workflow-3-seo-health-check">Workflow 3: SEO Health Check</h2>
+
+<p>This is the most complex workflow and has its own <a href="/jekyll-seo-health-checks/">dedicated article</a>. Here’s the summary of what it validates on every content push and weekly:</p>
+
+<h3 id="triggers">Triggers</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">on</span><span class="pi">:</span>
+  <span class="na">schedule</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">cron</span><span class="pi">:</span> <span class="s1">'</span><span class="s">0</span><span class="nv"> </span><span class="s">6</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">1'</span>  <span class="c1"># Weekly Monday at 6 AM UTC</span>
+  <span class="na">workflow_dispatch</span><span class="pi">:</span>
+  <span class="na">push</span><span class="pi">:</span>
+    <span class="na">branches</span><span class="pi">:</span> <span class="pi">[</span><span class="nv">main</span><span class="pi">]</span>
+    <span class="na">paths</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="s1">'</span><span class="s">_config.yml'</span>
+      <span class="pi">-</span> <span class="s1">'</span><span class="s">_layouts/**'</span>
+      <span class="pi">-</span> <span class="s1">'</span><span class="s">_includes/**'</span>
+      <span class="pi">-</span> <span class="s1">'</span><span class="s">_plugins/**'</span>
+      <span class="pi">-</span> <span class="s1">'</span><span class="s">_posts/**'</span>
+      <span class="pi">-</span> <span class="s1">'</span><span class="s">_sass/**'</span>
+      <span class="pi">-</span> <span class="s1">'</span><span class="s">assets/**'</span>
+      <span class="pi">-</span> <span class="s1">'</span><span class="s">robots.txt'</span>
+      <span class="pi">-</span> <span class="s1">'</span><span class="s">.github/workflows/seo-health-check.yml'</span>
+      <span class="pi">-</span> <span class="s1">'</span><span class="s">.lighthouserc.json'</span>
+</code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">paths</code> filter is important — this workflow only runs on pushes that change content or configuration, not on README edits or draft changes. This saves CI minutes.</p>
+
+<h3 id="what-it-checks">What It Checks</h3>
+
+<p>The workflow builds the site, serves it locally, then runs a gauntlet of checks:</p>
+
+<ol>
+  <li><strong>Lighthouse CI</strong> — Performance (≥0.8), accessibility (≥0.9), best practices (≥0.8), SEO (≥0.9 — hard fail). Runs 3 times per URL and averages. Blocks AdSense and Analytics scripts to get clean scores.</li>
+  <li><strong>Canonical URL consistency</strong> — Every <code class="language-plaintext highlighter-rouge">&lt;link rel="canonical"&gt;</code> tag must use <code class="language-plaintext highlighter-rouge">mcgarrah.org</code></li>
+  <li><strong>Sitemap validation</strong> — Valid XML, correct domain, no <code class="language-plaintext highlighter-rouge">www</code> prefix</li>
+  <li><strong>Sitemap index validation</strong> — References both blog and resume sitemaps</li>
+  <li><strong>Robots.txt</strong> — Exists, references correct sitemap index</li>
+  <li><strong>Meta tags</strong> — Description and Open Graph tags on homepage</li>
+  <li><strong>RSS feed</strong> — Valid XML</li>
+  <li><strong>Link checking</strong> — <a href="https://github.com/lycheeverse/lychee-action">Lychee</a> for broken links across all HTML</li>
+  <li><strong>Structured data</strong> — JSON-LD presence</li>
+  <li><strong>Image optimization</strong> — Missing alt text, oversized images (&gt;500KB)</li>
+  <li><strong>Content quality</strong> — Duplicate titles, duplicate meta descriptions, generic link text (“click here”, “read more”)</li>
+  <li><strong>Mobile optimization</strong> — Viewport meta tag coverage</li>
+  <li><strong>Accessibility indicators</strong> — Invalid anchors, small tap targets</li>
+</ol>
+
+<h3 id="lighthouse-configuration">Lighthouse Configuration</h3>
+
+<p>The <code class="language-plaintext highlighter-rouge">.lighthouserc.json</code> blocks ad and analytics scripts to get clean performance scores:</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"ci"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"collect"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+      </span><span class="nl">"numberOfRuns"</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"settings"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+        </span><span class="nl">"blockedUrlPatterns"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+          </span><span class="s2">"**/pagead/js/adsbygoogle.js*"</span><span class="p">,</span><span class="w">
+          </span><span class="s2">"**/googlesyndication.com/**"</span><span class="p">,</span><span class="w">
+          </span><span class="s2">"**/googletagmanager.com/**"</span><span class="w">
+        </span><span class="p">]</span><span class="w">
+      </span><span class="p">}</span><span class="w">
+    </span><span class="p">},</span><span class="w">
+    </span><span class="nl">"assert"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+      </span><span class="nl">"assertions"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+        </span><span class="nl">"categories:performance"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"warn"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="nl">"minScore"</span><span class="p">:</span><span class="w"> </span><span class="mf">0.8</span><span class="p">}],</span><span class="w">
+        </span><span class="nl">"categories:accessibility"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"warn"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="nl">"minScore"</span><span class="p">:</span><span class="w"> </span><span class="mf">0.9</span><span class="p">}],</span><span class="w">
+        </span><span class="nl">"categories:seo"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"error"</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="nl">"minScore"</span><span class="p">:</span><span class="w"> </span><span class="mf">0.9</span><span class="p">}]</span><span class="w">
+      </span><span class="p">}</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+  </span><span class="p">}</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>SEO is the only hard fail (<code class="language-plaintext highlighter-rouge">error</code>). Performance and accessibility are warnings — I want to know about regressions but don’t want to block deploys over a 0.79 performance score.</p>
+
+<h3 id="the-canonical-url-bug">The Canonical URL Bug</h3>
+
+<p>The SEO health check went through five rapid-fire commits on April 8, 2026 — all fixing the same class of problem. The canonical URL check was matching <code class="language-plaintext highlighter-rouge">mcgarrah.org</code> in blog post <em>content</em> (syntax-highlighted code examples), not just in <code class="language-plaintext highlighter-rouge">&lt;link&gt;</code> tags. The fix narrowed the grep to match only actual <code class="language-plaintext highlighter-rouge">&lt;link rel="canonical"&gt;</code> tags:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>find _site <span class="nt">-name</span> <span class="s2">"*.html"</span> <span class="nt">-exec</span> <span class="nb">grep</span> <span class="nt">-h</span> <span class="s1">'&lt;link[^&gt;]*rel="canonical"'</span> <span class="o">{}</span> <span class="se">\;</span>
+</code></pre></div></div>
+
+<p>Lesson: when your blog posts contain code examples about your own blog’s configuration, your CI checks will match the examples. Always be specific in your grep patterns.</p>
+
+<h2 id="dependabot">Dependabot</h2>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">version</span><span class="pi">:</span> <span class="m">2</span>
+<span class="na">updates</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">package-ecosystem</span><span class="pi">:</span> <span class="s2">"</span><span class="s">github-actions"</span>
+    <span class="na">directory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">."</span>
+    <span class="na">schedule</span><span class="pi">:</span>
+      <span class="na">interval</span><span class="pi">:</span> <span class="s2">"</span><span class="s">daily"</span>
+  <span class="pi">-</span> <span class="na">package-ecosystem</span><span class="pi">:</span> <span class="s2">"</span><span class="s">bundler"</span>
+    <span class="na">directory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">./"</span>
+    <span class="na">schedule</span><span class="pi">:</span>
+      <span class="na">interval</span><span class="pi">:</span> <span class="s2">"</span><span class="s">daily"</span>
+  <span class="pi">-</span> <span class="na">package-ecosystem</span><span class="pi">:</span> <span class="s2">"</span><span class="s">npm"</span>
+    <span class="na">directory</span><span class="pi">:</span> <span class="s2">"</span><span class="s">./"</span>
+    <span class="na">schedule</span><span class="pi">:</span>
+      <span class="na">interval</span><span class="pi">:</span> <span class="s2">"</span><span class="s">weekly"</span>
+</code></pre></div></div>
+
+<p>Three ecosystems, three schedules:</p>
+
+<ul>
+  <li><strong>GitHub Actions</strong> (daily) — Catches action version bumps quickly. These are the most security-sensitive since they run with repo permissions.</li>
+  <li><strong>Bundler</strong> (daily) — Jekyll and Ruby gem updates. The <code class="language-plaintext highlighter-rouge">Gemfile.lock</code> pins exact versions.</li>
+  <li><strong>npm</strong> (weekly) — Tracks CDN library versions in <code class="language-plaintext highlighter-rouge">package.json</code> for security scanning, even though the actual libraries load from CDN at runtime. See <a href="/implementing-gdpr-compliance-jekyll-adsense/">the security dependency management</a> post for why.</li>
+</ul>
+
+<p>Dependabot creates PRs automatically. Each PR triggers the build and CodeQL workflows, so I get a test build before merging.</p>
+
+<h2 id="how-the-pieces-interact">How the Pieces Interact</h2>
+
+<p>The workflows aren’t isolated — they form a feedback loop:</p>
+
+<ol>
+  <li><strong>Dependabot</strong> creates a PR to bump <code class="language-plaintext highlighter-rouge">actions/checkout</code> from v5 to v6</li>
+  <li>The PR triggers <strong>CodeQL</strong> (scans the updated workflow YAML) and <strong>Build</strong> (tests the build with the new action version)</li>
+  <li>I merge the PR → push to main</li>
+  <li>Push triggers all three workflows: <strong>Build</strong> deploys, <strong>CodeQL</strong> scans, <strong>SEO Health Check</strong> validates</li>
+  <li>If the SEO check finds a regression (broken link, missing meta tag), I fix it and push again</li>
+</ol>
+
+<p>The <strong>daily cron</strong> on the build workflow handles future-dated posts without any manual intervention. The <strong>weekly crons</strong> on CodeQL and SEO catch drift — a dependency that introduced a vulnerability, or an external link that went dead.</p>
+
+<h2 id="cost">Cost</h2>
+
+<p>All of this runs on GitHub’s free tier for public repositories. The monthly usage is minimal:</p>
+
+<ul>
+  <li>Build &amp; Deploy: ~30 runs/month (daily cron + pushes), ~2 min each</li>
+  <li>CodeQL: ~8 runs/month (weekly + pushes), ~1 min each</li>
+  <li>SEO Health Check: ~12 runs/month (weekly + content pushes), ~4 min each</li>
+  <li>Total: ~100 minutes/month, well within the 2,000 free minutes</li>
+</ul>
+
+<h2 id="what-id-add-next">What I’d Add Next</h2>
+
+<ul>
+  <li><strong>HTML-Proofer</strong> — More thorough internal link validation than my custom script</li>
+  <li><strong>Pa11y</strong> — Automated accessibility testing beyond Lighthouse</li>
+  <li><strong>Build time tracking</strong> — Alert if build time exceeds a threshold (currently ~90 seconds)</li>
+  <li><strong>Deployment notifications</strong> — Slack or email on successful deploy of future-dated posts</li>
+</ul>
+
+<h2 id="related-posts">Related Posts</h2>
+
+<ul>
+  <li><a href="/jekyll-seo-health-checks/">Advanced Jekyll SEO Health Checks</a> — Deep dive into the SEO workflow</li>
+  <li><a href="/setting-up-jekyll-blog-github-pages/">Building This Blog: Jekyll on GitHub Pages</a> — Setup guide with CI/CD overview</li>
+  <li><a href="/github-actions-pip-audit-pr/">Using GitHub Actions with pip-audit</a> — Similar CI pattern for Python projects</li>
+  <li><a href="/jekyll-tag-category-generator-plugin/">Building a Custom Tag and Category Generator Plugin</a> — One of the custom plugins that requires this pipeline</li>
+  <li><a href="/jekyll-sitemap-bloat-tags-categories-pagination/">Your Jekyll Sitemap Is 60% Garbage</a> — The sitemap problem that led to the validation step</li>
+  <li><a href="/jekyll-markdown-feature-reference/">How the Sausage Is Made</a> — Full feature inventory</li>
+  <li><a href="/ruby-gem-release-automation/">Ruby Gem Release Automation</a> — CI/CD for the Pandoc exports gem</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/jekyll/">jekyll</a>, 
+        
+          <a href="/tags/github-actions/">github-actions</a>, 
+        
+          <a href="/tags/ci-cd/">ci-cd</a>, 
+        
+          <a href="/tags/codeql/">codeql</a>, 
+        
+          <a href="/tags/seo/">seo</a>, 
+        
+          <a href="/tags/lighthouse/">lighthouse</a>, 
+        
+          <a href="/tags/dependabot/">dependabot</a>, 
+        
+          <a href="/tags/automation/">automation</a>, 
+        
+          <a href="/tags/github-pages/">github-pages</a>, 
+        
+          <a href="/tags/security/">security</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/web-development/">web-development</a>, 
+        
+          <a href="/categories/technical/">technical</a>, 
+        
+          <a href="/categories/jekyll/">jekyll</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Managing Ceph Nearfull Warnings in Proxmox Homelab | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Managing Ceph Nearfull Warnings in Proxmox Homelab" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="When running Ceph in a homelab environment, especially on resource-constrained hardware like my Dell Wyse 3040 cluster, managing storage capacity becomes critical. Understanding Ceph’s Nearfull warnings and how to respond to them can prevent your cluster from going read-only unexpectedly." />
+<meta property="og:description" content="When running Ceph in a homelab environment, especially on resource-constrained hardware like my Dell Wyse 3040 cluster, managing storage capacity becomes critical. Understanding Ceph’s Nearfull warnings and how to respond to them can prevent your cluster from going read-only unexpectedly." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/proxmox-ceph-nearfull/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/proxmox-ceph-nearfull/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2025-09-28T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Managing Ceph Nearfull Warnings in Proxmox Homelab" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-04-14T00:00:00+00:00","datePublished":"2025-09-28T00:00:00+00:00","description":"When running Ceph in a homelab environment, especially on resource-constrained hardware like my Dell Wyse 3040 cluster, managing storage capacity becomes critical. Understanding Ceph’s Nearfull warnings and how to respond to them can prevent your cluster from going read-only unexpectedly.","headline":"Managing Ceph Nearfull Warnings in Proxmox Homelab","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/proxmox-ceph-nearfull/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/proxmox-ceph-nearfull/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/proxmox-ceph-nearfull/">Managing Ceph Nearfull Warnings in Proxmox Homelab</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2025-09-28T00:00:00+00:00">September 28, 2025</time><span class="reading-time">6 min read</span></header>
+
+  <p>When running Ceph in a homelab environment, especially on resource-constrained hardware like my <a href="/proxmox-8-dell-wyse-3040/">Dell Wyse 3040 cluster</a>, managing storage capacity becomes critical. Understanding Ceph’s <strong>Nearfull</strong> warnings and how to respond to them can prevent your cluster from going read-only unexpectedly.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="understanding-ceph-storage-warnings">Understanding Ceph Storage Warnings</h2>
+
+<p>Ceph has three critical storage thresholds that trigger different behaviors:</p>
+
+<h3 id="storage-capacity-thresholds">Storage Capacity Thresholds</h3>
+
+<p>Check your current ratios with:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@harlan:~#</span><span class="w"> </span>ceph osd dump | <span class="nb">grep </span>ratio
+<span class="go">full_ratio 0.95
+backfillfull_ratio 0.9
+nearfull_ratio 0.85
+</span></code></pre></div></div>
+
+<p><strong>Nearfull Ratio (85% by default):</strong></p>
+
+<ul>
+  <li>When OSDs reach 85% capacity, <code class="language-plaintext highlighter-rouge">nearfull_ratio</code> warning is triggered</li>
+  <li>Cluster continues normal operations but issues warnings</li>
+  <li>Time to start planning capacity expansion or data cleanup</li>
+</ul>
+
+<p><strong>Backfillfull Ratio (90% by default):</strong></p>
+
+<ul>
+  <li>When OSDs reach 90% capacity, <code class="language-plaintext highlighter-rouge">backfillfull_ratio</code> warning is triggered</li>
+  <li>Cluster will deny backfilling to the <abbr title="Object Storage Daemon">OSD</abbr> in question</li>
+  <li>Recovery operations become limited</li>
+</ul>
+
+<p><strong>Full Ratio (95% by default):</strong></p>
+
+<ul>
+  <li>When OSDs reach 95% capacity, <code class="language-plaintext highlighter-rouge">full_ratio</code> is triggered</li>
+  <li>All PGs (Placement Groups) on affected OSDs are marked Read Only</li>
+  <li>Cluster becomes read-only to prevent corruption</li>
+</ul>
+
+<h2 id="monitor-node-storage-issues">Monitor Node Storage Issues</h2>
+
+<p>Sometimes the warning isn’t about <abbr title="Object Storage Daemon">OSD</abbr> capacity but about the monitor nodes themselves:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="go">HEALTH_WARN: mons pve2,pve3 are low on available space
+mon.pve2 has 27% avail
+mon.pve3 has 25% avail
+</span></code></pre></div></div>
+
+<p>This warning appears when the root partition for the OS is getting full. For Dell Wyse 3040s with limited eMMC storage, this threshold needs adjustment or the root filesystem needs cleanup as covered in my <a href="/proxmox-misc-scripts/">Proxmox maintenance scripts</a> article.</p>
+
+<h2 id="analyzing-current-cluster-usage">Analyzing Current Cluster Usage</h2>
+
+<p>Use the <code class="language-plaintext highlighter-rouge">ceph osd df tree</code> command to get a detailed view of your cluster’s storage distribution:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@harlan:~#</span><span class="w"> </span>ceph osd <span class="nb">df </span>tree
+<span class="go">ID  CLASS  WEIGHT    REWEIGHT  SIZE     RAW USE  DATA     OMAP     META     AVAIL    %USE   VAR   PGS  STATUS  TYPE NAME
+-1         54.58063         -   41 TiB   26 TiB   26 TiB  152 MiB   80 GiB   15 TiB  62.58  1.00    -          root default
+-3         18.19354         -   14 TiB  8.2 TiB  8.2 TiB   48 MiB   26 GiB  5.4 TiB  60.34  0.96    -              host harlan
+ 0    hdd   4.54839   1.00000  4.5 TiB  2.8 TiB  2.7 TiB   18 MiB  6.9 GiB  1.8 TiB  60.48  0.97   48      up          osd.0
+ 3    hdd   4.54839   1.00000  4.5 TiB  2.5 TiB  2.5 TiB   16 MiB  6.0 GiB  2.0 TiB  55.66  0.89   47      up          osd.3
+ 6    hdd   4.54839   1.00000  4.5 TiB  3.0 TiB  2.9 TiB   13 MiB   13 GiB  1.6 TiB  64.88  1.04   46      up          osd.6
+-7         18.19354         -   14 TiB  9.2 TiB  9.2 TiB   58 MiB   33 GiB  4.4 TiB  67.74  1.08    -              host kovacs
+ 2    hdd   4.54839   1.00000  4.5 TiB  3.6 TiB  3.6 TiB   11 MiB  7.6 GiB  942 GiB  79.78  1.27   57      up          osd.2
+ 5    hdd   4.54839   1.00000  4.5 TiB  2.4 TiB  2.4 TiB   34 MiB   12 GiB  2.1 TiB  53.79  0.86   49      up          osd.5
+ 8    hdd   4.54839   1.00000  4.5 TiB  3.2 TiB  3.2 TiB   13 MiB   13 GiB  1.4 TiB  69.64  1.11   51      up          osd.8
+-5         18.19354         -   14 TiB  8.1 TiB  8.1 TiB   46 MiB   22 GiB  5.5 TiB  59.65  0.95    -              host poe
+ 1    hdd   4.54839   1.00000  4.5 TiB  2.8 TiB  2.8 TiB   11 MiB  6.4 GiB  1.8 TiB  60.95  0.97   43      up          osd.1
+ 4    hdd   4.54839   1.00000  4.5 TiB  2.5 TiB  2.5 TiB   19 MiB  5.9 GiB  2.0 TiB  56.06  0.90   47      up          osd.4
+ 7    hdd   4.54839   1.00000  4.5 TiB  2.8 TiB  2.8 TiB   17 MiB  9.7 GiB  1.7 TiB  61.94  0.99   52      up          osd.7
+                        TOTAL   41 TiB   26 TiB   26 TiB  152 MiB   80 GiB   15 TiB  62.58
+MIN/MAX VAR: 0.86/1.27  STDDEV: 7.64
+</span></code></pre></div></div>
+
+<p>Key observations from this output:</p>
+
+<ul>
+  <li><strong>Total cluster usage</strong>: 62.58% (well below nearfull threshold)</li>
+  <li><strong>Uneven distribution</strong>: <abbr title="Object Storage Daemon">OSD</abbr>.2 at 79.78% is approaching nearfull</li>
+  <li><strong>Variance</strong>: MIN/MAX VAR of 0.86/1.27 shows some imbalance</li>
+</ul>
+
+<h2 id="calculating-safe-capacity-limits">Calculating Safe Capacity Limits</h2>
+
+<p>The <a href="https://docs.ceph.com/en/latest/rados/configuration/mon-config-ref/#storage-capacity">Ceph documentation</a> provides guidance for determining appropriate ratios:</p>
+
+<p><strong>Planning Considerations:</strong></p>
+
+<ol>
+  <li><strong>Number of OSDs in your cluster</strong></li>
+  <li><strong>Total capacity of the cluster</strong></li>
+  <li><strong>Expected simultaneous <abbr title="Object Storage Daemon">OSD</abbr> failures</strong></li>
+</ol>
+
+<p><strong>Calculation Method:</strong></p>
+
+<ul>
+  <li>Divide total capacity by number of OSDs for average <abbr title="Object Storage Daemon">OSD</abbr> capacity</li>
+  <li>Multiply by expected simultaneous failures during normal operations</li>
+  <li>Factor in replication overhead (3x for replica pools)</li>
+  <li>Set ratios with sufficient headroom for rebalancing operations</li>
+</ul>
+
+<h2 id="modifying-capacity-ratios">Modifying Capacity Ratios</h2>
+
+<p><strong>Warning</strong>: The defaults exist for good reasons. Only modify them with careful consideration of your specific environment.</p>
+
+<p>These settings are changed in the OSDMap using:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Modify nearfull ratio (default 0.85)</span>
+ceph osd set-nearfull-ratio 0.80
+
+<span class="c"># Modify backfillfull ratio (default 0.90)</span>
+ceph osd set-backfillfull-ratio 0.85
+
+<span class="c"># Modify full ratio (default 0.95)</span>
+ceph osd set-full-ratio 0.90
+</code></pre></div></div>
+
+<p>For homelab environments with limited expansion options, you might consider slightly more aggressive ratios, but always maintain adequate headroom for:</p>
+
+<ul>
+  <li>Rebalancing operations when OSDs fail</li>
+  <li>Temporary space usage during recovery</li>
+  <li>Metadata overhead growth</li>
+</ul>
+
+<h2 id="responding-to-nearfull-warnings">Responding to Nearfull Warnings</h2>
+
+<p>When you receive nearfull warnings, you have several options:</p>
+
+<h3 id="immediate-actions">Immediate Actions</h3>
+
+<ol>
+  <li><strong>Identify hotspots</strong>: Use <code class="language-plaintext highlighter-rouge">ceph osd df tree</code> to find heavily loaded OSDs</li>
+  <li><strong>Check for uneven distribution</strong>: Look for high variance in <abbr title="Object Storage Daemon">OSD</abbr> usage</li>
+  <li><strong>Review recent data additions</strong>: Determine what caused the capacity increase</li>
+</ol>
+
+<h3 id="short-term-solutions">Short-term Solutions</h3>
+
+<ol>
+  <li><strong>Rebalance the cluster</strong>: If distribution is uneven, rebalancing may help</li>
+  <li><strong>Clean up unnecessary data</strong>: Remove old snapshots, unused VMs, or temporary files</li>
+  <li><strong>Adjust pool settings</strong>: Review <abbr title="Placement Group">PG</abbr> counts and pool configurations</li>
+</ol>
+
+<h3 id="long-term-solutions">Long-term Solutions</h3>
+
+<ol>
+  <li><strong>Add more OSDs</strong>: Expand storage capacity</li>
+  <li><strong>Upgrade existing OSDs</strong>: Replace with larger drives</li>
+  <li><strong>Implement data lifecycle policies</strong>: Automated cleanup of old data</li>
+</ol>
+
+<h2 id="monitoring-and-alerting">Monitoring and Alerting</h2>
+
+<p>Set up proactive monitoring to catch capacity issues early:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check cluster status regularly</span>
+ceph status
+
+<span class="c"># Monitor OSD usage trends</span>
+ceph osd <span class="nb">df</span>
+
+<span class="c"># Set up automated alerts at 75% capacity</span>
+<span class="c"># (before nearfull threshold is reached)</span>
+</code></pre></div></div>
+
+<p>Consider integrating with monitoring solutions like:</p>
+
+<ul>
+  <li>Prometheus + Grafana for Ceph metrics</li>
+  <li>Proxmox’s built-in monitoring</li>
+  <li>Custom scripts that alert on capacity thresholds</li>
+</ul>
+
+<h2 id="homelab-specific-considerations">Homelab-Specific Considerations</h2>
+
+<p>Running Ceph in a homelab presents unique challenges:</p>
+
+<p><strong>Limited Hardware</strong>: Unlike enterprise environments, you can’t easily add more nodes or storage</p>
+
+<p><strong>Budget Constraints</strong>: Capacity expansion requires careful planning and budgeting</p>
+
+<p><strong>Single Administrator</strong>: No 24/7 operations team to respond to alerts</p>
+
+<p><strong>Learning Environment</strong>: Mistakes are learning opportunities, but data loss is still painful</p>
+
+<h2 id="prevention-strategies">Prevention Strategies</h2>
+
+<ol>
+  <li><strong>Monitor trends</strong>: Track capacity growth over time</li>
+  <li><strong>Plan expansion</strong>: Order new drives before reaching 70% capacity</li>
+  <li><strong>Test procedures</strong>: Practice adding OSDs and rebalancing in test environments</li>
+  <li><strong>Document processes</strong>: Keep runbooks for capacity management procedures</li>
+</ol>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>Managing Ceph capacity in a homelab requires proactive monitoring and planning. Understanding the nearfull, backfillfull, and full ratios helps you respond appropriately to warnings before they become critical issues.</p>
+
+<p>The key is maintaining enough headroom for normal operations while maximizing your storage investment. Regular monitoring, trend analysis, and capacity planning will keep your Ceph cluster healthy and available.</p>
+
+<p>For more Ceph management guidance, see my articles on <a href="/proxmox-ceph-performance/">Ceph performance tuning</a> and <a href="/proxmox-misc-scripts/">Proxmox maintenance scripts</a>.</p>
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://docs.ceph.com/en/latest/rados/configuration/mon-config-ref/#storage-capacity">Ceph Storage Capacity Documentation</a></li>
+  <li><a href="https://www.suse.com/support/kb/doc/?id=000019724">SUSE Support: Cluster Pools got marked read only, OSDs are near full</a></li>
+</ul>
+
+<h2 id="related-posts">Related Posts</h2>
+
+<ul>
+  <li><a href="/proxmox-ceph-homelab-settings/">Proxmox Ceph Settings for the Homelab</a> — Tuning Ceph for homelab hardware</li>
+  <li><a href="/proxmox-ceph-performance/">Optimizing Ceph Performance in Proxmox</a> — mClock and IOPS optimization</li>
+  <li><a href="/homelab-storage-economics/">Homelab Storage Economics: Ceph vs Single Drive</a> — Cost analysis of distributed storage</li>
+  <li><a href="/ceph-ssd-wal-db-usb-storage/">Hybrid Ceph Storage: SSD WAL/DB Acceleration</a> — SSD acceleration architecture</li>
+  <li><a href="/ceph-osd-recovery-power-failure/">Ceph <abbr title="Object Storage Daemon">OSD</abbr> Recovery After Power Failure</a> — Recovering from cascading <abbr title="Object Storage Daemon">OSD</abbr> failures</li>
+  <li><a href="/proxmox-ceph-guide/">Proxmox &amp; Ceph Homelab Guide</a> — All Proxmox and Ceph articles</li>
+</ul>
+
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/proxmox/">proxmox</a>, 
+        
+          <a href="/tags/ceph/">ceph</a>, 
+        
+          <a href="/tags/storage/">storage</a>, 
+        
+          <a href="/tags/monitoring/">monitoring</a>, 
+        
+          <a href="/tags/capacity/">capacity</a>, 
+        
+          <a href="/tags/homelab/">homelab</a>, 
+        
+          <a href="/tags/dell-wyse-3040/">dell-wyse-3040</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/technical/">technical</a>, 
+        
+          <a href="/categories/homelab/">homelab</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

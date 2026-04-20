@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Optimizing Jellyfin on Proxmox: Moving Metadata to CephFS and Shrinking LXC Footprints | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Optimizing Jellyfin on Proxmox: Moving Metadata to CephFS and Shrinking LXC Footprints" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="A comprehensive guide to resolving Jellyfin LXC disk space issues by migrating metadata to CephFS and optimizing container size for faster HA failovers." />
+<meta property="og:description" content="A comprehensive guide to resolving Jellyfin LXC disk space issues by migrating metadata to CephFS and optimizing container size for faster HA failovers." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/jellyfin-lxc-proxmox-disk-full/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/jellyfin-lxc-proxmox-disk-full/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-02-04T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Optimizing Jellyfin on Proxmox: Moving Metadata to CephFS and Shrinking LXC Footprints" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-02-04T00:00:00+00:00","datePublished":"2026-02-04T00:00:00+00:00","description":"A comprehensive guide to resolving Jellyfin LXC disk space issues by migrating metadata to CephFS and optimizing container size for faster HA failovers.","headline":"Optimizing Jellyfin on Proxmox: Moving Metadata to CephFS and Shrinking LXC Footprints","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/jellyfin-lxc-proxmox-disk-full/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/jellyfin-lxc-proxmox-disk-full/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/jellyfin-lxc-proxmox-disk-full/">Optimizing Jellyfin on Proxmox: Moving Metadata to CephFS and Shrinking LXC Footprints</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-02-04T00:00:00+00:00">February 04, 2026</time><span class="reading-time">11 min read</span></header>
+
+  <p>When your Jellyfin LXC container hits 95% disk usage, it’s more than just a storage problem—it’s an architectural opportunity. This guide documents the journey from a disk space crisis to a scalable, high-availability media server configuration using Proxmox 8.4.16 and CephFS.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="the-problem-when-22gb-isnt-enough">The Problem: When 22GB Isn’t Enough</h2>
+
+<p>My Jellyfin LXC container on Proxmox filled its 22GB root filesystem to 95% capacity. I have expanded this rootfs twice so far and cleared out the <code class="language-plaintext highlighter-rouge">/var/logs</code> a few times along with limiting log sizes. The major culprits for Jellyfin were predictable but substantial:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">/var/lib/jellyfin/metadata</code>: 7.2GB (movie posters, actor photos, chapter images)</li>
+  <li><code class="language-plaintext highlighter-rouge">/var/cache/jellyfin/images</code>: 3.6GB (cached thumbnails and artwork)</li>
+  <li><code class="language-plaintext highlighter-rouge">/var/lib/jellyfin/data</code>: 1.9GB (database and library information)</li>
+</ul>
+
+<p>Total: ~12GB of media metadata consuming over half the container’s storage. For those trying to calculate my media library size, it is about 10Tib pulled from VHS, DVDs, and BluRays.</p>
+
+<p>This is also an issue as I want the LXC to be HA across nodes in the Proxmox Cluster. The large size of the <code class="language-plaintext highlighter-rouge">rootfs</code> mean transitions take longer between nodes during a migration. So this also factors into this issue.</p>
+
+<h2 id="the-solution-architectural-separation">The Solution: Architectural Separation</h2>
+
+<p>The fix involves separating concerns:</p>
+
+<ul>
+  <li><strong>RootFS (RBD)</strong>: OS, binaries, and configs (~4-8GB)</li>
+  <li><strong>Bulk Data (CephFS)</strong>: Metadata, cache, and growing data</li>
+</ul>
+
+<p>This approach provides:</p>
+
+<ul>
+  <li>Unlimited metadata growth without resizing containers</li>
+  <li>Faster HA failovers with smaller root disks</li>
+  <li>Better resource utilization across the Ceph cluster</li>
+</ul>
+
+<h2 id="phase-1-immediate-triage">Phase 1: Immediate Triage</h2>
+
+<p>Before architectural changes, free up immediate space:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Clear package cache</span>
+apt-get clean
+apt-get autoremove
+
+<span class="c"># Analyze disk usage</span>
+<span class="nb">du</span> <span class="nt">-sh</span> /var/lib/jellyfin/<span class="k">*</span> | <span class="nb">sort</span> <span class="nt">-h</span>
+
+<span class="c"># Find largest files</span>
+find / <span class="nt">-type</span> f <span class="nt">-printf</span> <span class="s1">'%s %p\n'</span> | <span class="nb">sort</span> <span class="nt">-nr</span> | <span class="nb">head</span> <span class="nt">-10</span>
+
+<span class="c"># Clear transcode temp files (safe to delete)</span>
+<span class="nb">rm</span> <span class="nt">-rf</span> /var/lib/jellyfin/transcoding-temp/<span class="k">*</span>
+</code></pre></div></div>
+
+<h3 id="taming-systemd-journal-logs">Taming systemd Journal Logs</h3>
+
+<p>Systemd journals can grow to 600MB+ over time. Set permanent limits:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Clean current logs</span>
+journalctl <span class="nt">--vacuum-size</span><span class="o">=</span>100M
+
+<span class="c"># Set permanent limits</span>
+<span class="nb">echo</span> <span class="s2">"SystemMaxUse=200M"</span> <span class="o">&gt;&gt;</span> /etc/systemd/journald.conf
+<span class="nb">echo</span> <span class="s2">"SystemMaxFileSize=50M"</span> <span class="o">&gt;&gt;</span> /etc/systemd/journald.conf
+
+<span class="c"># Restart journald</span>
+systemctl restart systemd-journald
+</code></pre></div></div>
+
+<p>I need to add observability to my cluster to retain useful logs in a central location. But that is something for later.</p>
+
+<h3 id="interactive-disk-analysis">Interactive Disk Analysis</h3>
+
+<p>For interactive exploration, install <code class="language-plaintext highlighter-rouge">ncdu</code>:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>apt-get update <span class="o">&amp;&amp;</span> apt-get <span class="nb">install </span>ncdu <span class="nt">-y</span>
+ncdu /var/lib/jellyfin /var/cache/jellyfin
+</code></pre></div></div>
+
+<h2 id="understanding-unprivileged-lxc-permissions">Understanding Unprivileged LXC Permissions</h2>
+
+<p>Before diving into the migration, understanding how unprivileged containers handle permissions is critical. This is the foundation that makes the entire solution work.</p>
+
+<h3 id="the-uidgid-mapping-challenge">The UID/GID Mapping Challenge</h3>
+
+<p>Unprivileged LXCs use subuid and subgid mappings to isolate container processes from the host. Without custom mappings, Proxmox adds 100000 to every container UID:</p>
+
+<ul>
+  <li>Container UID 0 → Host UID 100000</li>
+  <li>Container UID 501 → Host UID 100501</li>
+</ul>
+
+<p>This creates a “permissions gap” when using shared storage like CephFS.</p>
+
+<h3 id="creating-dedicated-cephfs-service-accounts">Creating Dedicated CephFS Service Accounts</h3>
+
+<p>On the Proxmox host, I created dedicated service accounts for CephFS access:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create group for media access</span>
+groupadd <span class="nt">-g</span> 501 cephfs-media
+
+<span class="c"># Create read-write user</span>
+useradd <span class="nt">-u</span> 501 <span class="nt">-g</span> 501 <span class="nt">-s</span> /usr/sbin/nologin cephfs-rw
+
+<span class="c"># Create read-only user (shares same group)</span>
+useradd <span class="nt">-u</span> 502 <span class="nt">-g</span> 501 <span class="nt">-s</span> /usr/sbin/nologin cephfs-ro
+</code></pre></div></div>
+
+<p>This gives us:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">cephfs-rw</code> (UID 501, GID 501): Write access for services like Jellyfin</li>
+  <li><code class="language-plaintext highlighter-rouge">cephfs-ro</code> (UID 502, GID 501): Read-only access for media consumption</li>
+  <li><code class="language-plaintext highlighter-rouge">cephfs-media</code> (GID 501): Shared group for all media services</li>
+</ul>
+
+<h3 id="configuring-subuid-and-subgid">Configuring subuid and subgid</h3>
+
+<p>To allow containers to use these host UIDs, update <code class="language-plaintext highlighter-rouge">/etc/subuid</code> and <code class="language-plaintext highlighter-rouge">/etc/subgid</code>:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># /etc/subuid</span>
+root:100000:65536    <span class="c"># Standard range for container UIDs</span>
+root:501:2           <span class="c"># Direct passthrough for cephfs-rw and cephfs-ro</span>
+
+<span class="c"># /etc/subgid  </span>
+root:100000:65536    <span class="c"># Standard range for container GIDs</span>
+root:501:1           <span class="c"># Direct passthrough for cephfs-media group</span>
+</code></pre></div></div>
+
+<p>These entries give Proxmox permission to “pass through” specific host UIDs to containers.</p>
+
+<h3 id="the-lxc-id-mapping">The LXC ID Mapping</h3>
+
+<p>The LXC configuration uses these ranges to create a bridge between container and host:</p>
+
+<div class="language-conf highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">lxc</span>.<span class="n">idmap</span>: <span class="n">u</span> <span class="m">0</span> <span class="m">100000</span> <span class="m">5001</span>      <span class="c"># Map UIDs 0-5000 to host 100000-105000
+</span><span class="n">lxc</span>.<span class="n">idmap</span>: <span class="n">g</span> <span class="m">0</span> <span class="m">100000</span> <span class="m">5001</span>      <span class="c"># Map GIDs 0-5000 to host 100000-105000
+</span><span class="n">lxc</span>.<span class="n">idmap</span>: <span class="n">u</span> <span class="m">5001</span> <span class="m">501</span> <span class="m">1</span>         <span class="c"># Map container UID 5001 to host UID 501
+</span><span class="n">lxc</span>.<span class="n">idmap</span>: <span class="n">g</span> <span class="m">5001</span> <span class="m">501</span> <span class="m">1</span>         <span class="c"># Map container GID 5001 to host GID 501
+</span><span class="n">lxc</span>.<span class="n">idmap</span>: <span class="n">u</span> <span class="m">5002</span> <span class="m">105002</span> <span class="m">60534</span>  <span class="c"># Map remaining UIDs
+</span><span class="n">lxc</span>.<span class="n">idmap</span>: <span class="n">g</span> <span class="m">5002</span> <span class="m">105002</span> <span class="m">60534</span>  <span class="c"># Map remaining GIDs
+</span></code></pre></div></div>
+
+<p>This creates a “trusted path” where:</p>
+
+<ol>
+  <li>Files owned by host UID 501 (<code class="language-plaintext highlighter-rouge">cephfs-rw</code>) are accessible inside the container</li>
+  <li>The container can write to CephFS with proper permissions</li>
+  <li>Security isolation is maintained for other UIDs</li>
+</ol>
+
+<h3 id="security-consideration">Security Consideration</h3>
+
+<p>Multiple containers using the same <code class="language-plaintext highlighter-rouge">root:501:2</code> mapping will share access to CephFS files. This is beneficial for a media stack (Jellyfin, Sonarr, Radarr) but important to understand for security isolation.</p>
+
+<h2 id="phase-2-preparing-cephfs-storage">Phase 2: Preparing CephFS Storage</h2>
+
+<p>With the permission foundation in place, create the directory structure on the Proxmox host:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create CephFS directories</span>
+<span class="nb">mkdir</span> <span class="nt">-p</span> /mnt/pve/cephfs/jellyfin/metadata
+<span class="nb">mkdir</span> <span class="nt">-p</span> /mnt/pve/cephfs/jellyfin/cache
+<span class="nb">mkdir</span> <span class="nt">-p</span> /mnt/pve/cephfs/jellyfin/lib_data
+
+<span class="c"># Set ownership to cephfs-rw user (UID 501)</span>
+<span class="nb">chown</span> <span class="nt">-R</span> 501:501 /mnt/pve/cephfs/jellyfin
+<span class="nb">chmod</span> <span class="nt">-R</span> 775 /mnt/pve/cephfs/jellyfin
+</code></pre></div></div>
+
+<p>Note: We use UID 501 directly (not 100501) because the LXC idmap configuration handles the translation.</p>
+
+<h2 id="phase-3-the-migration-process">Phase 3: The Migration Process</h2>
+
+<h3 id="step-1-disable-jellyfin-service">Step 1: Disable Jellyfin Service</h3>
+
+<p>Critical step to prevent startup failures during migration:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>systemctl stop jellyfin
+systemctl disable jellyfin
+</code></pre></div></div>
+
+<p>Why disable instead of just stop? If the container reboots unexpectedly during migration, Jellyfin won’t start with empty directories and create a blank database. Ask me how I know this?!?</p>
+
+<h3 id="step-2-stage-the-data">Step 2: Stage the Data</h3>
+
+<p>Move data to temporary location before mount points hide it:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">mkdir</span> <span class="nt">-p</span> /migration_temp
+<span class="nb">mv</span> /var/lib/jellyfin/metadata /migration_temp/
+<span class="nb">mv</span> /var/lib/jellyfin/data /migration_temp/
+<span class="nb">mv</span> /var/cache/jellyfin /migration_temp/cache
+
+<span class="c"># Shutdown container</span>
+poweroff
+</code></pre></div></div>
+
+<h3 id="step-3-configure-mount-points">Step 3: Configure Mount Points</h3>
+
+<p>Edit <code class="language-plaintext highlighter-rouge">/etc/pve/lxc/501.conf</code> on the Proxmox host:</p>
+
+<div class="language-conf highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">mp0</span>: /<span class="n">mnt</span>/<span class="n">pve</span>/<span class="n">cephfs</span>/<span class="n">jellyfin</span>/<span class="n">metadata</span>,<span class="n">mp</span>=/<span class="n">var</span>/<span class="n">lib</span>/<span class="n">jellyfin</span>/<span class="n">metadata</span>,<span class="n">shared</span>=<span class="m">1</span>
+<span class="n">mp1</span>: /<span class="n">mnt</span>/<span class="n">pve</span>/<span class="n">cephfs</span>/<span class="n">jellyfin</span>/<span class="n">cache</span>,<span class="n">mp</span>=/<span class="n">var</span>/<span class="n">cache</span>/<span class="n">jellyfin</span>,<span class="n">shared</span>=<span class="m">1</span>
+<span class="n">mp2</span>: /<span class="n">mnt</span>/<span class="n">pve</span>/<span class="n">cephfs</span>/<span class="n">jellyfin</span>/<span class="n">lib_data</span>,<span class="n">mp</span>=/<span class="n">var</span>/<span class="n">lib</span>/<span class="n">jellyfin</span>/<span class="n">data</span>,<span class="n">shared</span>=<span class="m">1</span>
+</code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">shared=1</code> flag is essential for CephFS mounts in HA clusters—it tells Proxmox this storage can be accessed by multiple nodes during migration. Adding this required the command line as I could not find this in the Proxmox GUI.</p>
+
+<h3 id="step-4-verify-mounts">Step 4: Verify Mounts</h3>
+
+<p>Start the LXC and verify before moving data:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check mounts are active</span>
+mount | <span class="nb">grep </span>jellyfin
+
+<span class="c"># Test write permissions</span>
+<span class="nb">touch</span> /var/lib/jellyfin/metadata/perm_test <span class="o">&amp;&amp;</span> <span class="nb">rm</span> /var/lib/jellyfin/metadata/perm_test
+</code></pre></div></div>
+
+<p>If the touch command fails with “Permission Denied,” verify the host-side ownership is set to UID 501.</p>
+
+<h3 id="step-5-migrate-data">Step 5: Migrate Data</h3>
+
+<p>Use rsync to preserve permissions and provide progress:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Sync data to CephFS mounts</span>
+rsync <span class="nt">-avP</span> /migration_temp/metadata/ /var/lib/jellyfin/metadata/
+rsync <span class="nt">-avP</span> /migration_temp/data/ /var/lib/jellyfin/data/
+rsync <span class="nt">-avP</span> /migration_temp/cache/ /var/cache/jellyfin/
+
+<span class="c"># Fix ownership inside container</span>
+<span class="nb">chown</span> <span class="nt">-R</span> jellyfin:jellyfin /var/lib/jellyfin/metadata
+<span class="nb">chown</span> <span class="nt">-R</span> jellyfin:jellyfin /var/lib/jellyfin/data
+<span class="nb">chown</span> <span class="nt">-R</span> jellyfin:jellyfin /var/cache/jellyfin
+</code></pre></div></div>
+
+<h3 id="understanding-rsync-progress">Understanding rsync Progress</h3>
+
+<p>The rsync output shows cryptic status indicators:</p>
+
+<ul>
+  <li><strong>xfr#</strong>: Transfer count—how many files have been physically copied</li>
+  <li><strong>ir-chk=N/M</strong>: Incremental check—N files remaining to check out of M total discovered</li>
+</ul>
+
+<p>For metadata migrations with thousands of small files, expect the ir-chk number to count down slowly. The bottleneck is file creation latency on CephFS, not network bandwidth.</p>
+
+<h3 id="step-6-re-enable-service">Step 6: Re-enable Service</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>systemctl <span class="nb">enable </span>jellyfin
+systemctl start jellyfin
+
+<span class="c"># Verify service status</span>
+systemctl status jellyfin
+journalctl <span class="nt">-u</span> jellyfin <span class="nt">-f</span>
+</code></pre></div></div>
+
+<h3 id="step-7-cleanup">Step 7: Cleanup</h3>
+
+<p>Once Jellyfin is running correctly and you’ve verified all media libraries are accessible:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">rm</span> <span class="nt">-rf</span> /migration_temp
+</code></pre></div></div>
+
+<p>Verify the migration freed up space:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">df</span> <span class="nt">-h</span> /
+</code></pre></div></div>
+
+<h2 id="phase-4-shrinking-the-root-disk">Phase 4: Shrinking the Root Disk</h2>
+
+<p>With ~12GB moved to CephFS, the root disk now uses less than 4GB. Shrinking to 8GB improves HA migration speed. Smaller here is faster migration times.</p>
+
+<h3 id="the-backuprestore-method">The Backup/Restore Method</h3>
+
+<p>Proxmox doesn’t support live shrinking, but backup/restore is safe:</p>
+
+<ol>
+  <li>In Proxmox GUI: Select Jellyfin LXC → Backup → Backup Now</li>
+  <li>Once complete: Select backup → Restore</li>
+  <li>In Restore Options:
+    <ul>
+      <li>Set Root Disk size to 8G</li>
+      <li>Choose new ID to test first, or overwrite existing</li>
+    </ul>
+  </li>
+  <li>Start restored LXC and verify functionality</li>
+</ol>
+
+<h3 id="why-8gb">Why 8GB?</h3>
+
+<p>With system files and binaries using 2-3GB, 8GB provides:</p>
+
+<ul>
+  <li>Comfortable overhead for OS updates</li>
+  <li>Faster HA failover (smaller disk to migrate)</li>
+  <li>Reduced storage consumption on Ceph RBD pool</li>
+</ul>
+
+<h2 id="final-lxc-configuration">Final LXC Configuration</h2>
+
+<p>The optimized configuration:</p>
+
+<div class="language-conf highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">arch</span>: <span class="n">amd64</span>
+<span class="n">cores</span>: <span class="m">2</span>
+<span class="n">dev0</span>: /<span class="n">dev</span>/<span class="n">dri</span>/<span class="n">card0</span>,<span class="n">gid</span>=<span class="m">44</span>
+<span class="n">dev1</span>: /<span class="n">dev</span>/<span class="n">dri</span>/<span class="n">renderD128</span>,<span class="n">gid</span>=<span class="m">104</span>
+<span class="n">features</span>: <span class="n">keyctl</span>=<span class="m">1</span>,<span class="n">nesting</span>=<span class="m">1</span>
+<span class="n">hostname</span>: <span class="n">jellyfin</span>
+<span class="n">memory</span>: <span class="m">2048</span>
+<span class="n">mp0</span>: /<span class="n">mnt</span>/<span class="n">pve</span>/<span class="n">cephfs</span>/<span class="n">jellyfin</span>/<span class="n">metadata</span>,<span class="n">mp</span>=/<span class="n">var</span>/<span class="n">lib</span>/<span class="n">jellyfin</span>/<span class="n">metadata</span>,<span class="n">shared</span>=<span class="m">1</span>
+<span class="n">mp1</span>: /<span class="n">mnt</span>/<span class="n">pve</span>/<span class="n">cephfs</span>/<span class="n">jellyfin</span>/<span class="n">cache</span>,<span class="n">mp</span>=/<span class="n">var</span>/<span class="n">cache</span>/<span class="n">jellyfin</span>,<span class="n">shared</span>=<span class="m">1</span>
+<span class="n">mp2</span>: /<span class="n">mnt</span>/<span class="n">pve</span>/<span class="n">cephfs</span>/<span class="n">jellyfin</span>/<span class="n">lib_data</span>,<span class="n">mp</span>=/<span class="n">var</span>/<span class="n">lib</span>/<span class="n">jellyfin</span>/<span class="n">data</span>,<span class="n">shared</span>=<span class="m">1</span>
+<span class="n">mp3</span>: /<span class="n">mnt</span>/<span class="n">pve</span>/<span class="n">cephfs</span>/<span class="n">movies</span>,<span class="n">mp</span>=/<span class="n">mnt</span>/<span class="n">media</span>/<span class="n">movies</span>,<span class="n">ro</span>=<span class="m">1</span>,<span class="n">shared</span>=<span class="m">1</span>
+<span class="n">net0</span>: <span class="n">name</span>=<span class="n">eth0</span>,<span class="n">bridge</span>=<span class="n">vmbr0</span>,<span class="n">hwaddr</span>=<span class="n">BC</span>:<span class="m">24</span>:<span class="m">11</span>:<span class="m">23</span>:<span class="n">DB</span>:<span class="m">1</span><span class="n">E</span>,<span class="n">ip</span>=<span class="n">dhcp</span>,<span class="n">type</span>=<span class="n">veth</span>
+<span class="n">onboot</span>: <span class="m">1</span>
+<span class="n">ostype</span>: <span class="n">ubuntu</span>
+<span class="n">protection</span>: <span class="m">0</span>
+<span class="n">rootfs</span>: <span class="n">cephrbd</span>:<span class="n">vm</span>-<span class="m">501</span>-<span class="n">disk</span>-<span class="m">0</span>,<span class="n">size</span>=<span class="m">8</span><span class="n">G</span>
+<span class="n">swap</span>: <span class="m">512</span>
+<span class="n">tags</span>: <span class="n">community</span>-<span class="n">script</span>;<span class="n">media</span>
+<span class="n">unprivileged</span>: <span class="m">1</span>
+<span class="n">lxc</span>.<span class="n">idmap</span>: <span class="n">u</span> <span class="m">0</span> <span class="m">100000</span> <span class="m">5001</span>
+<span class="n">lxc</span>.<span class="n">idmap</span>: <span class="n">g</span> <span class="m">0</span> <span class="m">100000</span> <span class="m">5001</span>
+<span class="n">lxc</span>.<span class="n">idmap</span>: <span class="n">u</span> <span class="m">5001</span> <span class="m">501</span> <span class="m">1</span>
+<span class="n">lxc</span>.<span class="n">idmap</span>: <span class="n">g</span> <span class="m">5001</span> <span class="m">501</span> <span class="m">1</span>
+<span class="n">lxc</span>.<span class="n">idmap</span>: <span class="n">u</span> <span class="m">5002</span> <span class="m">105002</span> <span class="m">60534</span>
+<span class="n">lxc</span>.<span class="n">idmap</span>: <span class="n">g</span> <span class="m">5002</span> <span class="m">105002</span> <span class="m">60534</span>
+</code></pre></div></div>
+
+<h2 id="key-takeaways">Key Takeaways</h2>
+
+<ol>
+  <li><strong>Separate concerns</strong>: Keep OS on RBD, data on CephFS</li>
+  <li><strong>Disable services</strong>: Prevent startup failures during migrations</li>
+  <li><strong>Use shared=1</strong>: Essential for CephFS mounts in HA clusters</li>
+  <li><strong>Mind the UID mapping</strong>: Unprivileged containers require careful permission management</li>
+  <li><strong>Shrink after migration</strong>: Smaller root disks improve HA performance</li>
+</ol>
+
+<h2 id="benefits-achieved">Benefits Achieved</h2>
+
+<ul>
+  <li><strong>Unlimited growth</strong>: Metadata can expand without container resizing</li>
+  <li><strong>Faster HA failovers</strong>: 8GB root disk migrates much faster than 22GB</li>
+  <li><strong>Better stability</strong>: No more 95% disk warnings</li>
+  <li><strong>Maintained compatibility</strong>: Jellyfin sees standard paths, upgrades work normally</li>
+</ul>
+
+<h2 id="performance-considerations">Performance Considerations</h2>
+
+<p>CephFS is network-based storage, so expect:</p>
+
+<ul>
+  <li>Slight delay in poster loading compared to local RBD</li>
+  <li>Higher I/O operations for thousands of small files</li>
+  <li>Potential MDS (metadata server) load during library scans</li>
+</ul>
+
+<p>On Proxmox 8.4.16 with decent networking (10GbE or better), these impacts are typically negligible for home media server use. With my 1GbE SAN it is not noticeable even with multiple TV clients running at the same time.</p>
+
+<h2 id="troubleshooting">Troubleshooting</h2>
+
+<p>If Jellyfin fails to start after migration:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check mount status</span>
+mount | <span class="nb">grep </span>jellyfin
+
+<span class="c"># Verify permissions</span>
+<span class="nb">ls</span> <span class="nt">-la</span> /var/lib/jellyfin/metadata
+
+<span class="c"># Check service logs</span>
+journalctl <span class="nt">-u</span> jellyfin <span class="nt">-n</span> 50
+
+<span class="c"># Test database access</span>
+<span class="nb">sudo</span> <span class="nt">-u</span> jellyfin <span class="nb">touch</span> /var/lib/jellyfin/data/test
+</code></pre></div></div>
+
+<p>Common issues:</p>
+
+<ul>
+  <li><strong>Permission denied</strong>: Verify host-side ownership is set to UID 501 and LXC idmap is configured correctly</li>
+  <li><strong>Empty library</strong>: Data not moved before enabling service</li>
+  <li><strong>Database locked</strong>: CephFS mount not using shared=1 flag</li>
+</ul>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>What started as a disk space crisis became an opportunity to build a more scalable architecture. By leveraging CephFS for growing data and keeping the OS lean on RBD, the Jellyfin LXC is now optimized for both capacity and high availability.</p>
+
+<p>This pattern applies to any LXC service with growing data requirements—separate the static (OS) from the dynamic (data) for better resource utilization and operational flexibility.</p>
+
+<h2 id="related-articles">Related Articles</h2>
+
+<ul>
+  <li><a href="/proxmox-ceph-homelab-settings/">Proxmox Ceph Settings for the Homelab</a> — Tuning Ceph for low-power hardware</li>
+  <li><a href="/homelab-storage-economics/">Homelab Storage Economics: Ceph vs Single Drive</a> — Cost analysis of distributed storage</li>
+  <li><a href="/proxmox-ceph-guide/">Proxmox &amp; Ceph Homelab Guide</a> — All my Proxmox and Ceph articles in one place</li>
+</ul>
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://pve.proxmox.com/wiki/Linux_Container">Proxmox LXC Documentation</a></li>
+  <li><a href="https://pve.proxmox.com/wiki/Unprivileged_LXC_containers">Proxmox Unprivileged LXC</a></li>
+  <li><a href="https://docs.ceph.com/en/latest/cephfs/">CephFS Best Practices</a></li>
+  <li><a href="https://jellyfin.org/docs/">Jellyfin Documentation</a></li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/proxmox/">proxmox</a>, 
+        
+          <a href="/tags/jellyfin/">jellyfin</a>, 
+        
+          <a href="/tags/cephfs/">cephfs</a>, 
+        
+          <a href="/tags/lxc/">lxc</a>, 
+        
+          <a href="/tags/storage/">storage</a>, 
+        
+          <a href="/tags/high-availability/">high-availability</a>, 
+        
+          <a href="/tags/virtualization/">virtualization</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/homelab/">homelab</a>, 
+        
+          <a href="/categories/proxmox/">proxmox</a>, 
+        
+          <a href="/categories/jellyfin/">jellyfin</a>, 
+        
+          <a href="/categories/ceph/">ceph</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

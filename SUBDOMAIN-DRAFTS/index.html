@@ -1,0 +1,805 @@
+<h1 id="drafts-site-analysis--options">Drafts Site: Analysis &amp; Options</h1>
+
+<h2 id="goal">Goal</h2>
+
+<p>Expose a preview site that builds with <code class="language-plaintext highlighter-rouge">--drafts --future</code> flags, allowing vetted reviewers to see unpublished content, give feedback, and not pollute the production site or get indexed by search engines.</p>
+
+<h2 id="constraints">Constraints</h2>
+
+<ol>
+  <li><strong>GitHub Pages only serves one site per repo</strong> — one branch, one CNAME, one domain</li>
+  <li><strong>GitHub Pages has no native authentication</strong> — static files are public or nothing</li>
+  <li><strong>Google must not index the drafts site</strong> — <code class="language-plaintext highlighter-rouge">robots.txt</code> + <code class="language-plaintext highlighter-rouge">noindex</code> meta tags required</li>
+  <li><strong>Production site must not be affected</strong> — no config changes, no build flag changes</li>
+  <li><strong>No new external services</strong> — stay within GitHub + Porkbun (tools already in use)</li>
+  <li><strong>Minimal ongoing maintenance</strong> — this is a hobby site, not a SaaS product</li>
+</ol>
+
+<h2 id="security-reality-check">Security Reality Check</h2>
+
+<p>The <code class="language-plaintext highlighter-rouge">mcgarrah.github.io</code> repo is <strong>public</strong>. Anyone can already read <code class="language-plaintext highlighter-rouge">_drafts/</code> and future-dated posts in <code class="language-plaintext highlighter-rouge">_posts/</code> by browsing the repo on GitHub. The raw markdown is fully visible.</p>
+
+<p>This means:</p>
+<ul>
+  <li><strong>The drafts site is not hiding secrets</strong> — it’s providing a <em>rendered preview</em> of content that’s already public in source form</li>
+  <li><strong>Password protection is a UX signal</strong>, not real access control — it says “this isn’t ready, don’t share it” rather than “you can’t see this”</li>
+  <li><strong>Staticrypt is optional</strong> — it adds a speed bump but doesn’t protect content that’s already in a public repo</li>
+  <li><strong>The real protection is <code class="language-plaintext highlighter-rouge">noindex</code></strong> — keeping Google from indexing unfinished content is the primary goal</li>
+</ul>
+
+<p>This simplifies the options significantly.</p>
+
+<hr />
+
+<h2 id="github-pages-naming-how-it-works">GitHub Pages Naming: How It Works</h2>
+
+<h3 id="githubio-domains"><code class="language-plaintext highlighter-rouge">*.github.io</code> Domains</h3>
+
+<p><code class="language-plaintext highlighter-rouge">*.github.io</code> domains are tied to GitHub usernames/orgs. <code class="language-plaintext highlighter-rouge">mcgarrah.github.io</code> is yours because your username is <code class="language-plaintext highlighter-rouge">mcgarrah</code>. You cannot use <code class="language-plaintext highlighter-rouge">drafts.github.io</code> — that belongs to whoever owns the <code class="language-plaintext highlighter-rouge">drafts</code> GitHub username. There’s no way to get a second <code class="language-plaintext highlighter-rouge">*.github.io</code> domain.</p>
+
+<h3 id="project-pages-sub-path">Project Pages (Sub-Path)</h3>
+
+<p>Any repo under your account can be a GitHub Pages project site:</p>
+<ul>
+  <li>Repo named <code class="language-plaintext highlighter-rouge">drafts</code> → serves at <code class="language-plaintext highlighter-rouge">mcgarrah.github.io/drafts/</code> → with custom domain: <code class="language-plaintext highlighter-rouge">mcgarrah.org/drafts/</code></li>
+  <li>This is exactly how your <code class="language-plaintext highlighter-rouge">resume</code> repo works: <code class="language-plaintext highlighter-rouge">mcgarrah.org/resume/</code></li>
+  <li>Uses <code class="language-plaintext highlighter-rouge">baseurl: "/drafts"</code> in Jekyll config</li>
+  <li><strong>No DNS changes needed</strong> — it’s a path under your existing domain</li>
+  <li><strong>No CNAME file needed</strong> in the drafts repo</li>
+</ul>
+
+<h3 id="custom-subdomain">Custom Subdomain</h3>
+
+<p>Any repo can also use a custom subdomain:</p>
+<ul>
+  <li>Repo named <code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code> (or any name) with a <code class="language-plaintext highlighter-rouge">CNAME</code> file containing <code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code></li>
+  <li>Requires a DNS CNAME record in Porkbun: <code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code> → <code class="language-plaintext highlighter-rouge">mcgarrah.github.io.</code></li>
+  <li>GitHub routes by <code class="language-plaintext highlighter-rouge">Host</code> header — it finds the repo whose <code class="language-plaintext highlighter-rouge">CNAME</code> matches the request</li>
+  <li>Uses <code class="language-plaintext highlighter-rouge">url: "https://drafts.mcgarrah.org"</code> and <code class="language-plaintext highlighter-rouge">baseurl: ""</code> in Jekyll config</li>
+</ul>
+
+<h3 id="comparison">Comparison</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Aspect</th>
+      <th>Project Page (<code class="language-plaintext highlighter-rouge">/drafts/</code>)</th>
+      <th>Subdomain (<code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code>)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>DNS changes</td>
+      <td>None</td>
+      <td>CNAME record in Porkbun</td>
+    </tr>
+    <tr>
+      <td>Repo name</td>
+      <td><code class="language-plaintext highlighter-rouge">drafts</code> (any name works)</td>
+      <td>Any name (convention: <code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code>)</td>
+    </tr>
+    <tr>
+      <td>URL</td>
+      <td><code class="language-plaintext highlighter-rouge">mcgarrah.org/drafts/</code></td>
+      <td><code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code></td>
+    </tr>
+    <tr>
+      <td>Jekyll config</td>
+      <td><code class="language-plaintext highlighter-rouge">baseurl: "/drafts"</code></td>
+      <td><code class="language-plaintext highlighter-rouge">url: "https://drafts.mcgarrah.org"</code></td>
+    </tr>
+    <tr>
+      <td>CNAME file</td>
+      <td>Not needed</td>
+      <td>Required</td>
+    </tr>
+    <tr>
+      <td>HTTPS</td>
+      <td>Automatic (under main domain)</td>
+      <td>Automatic (GitHub provisions cert)</td>
+    </tr>
+    <tr>
+      <td>Isolation feel</td>
+      <td>Looks like part of main site</td>
+      <td>Looks like a separate site</td>
+    </tr>
+    <tr>
+      <td>robots.txt</td>
+      <td>Shared with main site — <strong>problem</strong></td>
+      <td>Separate — clean <code class="language-plaintext highlighter-rouge">Disallow: /</code></td>
+    </tr>
+    <tr>
+      <td>Cookie/localStorage</td>
+      <td>Shared with main domain</td>
+      <td>Separate domain</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="the-robotstxt-problem-with-project-pages">The robots.txt Problem with Project Pages</h3>
+
+<p>This is the key issue with <code class="language-plaintext highlighter-rouge">mcgarrah.org/drafts/</code>:</p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">robots.txt</code> lives at the domain root (<code class="language-plaintext highlighter-rouge">mcgarrah.org/robots.txt</code>) and is served by the <strong>main site</strong></li>
+  <li>You can add <code class="language-plaintext highlighter-rouge">Disallow: /drafts/</code> to the main site’s <code class="language-plaintext highlighter-rouge">robots.txt</code>, but that means <strong>modifying the production site</strong> to support the drafts site</li>
+  <li>The <code class="language-plaintext highlighter-rouge">noindex</code> meta tag on each page still works, but <code class="language-plaintext highlighter-rouge">robots.txt</code> is the first line of defense</li>
+  <li>This violates constraint #4 (production site must not be affected)</li>
+</ul>
+
+<p><strong>Verdict:</strong> The subdomain approach (<code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code>) is cleaner because it gets its own <code class="language-plaintext highlighter-rouge">robots.txt</code>, its own cookie scope, and feels like a separate site. The DNS setup is a one-time cost.</p>
+
+<hr />
+
+<h2 id="option-1-subdomain--staticrypt-recommended">Option 1: Subdomain + Staticrypt (Recommended)</h2>
+
+<h3 id="how-it-works">How It Works</h3>
+
+<ol>
+  <li>Create a new repo: <code class="language-plaintext highlighter-rouge">mcgarrah/drafts.mcgarrah.org</code></li>
+  <li>GitHub Actions workflow in <code class="language-plaintext highlighter-rouge">mcgarrah.github.io</code> (the main repo):
+    <ul>
+      <li>Triggers on push to <code class="language-plaintext highlighter-rouge">main</code> (or on-demand via <code class="language-plaintext highlighter-rouge">workflow_dispatch</code>)</li>
+      <li>Builds Jekyll with <code class="language-plaintext highlighter-rouge">--drafts --future --config _config.yml,_config_drafts.yml</code></li>
+      <li>Runs <a href="https://github.com/robinmoisson/staticrypt">Staticrypt</a> on every HTML file in <code class="language-plaintext highlighter-rouge">_site/</code></li>
+      <li>Replaces <code class="language-plaintext highlighter-rouge">robots.txt</code> with <code class="language-plaintext highlighter-rouge">Disallow: /</code>, removes feeds and sitemaps</li>
+      <li>Pushes the built <code class="language-plaintext highlighter-rouge">_site/</code> contents to the <code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code> repo’s <code class="language-plaintext highlighter-rouge">main</code> branch</li>
+    </ul>
+  </li>
+  <li>The <code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code> repo has GitHub Pages enabled, serving the static files</li>
+  <li><code class="language-plaintext highlighter-rouge">CNAME: drafts.mcgarrah.org</code> in the drafts repo, DNS configured in Porkbun</li>
+  <li>Reviewers visit <code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code>, enter the shared password, browse the rendered site</li>
+</ol>
+
+<h3 id="why-staticrypt-even-though-the-repo-is-public">Why Staticrypt (Even Though the Repo Is Public)</h3>
+
+<p>The source markdown is public, but:</p>
+<ul>
+  <li>Most reviewers aren’t developers — they want a rendered website, not raw markdown on GitHub</li>
+  <li>The password prompt signals “this is a private preview” — sets expectations</li>
+  <li>Prevents casual link-sharing from exposing rendered drafts to the world</li>
+  <li>Blocks web scrapers that ignore <code class="language-plaintext highlighter-rouge">robots.txt</code></li>
+  <li>It’s a single line in the build pipeline — minimal complexity cost</li>
+</ul>
+
+<p>If you later decide the password is unnecessary friction, remove the Staticrypt step and everything else still works (Option 2).</p>
+
+<h3 id="automation-flow">Automation Flow</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mcgarrah.github.io (push to main)
+  └─ GitHub Actions workflow
+       ├─ bundle exec jekyll build --drafts --future --config _config.yml,_config_drafts.yml
+       ├─ staticrypt _site/**/*.html -p $ --short --remember 30
+       ├─ Replace robots.txt, remove feed.xml and sitemap.xml
+       └─ Push _site/ → mcgarrah/drafts.mcgarrah.org (main branch)
+            └─ GitHub Pages auto-deploys → drafts.mcgarrah.org
+</code></pre></div></div>
+
+<h3 id="cross-repo-push">Cross-Repo Push</h3>
+
+<p>GitHub Actions can push to another repo using a Personal Access Token (PAT) or a deploy key:</p>
+
+<ul>
+  <li><strong>PAT approach</strong>: Store a GitHub PAT with <code class="language-plaintext highlighter-rouge">repo</code> scope as <code class="language-plaintext highlighter-rouge">secrets.DRAFTS_DEPLOY_TOKEN</code> in the main repo. The workflow clones the drafts repo, copies <code class="language-plaintext highlighter-rouge">_site/</code> contents, commits, and pushes.</li>
+  <li><strong>Deploy key approach</strong>: Generate an SSH key pair, add the public key as a deploy key (with write access) on the drafts repo, and store the private key as a secret in the main repo. More secure (scoped to one repo) but slightly more setup.</li>
+</ul>
+
+<h3 id="staticrypt-details">Staticrypt Details</h3>
+
+<p><a href="https://github.com/robinmoisson/staticrypt">Staticrypt</a> (v3+) uses AES-256-GCM with a password-derived key (Web Crypto API). Each HTML page is replaced with a password prompt that decrypts the original content in-browser.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Install</span>
+npm <span class="nb">install</span> <span class="nt">-g</span> staticrypt
+
+<span class="c"># Encrypt all HTML files in _site/ with a shared password</span>
+staticrypt _site/<span class="k">**</span>/<span class="k">*</span>.html <span class="nt">-p</span> <span class="s2">"reviewer-password"</span> <span class="nt">--short</span> <span class="nt">--template-title</span> <span class="s2">"Draft Preview"</span>
+
+<span class="c"># Or use --remember to allow "remember me" checkbox (stores key in localStorage)</span>
+staticrypt _site/<span class="k">**</span>/<span class="k">*</span>.html <span class="nt">-p</span> <span class="s2">"reviewer-password"</span> <span class="nt">--short</span> <span class="nt">--remember</span> 30
+</code></pre></div></div>
+
+<p>Key behaviors:</p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">--short</code> uses a compact password prompt page</li>
+  <li><code class="language-plaintext highlighter-rouge">--remember 30</code> lets reviewers skip the password for 30 days (localStorage)</li>
+  <li>Password is NOT stored in the HTML — only a salted hash for verification</li>
+  <li>Encrypted content is AES-256-GCM — not trivially reversible</li>
+  <li>Password change requires a rebuild (which happens automatically on push)</li>
+</ul>
+
+<h3 id="pros">Pros</h3>
+
+<ul>
+  <li><strong>Zero external services</strong> — only GitHub (already used) and Porkbun (already used)</li>
+  <li>Complete isolation from production site (separate domain, robots.txt, cookies)</li>
+  <li>Automated via GitHub Actions — push to <code class="language-plaintext highlighter-rouge">main</code> updates both sites</li>
+  <li>Password prompt signals “private preview” to reviewers</li>
+  <li><code class="language-plaintext highlighter-rouge">robots.txt</code> with <code class="language-plaintext highlighter-rouge">Disallow: /</code> blocks crawlers</li>
+  <li>Free — no paid tiers, no bandwidth limits beyond GitHub Pages</li>
+  <li>Staticrypt is removable — drop it anytime to simplify (becomes Option 2)</li>
+</ul>
+
+<h3 id="cons">Cons</h3>
+
+<ul>
+  <li>Shared password (not per-user) — anyone with the password can access</li>
+  <li>Staticrypt encrypts HTML only — images, CSS, JS are unencrypted (acceptable given public repo)</li>
+  <li>Two repos to maintain (but the drafts repo is fully automated — no manual commits)</li>
+  <li>Staticrypt adds ~30KB per page for the decryption wrapper</li>
+  <li>Requires one-time DNS setup in Porkbun</li>
+</ul>
+
+<h3 id="dns-setup-porkbun">DNS Setup (Porkbun)</h3>
+
+<p>One-time setup. Add a CNAME record in Porkbun:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>drafts.mcgarrah.org  CNAME  mcgarrah.github.io.
+</code></pre></div></div>
+
+<p>GitHub routes by <code class="language-plaintext highlighter-rouge">Host</code> header:</p>
+<ol>
+  <li>Browser requests <code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code> → DNS resolves to GitHub’s IPs</li>
+  <li>GitHub sees <code class="language-plaintext highlighter-rouge">Host: drafts.mcgarrah.org</code></li>
+  <li>GitHub finds <code class="language-plaintext highlighter-rouge">mcgarrah/drafts.mcgarrah.org</code> repo with matching <code class="language-plaintext highlighter-rouge">CNAME</code> file</li>
+  <li>Serves that repo’s GitHub Pages content</li>
+</ol>
+
+<p>The <code class="language-plaintext highlighter-rouge">CNAME</code> file in the drafts repo is created automatically by the GitHub Actions workflow.</p>
+
+<h3 id="verdict-best-fit--uses-only-github-and-porkbun-fully-automated-clean-separation-password-optional-but-recommended">Verdict: <strong>Best fit — uses only GitHub and Porkbun, fully automated, clean separation, password optional but recommended.</strong></h3>
+
+<hr />
+
+<h2 id="option-2-subdomain-without-staticrypt-simplest">Option 2: Subdomain WITHOUT Staticrypt (Simplest)</h2>
+
+<h3 id="how-it-works-1">How It Works</h3>
+
+<p>Identical to Option 1 but skip the Staticrypt step. The drafts site is publicly accessible but:</p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">robots.txt</code> blocks crawlers with <code class="language-plaintext highlighter-rouge">Disallow: /</code></li>
+  <li><code class="language-plaintext highlighter-rouge">&lt;meta name="robots" content="noindex, nofollow"&gt;</code> on every page</li>
+  <li>No links from the production site</li>
+  <li>No Google Analytics, no AdSense, no sitemap</li>
+</ul>
+
+<h3 id="pros-1">Pros</h3>
+
+<ul>
+  <li>Simplest possible implementation — just Jekyll build + push</li>
+  <li>No password to share or manage</li>
+  <li>No Staticrypt dependency or build step</li>
+  <li>Still automated via GitHub Actions</li>
+  <li>Reviewers just click the link and see the site</li>
+</ul>
+
+<h3 id="cons-1">Cons</h3>
+
+<ul>
+  <li><strong>No access gate</strong> — anyone who discovers the URL can read drafts</li>
+  <li>But: the source markdown is already public in the GitHub repo, so this is consistent</li>
+  <li>Relies on <code class="language-plaintext highlighter-rouge">noindex</code> meta tags to prevent search engine indexing</li>
+</ul>
+
+<h3 id="when-to-choose-this">When to Choose This</h3>
+
+<ul>
+  <li>If your reviewers are non-technical and a password prompt would confuse them</li>
+  <li>If you decide the “private preview” signal isn’t worth the friction</li>
+  <li>If you want to start simple and add Staticrypt later if needed</li>
+</ul>
+
+<h3 id="verdict-perfectly-defensible-given-the-public-repo-start-here-if-you-want-minimal-complexity-upgrade-to-option-1-if-you-want-the-speed-bump">Verdict: Perfectly defensible given the public repo. Start here if you want minimal complexity, upgrade to Option 1 if you want the speed bump.</h3>
+
+<hr />
+
+<h2 id="option-3-project-page-at-drafts-no-dns-changes">Option 3: Project Page at <code class="language-plaintext highlighter-rouge">/drafts/</code> (No DNS Changes)</h2>
+
+<h3 id="how-it-works-2">How It Works</h3>
+
+<ul>
+  <li>Create a repo named <code class="language-plaintext highlighter-rouge">drafts</code> under your account</li>
+  <li>GitHub Pages serves it at <code class="language-plaintext highlighter-rouge">mcgarrah.github.io/drafts/</code> → <code class="language-plaintext highlighter-rouge">mcgarrah.org/drafts/</code></li>
+  <li>Same pattern as your <code class="language-plaintext highlighter-rouge">resume</code> repo at <code class="language-plaintext highlighter-rouge">mcgarrah.org/resume/</code></li>
+  <li>Jekyll config uses <code class="language-plaintext highlighter-rouge">baseurl: "/drafts"</code></li>
+</ul>
+
+<h3 id="pros-2">Pros</h3>
+
+<ul>
+  <li>No DNS changes — works immediately</li>
+  <li>Familiar pattern (same as resume)</li>
+  <li>Simpler mental model — everything under one domain</li>
+</ul>
+
+<h3 id="cons-2">Cons</h3>
+
+<ul>
+  <li><strong>robots.txt is shared with the main site</strong> — you’d need to add <code class="language-plaintext highlighter-rouge">Disallow: /drafts/</code> to the production <code class="language-plaintext highlighter-rouge">robots.txt</code>, which modifies the production site</li>
+  <li><strong>Cookies and localStorage shared</strong> with main domain — Staticrypt’s <code class="language-plaintext highlighter-rouge">--remember</code> key would be visible to the main site’s JavaScript (low risk but not clean)</li>
+  <li><strong>Feels like part of the main site</strong> — reviewers might not realize they’re on a preview</li>
+  <li>The <code class="language-plaintext highlighter-rouge">/drafts/</code> path is easily guessable from the main site</li>
+</ul>
+
+<h3 id="verdict-works-but-less-clean-than-the-subdomain-approach-the-shared-robotstxt-problem-is-the-main-issue-use-this-only-if-you-want-to-avoid-dns-changes-entirely">Verdict: Works but less clean than the subdomain approach. The shared <code class="language-plaintext highlighter-rouge">robots.txt</code> problem is the main issue. Use this only if you want to avoid DNS changes entirely.</h3>
+
+<hr />
+
+<h2 id="build-pipeline-considerations-all-options">Build Pipeline Considerations (All Options)</h2>
+
+<h3 id="jekyll-build-differences">Jekyll Build Differences</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Setting</th>
+      <th>Production (<code class="language-plaintext highlighter-rouge">mcgarrah.org</code>)</th>
+      <th>Drafts (<code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code>)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">--drafts</code></td>
+      <td>No</td>
+      <td>Yes</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">--future</code></td>
+      <td>No</td>
+      <td>Yes</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">url</code></td>
+      <td><code class="language-plaintext highlighter-rouge">https://mcgarrah.org</code></td>
+      <td><code class="language-plaintext highlighter-rouge">https://drafts.mcgarrah.org</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">baseurl</code></td>
+      <td><code class="language-plaintext highlighter-rouge">""</code></td>
+      <td><code class="language-plaintext highlighter-rouge">""</code> (subdomain) or <code class="language-plaintext highlighter-rouge">"/drafts"</code> (project page)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">robots.txt</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Allow: /</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Disallow: /</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">meta robots</code></td>
+      <td>(none)</td>
+      <td><code class="language-plaintext highlighter-rouge">noindex, nofollow</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">google_analytics</code></td>
+      <td><code class="language-plaintext highlighter-rouge">G-F90DVB199P</code></td>
+      <td>(disabled)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">giscus</code></td>
+      <td>production repo</td>
+      <td>drafts repo (separate feedback)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">sitemap</code></td>
+      <td>generated</td>
+      <td>removed</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">feed.xml</code></td>
+      <td>generated</td>
+      <td>removed</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="config-override-file">Config Override File</h3>
+
+<p>Create a <code class="language-plaintext highlighter-rouge">_config_drafts.yml</code> overlay in the main repo:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">url</span><span class="pi">:</span> <span class="s2">"</span><span class="s">https://drafts.mcgarrah.org"</span>
+<span class="na">google_analytics</span><span class="pi">:</span> <span class="s2">"</span><span class="s">"</span>
+<span class="na">google_adsense</span><span class="pi">:</span> <span class="s2">"</span><span class="s">"</span>
+
+<span class="c1"># Override Giscus to point to drafts repo (keeps feedback separate from production)</span>
+<span class="na">giscus</span><span class="pi">:</span>
+  <span class="na">repo</span><span class="pi">:</span> <span class="s">mcgarrah/drafts.mcgarrah.org</span>
+  <span class="na">repo_id</span><span class="pi">:</span> <span class="s2">"</span><span class="s">&lt;drafts-repo-id&gt;"</span>         <span class="c1"># Get from https://giscus.app after creating repo</span>
+  <span class="na">category</span><span class="pi">:</span> <span class="s2">"</span><span class="s">Draft</span><span class="nv"> </span><span class="s">Reviews"</span>
+  <span class="na">category_id</span><span class="pi">:</span> <span class="s2">"</span><span class="s">&lt;category-id&gt;"</span>         <span class="c1"># Get from https://giscus.app after creating category</span>
+  <span class="na">mapping</span><span class="pi">:</span> <span class="s">pathname</span>
+  <span class="na">strict</span><span class="pi">:</span> <span class="m">0</span>
+  <span class="na">reactions_enabled</span><span class="pi">:</span> <span class="m">1</span>
+  <span class="na">emit_metadata</span><span class="pi">:</span> <span class="m">0</span>
+  <span class="na">input_position</span><span class="pi">:</span> <span class="s">bottom</span>
+  <span class="na">theme</span><span class="pi">:</span> <span class="s">preferred_color_scheme</span>
+  <span class="na">lang</span><span class="pi">:</span> <span class="s">en</span>
+  <span class="na">loading</span><span class="pi">:</span> <span class="s">lazy</span>
+</code></pre></div></div>
+
+<p>Build command:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>bundle <span class="nb">exec </span>jekyll build <span class="nt">--drafts</span> <span class="nt">--future</span> <span class="nt">--config</span> _config.yml,_config_drafts.yml
+</code></pre></div></div>
+
+<p>Jekyll merges configs left-to-right, so <code class="language-plaintext highlighter-rouge">_config_drafts.yml</code> overrides the production values.</p>
+
+<h3 id="visual-indicator-for-reviewers">Visual Indicator for Reviewers</h3>
+
+<p>Add a banner to the drafts site so reviewers know they’re on the preview:</p>
+
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code>
+<span class="nt">&lt;div</span> <span class="na">style=</span><span class="s">"background: #ff6600; color: white; text-align: center; padding: 8px; position: fixed; top: 0; width: 100%; z-index: 9999;"</span><span class="nt">&gt;</span>
+  ⚠️ DRAFT PREVIEW — Not for public distribution
+<span class="nt">&lt;/div&gt;</span>
+
+</code></pre></div></div>
+
+<p>This goes in <code class="language-plaintext highlighter-rouge">_layouts/default.html</code> (or a new include). It renders only when the site URL contains “drafts” — invisible on production.</p>
+
+<h3 id="sketch-of-github-actions-workflow">Sketch of GitHub Actions Workflow</h3>
+
+<p>This would live in the main repo as <code class="language-plaintext highlighter-rouge">.github/workflows/deploy-drafts.yml</code>:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">name</span><span class="pi">:</span> <span class="s">Deploy Drafts Site</span>
+
+<span class="na">on</span><span class="pi">:</span>
+  <span class="na">push</span><span class="pi">:</span>
+    <span class="na">branches</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">main"</span><span class="pi">]</span>
+  <span class="na">workflow_dispatch</span><span class="pi">:</span>
+
+<span class="na">jobs</span><span class="pi">:</span>
+  <span class="na">build-and-deploy</span><span class="pi">:</span>
+    <span class="na">runs-on</span><span class="pi">:</span> <span class="s">ubuntu-latest</span>
+    <span class="na">steps</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Checkout main repo</span>
+        <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/checkout@v6</span>
+
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Setup Ruby</span>
+        <span class="na">uses</span><span class="pi">:</span> <span class="s">ruby/setup-ruby@v1</span>
+        <span class="na">with</span><span class="pi">:</span>
+          <span class="na">ruby-version</span><span class="pi">:</span> <span class="s1">'</span><span class="s">3.2.6'</span>
+          <span class="na">bundler-cache</span><span class="pi">:</span> <span class="kc">true</span>
+
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Setup Node (for Staticrypt)</span>
+        <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/setup-node@v4</span>
+        <span class="na">with</span><span class="pi">:</span>
+          <span class="na">node-version</span><span class="pi">:</span> <span class="s1">'</span><span class="s">20'</span>
+
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Install Staticrypt</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="s">npm install -g staticrypt</span>
+
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Build Jekyll with drafts and future</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="s">bundle exec jekyll build --drafts --future --config _config.yml,_config_drafts.yml</span>
+        <span class="na">env</span><span class="pi">:</span>
+          <span class="na">JEKYLL_ENV</span><span class="pi">:</span> <span class="s">production</span>
+
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Encrypt HTML with Staticrypt</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+          <span class="s">find _site -name '*.html' -exec staticrypt {} -p "$" --short --remember 30 \;</span>
+
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Replace robots.txt and remove feeds/sitemaps</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+          <span class="s">printf "User-agent: *\nDisallow: /\n" &gt; _site/robots.txt</span>
+          <span class="s">rm -f _site/feed.xml _site/sitemap.xml _site/sitemapindex.xml</span>
+
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Deploy to drafts repo</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+          <span class="s">cd _site</span>
+          <span class="s">git init</span>
+          <span class="s">git config user.name "github-actions[bot]"</span>
+          <span class="s">git config user.email "github-actions[bot]@users.noreply.github.com"</span>
+          <span class="s">echo "drafts.mcgarrah.org" &gt; CNAME</span>
+          <span class="s">git add -A</span>
+          <span class="s">git commit -m "Deploy drafts site from $"</span>
+          <span class="s">git push --force https://x-access-token:$@github.com/mcgarrah/drafts.mcgarrah.org.git HEAD:main</span>
+</code></pre></div></div>
+
+<p><strong>Secrets required:</strong></p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">DRAFTS_PASSWORD</code> — the shared password for Staticrypt (remove this and the Staticrypt steps for Option 2)</li>
+  <li><code class="language-plaintext highlighter-rouge">DRAFTS_DEPLOY_TOKEN</code> — GitHub PAT with <code class="language-plaintext highlighter-rouge">repo</code> scope (or use deploy key)</li>
+</ul>
+
+<hr />
+
+<h2 id="reviewer-feedback-mechanism">Reviewer Feedback Mechanism</h2>
+
+<p>The whole point is getting feedback. Options:</p>
+
+<h3 id="giscus-on-drafts-repo-recommended">Giscus on Drafts Repo (Recommended)</h3>
+
+<p>Enable GitHub Discussions on the <code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code> repo with a “Draft Reviews” category. Configure Giscus to point to that repo (via <code class="language-plaintext highlighter-rouge">_config_drafts.yml</code> above). This gives:</p>
+<ul>
+  <li>Per-post threaded comments (same UX as production)</li>
+  <li>Feedback stays in the drafts repo — completely separate from production comments</li>
+  <li>When a post is promoted to <code class="language-plaintext highlighter-rouge">_posts/</code>, draft comments stay behind (they served their purpose)</li>
+  <li>Reviewers need a GitHub account (likely fine for your audience)</li>
+</ul>
+
+<p><strong>Giscus + Staticrypt compatibility:</strong> Staticrypt decrypts the page in-browser, then the Giscus script loads normally. This should work but needs testing — the script tag is inside the encrypted HTML, so it only executes after decryption.</p>
+
+<h3 id="alternatives">Alternatives</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Method</th>
+      <th>Pros</th>
+      <th>Cons</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>GitHub Issues on drafts repo</strong></td>
+      <td>Simple, no Discussions setup</td>
+      <td>Not tied to specific posts</td>
+    </tr>
+    <tr>
+      <td><strong>Email link in draft banner</strong></td>
+      <td>Works for anyone, zero setup</td>
+      <td>Unstructured, hard to track</td>
+    </tr>
+    <tr>
+      <td><strong>Google Form</strong></td>
+      <td>Structured, no GitHub account</td>
+      <td>Another external service</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="recommendation">Recommendation</h3>
+
+<p>Start with Giscus on the drafts repo. If reviewers don’t have GitHub accounts, add a mailto link in the draft banner as a fallback.</p>
+
+<hr />
+
+<h2 id="gaps-and-things-to-think-through">Gaps and Things to Think Through</h2>
+
+<h3 id="1-staticrypt--internal-navigation">1. Staticrypt + Internal Navigation</h3>
+
+<p>Staticrypt encrypts each HTML file individually. When a reviewer decrypts one page and clicks a link to another page, they hit <strong>another password prompt</strong> unless <code class="language-plaintext highlighter-rouge">--remember</code> is working.</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">--remember 30</code> stores the decryption key in <code class="language-plaintext highlighter-rouge">localStorage</code> — subsequent pages decrypt automatically</li>
+  <li>If <code class="language-plaintext highlighter-rouge">localStorage</code> is blocked or cleared, every page click is a password prompt</li>
+  <li><strong>Test this thoroughly</strong> — the reviewer experience lives or dies on this</li>
+</ul>
+
+<h3 id="2-non-html-assets-are-not-encrypted">2. Non-HTML Assets Are Not Encrypted</h3>
+
+<p>Staticrypt only encrypts <code class="language-plaintext highlighter-rouge">.html</code> files. These are accessible without a password:</p>
+<ul>
+  <li>Images (<code class="language-plaintext highlighter-rouge">/assets/images/</code>)</li>
+  <li>PDFs (<code class="language-plaintext highlighter-rouge">/assets/pdfs/</code>)</li>
+  <li>CSS, JS, fonts</li>
+</ul>
+
+<p>This is fine given the public repo — the source is already visible. The workflow already removes <code class="language-plaintext highlighter-rouge">feed.xml</code> and <code class="language-plaintext highlighter-rouge">sitemap.xml</code> to prevent content leakage in structured formats.</p>
+
+<h3 id="3-github-pages-deployment-method">3. GitHub Pages Deployment Method</h3>
+
+<p>The drafts repo needs Pages configured to “Deploy from a branch” → <code class="language-plaintext highlighter-rouge">main</code> → <code class="language-plaintext highlighter-rouge">/ (root)</code>. This is different from the production site which uses <code class="language-plaintext highlighter-rouge">actions/deploy-pages</code>. The force-push approach in the workflow is simpler.</p>
+
+<h3 id="4-public-vs-private-drafts-repo">4. Public vs Private Drafts Repo</h3>
+
+<ul>
+  <li><strong>Public</strong>: GitHub Pages works on free tier. Content is Staticrypt-encrypted (if using Option 1). The repo is just a deployment target with no source code.</li>
+  <li><strong>Private</strong>: Requires GitHub Pro ($4/mo) for private repo Pages.</li>
+</ul>
+
+<p><strong>Recommendation:</strong> Public repo. The source markdown is already public in <code class="language-plaintext highlighter-rouge">mcgarrah.github.io</code>. Encrypting the rendered HTML in a private repo adds no real security.</p>
+
+<h3 id="5-full-site-mirror-vs-draft-only">5. Full Site Mirror vs Draft-Only</h3>
+
+<p>The build includes the <strong>entire site</strong> (139+ published posts plus drafts/future). This is probably what you want — reviewers see context for where a draft fits. Building only draft posts would require a custom Jekyll plugin and isn’t worth the complexity.</p>
+
+<h3 id="6-broken-absolute-links">6. Broken Absolute Links</h3>
+
+<p>Draft posts that hardcode <code class="language-plaintext highlighter-rouge">https://mcgarrah.org/some-post/</code> will link to production, not the drafts site. The <code class="language-plaintext highlighter-rouge">url</code> override in <code class="language-plaintext highlighter-rouge">_config_drafts.yml</code> handles <code class="language-plaintext highlighter-rouge">https://drafts.mcgarrah.org</code> Liquid references, but hardcoded URLs in markdown content won’t be rewritten. Use relative links (<code class="language-plaintext highlighter-rouge">/some-post/</code>) in drafts.</p>
+
+<h3 id="7-resume-sub-site">7. Resume Sub-Site</h3>
+
+<p>The resume lives in a separate repo (<code class="language-plaintext highlighter-rouge">mcgarrah/resume</code>) and builds independently. It won’t be included in the drafts build. Links to <code class="language-plaintext highlighter-rouge">/resume/</code> from the drafts site will 404 or redirect to production. This is fine — reviewers don’t need the resume.</p>
+
+<h3 id="8-build-frequency">8. Build Frequency</h3>
+
+<p>Two Jekyll builds per push to <code class="language-plaintext highlighter-rouge">main</code> (production + drafts). Both run in a public repo → unlimited GitHub Actions minutes. Build time ≈ 2-4 minutes for drafts (Jekyll + Staticrypt on ~140 posts). Not a concern.</p>
+
+<hr />
+
+<h2 id="eliminated-options">Eliminated Options</h2>
+
+<h3 id="cloudflare-access">Cloudflare Access</h3>
+
+<blockquote>
+  <p><strong>Status: Eliminated.</strong> Requires Cloudflare as a new external dependency.</p>
+</blockquote>
+
+<h3 id="netlify-with-password-protection">Netlify with Password Protection</h3>
+
+<blockquote>
+  <p><strong>Status: Eliminated.</strong> Requires a Netlify account as a new external dependency.</p>
+</blockquote>
+
+<h3 id="vercel-with-password-protection">Vercel with Password Protection</h3>
+
+<blockquote>
+  <p><strong>Status: Eliminated.</strong> Requires Vercel Pro ($20/mo). Overkill.</p>
+</blockquote>
+
+<h3 id="self-hosted-on-proxmox--kubernetes">Self-Hosted on Proxmox / Kubernetes</h3>
+
+<blockquote>
+  <p><strong>Status: Not viable at this time.</strong> Proxmox homelab not ready for external-facing services. K8s cluster (AlteredCarbon) still in build-out. Revisit after K8s has ingress-nginx + cert-manager serving external sites.</p>
+</blockquote>
+
+<h3 id="separate-branch-in-same-repo">Separate Branch in Same Repo</h3>
+
+<blockquote>
+  <p><strong>Status: Not viable.</strong> GitHub Pages deploys one branch to one domain per repo.</p>
+</blockquote>
+
+<hr />
+
+<h2 id="open-questions">Open Questions</h2>
+
+<ol>
+  <li><strong>Subdomain vs project page</strong> — Subdomain (<code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code>) recommended for clean <code class="language-plaintext highlighter-rouge">robots.txt</code> separation. Project page (<code class="language-plaintext highlighter-rouge">mcgarrah.org/drafts/</code>) avoids DNS changes but shares <code class="language-plaintext highlighter-rouge">robots.txt</code> with production.</li>
+  <li><strong>Staticrypt yes/no</strong> — Recommended as a low-cost speed bump. Can be removed anytime. Given the public repo, it’s a UX signal not real security.</li>
+  <li><strong>Update frequency</strong> — Rebuild on every push to <code class="language-plaintext highlighter-rouge">main</code>, or only on-demand (<code class="language-plaintext highlighter-rouge">workflow_dispatch</code>)? Both supported.</li>
+  <li><strong>Feedback mechanism</strong> — Giscus on drafts repo recommended. See Feedback section above.</li>
+  <li><strong>Drafts repo visibility</strong> — Public (free) recommended. See Gap #4.</li>
+  <li><strong>Multiple reviewers</strong> — Shared password works for 2-10 trusted people.</li>
+</ol>
+
+<hr />
+
+<h2 id="what-not-to-do">What NOT to Do</h2>
+
+<ul>
+  <li><strong>Don’t add <code class="language-plaintext highlighter-rouge">--drafts --future</code> to the production build</strong> — defeats the entire purpose</li>
+  <li><strong>Don’t use <code class="language-plaintext highlighter-rouge">published: false</code> as a gating mechanism</strong> — <code class="language-plaintext highlighter-rouge">_drafts/</code> is the correct approach</li>
+  <li><strong>Don’t rely solely on <code class="language-plaintext highlighter-rouge">robots.txt</code></strong> — it’s advisory, not enforced</li>
+  <li><strong>Don’t put passwords in the repo</strong> — use GitHub Secrets</li>
+  <li><strong>Don’t modify the main site’s <code class="language-plaintext highlighter-rouge">_config.yml</code></strong> — use a config overlay file</li>
+  <li><strong>Don’t create a subdirectory on the main site</strong> (e.g., <code class="language-plaintext highlighter-rouge">/drafts/</code> path in the main repo) — no way to password-protect a path on GitHub Pages, and it pollutes the production build</li>
+</ul>
+
+<hr />
+
+<h2 id="decisions-made">Decisions Made</h2>
+
+<ul>
+  <li><strong>Subdomain</strong> (<code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code>) — chosen over project page for clean <code class="language-plaintext highlighter-rouge">robots.txt</code> separation</li>
+  <li><strong>Staticrypt</strong> — yes, as a low-cost UX speed bump; removable anytime</li>
+  <li><strong>Giscus on drafts repo</strong> — keeps feedback separate from production comments</li>
+  <li><strong>Public drafts repo</strong> — free GitHub Pages, no real security benefit from private given public source</li>
+  <li><strong>Build on every push</strong> — both triggers (push to <code class="language-plaintext highlighter-rouge">main</code> + <code class="language-plaintext highlighter-rouge">workflow_dispatch</code>) enabled</li>
+</ul>
+
+<h2 id="implementation-checklist">Implementation Checklist</h2>
+
+<p>Organized by where the work happens. Each step is independent enough to do in a spare 5-15 minutes.</p>
+
+<h3 id="phase-1-github-setup-browser-15-minutes-total">Phase 1: GitHub Setup (browser, ~15 minutes total)</h3>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" checked="checked" /><strong>1.1</strong> Create <code class="language-plaintext highlighter-rouge">mcgarrah/drafts.mcgarrah.org</code> repo on GitHub (public, initialized so <code class="language-plaintext highlighter-rouge">main</code> exists)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" checked="checked" /><strong>1.2</strong> Enable GitHub Pages on the drafts repo (Settings → Pages → Deploy from branch → <code class="language-plaintext highlighter-rouge">main</code> → <code class="language-plaintext highlighter-rouge">/ (root)</code>)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" checked="checked" /><strong>1.3</strong> Enable GitHub Discussions on the drafts repo (Settings → General → Features → Discussions)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>1.4</strong> Create a “Draft Reviews” category in Discussions (Discussions tab → Categories → New category)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>1.5</strong> Generate a GitHub PAT with <code class="language-plaintext highlighter-rouge">repo</code> scope for cross-repo push (Settings → Developer settings → Personal access tokens → Fine-grained tokens, scope to <code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code> repo only)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>1.6</strong> Add <code class="language-plaintext highlighter-rouge">DRAFTS_DEPLOY_TOKEN</code> secret to <code class="language-plaintext highlighter-rouge">mcgarrah.github.io</code> repo (Settings → Secrets and variables → Actions → New repository secret)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>1.7</strong> Pick a Staticrypt password and add <code class="language-plaintext highlighter-rouge">DRAFTS_PASSWORD</code> secret to <code class="language-plaintext highlighter-rouge">mcgarrah.github.io</code> repo</li>
+</ul>
+
+<p><strong>Important gotcha:</strong> GitHub Pages cannot be configured for <code class="language-plaintext highlighter-rouge">main</code> until the repo has an initial commit and the <code class="language-plaintext highlighter-rouge">main</code> branch actually exists. Creating the repo as truly empty blocks Pages setup with an error. Initializing with a <code class="language-plaintext highlighter-rouge">README.md</code> (or creating any file and committing it) avoids that.</p>
+
+<h3 id="phase-2-dns-porkbun-2-minutes">Phase 2: DNS (Porkbun, ~2 minutes)</h3>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>2.1</strong> Add CNAME record in Porkbun: <code class="language-plaintext highlighter-rouge">drafts</code> → <code class="language-plaintext highlighter-rouge">mcgarrah.github.io.</code></li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>2.2</strong> Wait for DNS propagation (usually &lt; 5 minutes, can verify with <code class="language-plaintext highlighter-rouge">dig drafts.mcgarrah.org</code>)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>2.3</strong> After first deployment, enable “Enforce HTTPS” in the drafts repo’s Pages settings</li>
+</ul>
+
+<h3 id="phase-3-giscus-configuration-browser-5-minutes">Phase 3: Giscus Configuration (browser, ~5 minutes)</h3>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>3.1</strong> Go to https://giscus.app</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>3.2</strong> Enter <code class="language-plaintext highlighter-rouge">mcgarrah/drafts.mcgarrah.org</code> as the repo</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>3.3</strong> Select “Draft Reviews” as the Discussion category</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>3.4</strong> Copy the <code class="language-plaintext highlighter-rouge">data-repo-id</code> and <code class="language-plaintext highlighter-rouge">data-category-id</code> values</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>3.5</strong> Save these values — needed for <code class="language-plaintext highlighter-rouge">_config_drafts.yml</code> in Phase 4</li>
+</ul>
+
+<h3 id="phase-4-main-repo-files-ide-20-minutes-total">Phase 4: Main Repo Files (IDE, ~20 minutes total)</h3>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>4.1</strong> Create <code class="language-plaintext highlighter-rouge">_config_drafts.yml</code> in the main repo root with drafts URL, disabled analytics/ads, and Giscus config pointing to drafts repo (use IDs from Phase 3)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>4.2</strong> Create <code class="language-plaintext highlighter-rouge">.github/workflows/deploy-drafts.yml</code> in the main repo (workflow sketch is in this document and Part 2)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>4.3</strong> Add the draft preview banner to <code class="language-plaintext highlighter-rouge">_layouts/default.html</code> (Liquid conditional on <code class="language-plaintext highlighter-rouge">site.url contains 'drafts'</code>)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>4.4</strong> Commit and push to <code class="language-plaintext highlighter-rouge">main</code></li>
+</ul>
+
+<h3 id="phase-5-testing-30-minutes">Phase 5: Testing (~30 minutes)</h3>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>5.1</strong> Verify the <code class="language-plaintext highlighter-rouge">deploy-drafts.yml</code> workflow runs successfully in GitHub Actions</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>5.2</strong> Verify <code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code> loads and shows the Staticrypt password prompt</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>5.3</strong> Enter the password — verify the site renders correctly with drafts and future posts visible</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>5.4</strong> Click through 3-4 internal links — verify <code class="language-plaintext highlighter-rouge">--remember</code> works (no re-prompting)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>5.5</strong> Verify the orange “DRAFT PREVIEW” banner appears at the top</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>5.6</strong> Verify <code class="language-plaintext highlighter-rouge">robots.txt</code> at <code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org/robots.txt</code> shows <code class="language-plaintext highlighter-rouge">Disallow: /</code></li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>5.7</strong> Verify <code class="language-plaintext highlighter-rouge">feed.xml</code> and <code class="language-plaintext highlighter-rouge">sitemap.xml</code> return 404</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>5.8</strong> Verify Google Analytics is NOT loading (check browser DevTools → Network)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>5.9</strong> Scroll to bottom of a post — verify Giscus loads and points to the drafts repo Discussions</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>5.10</strong> Leave a test comment via Giscus — verify it appears in the drafts repo’s Discussions</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>5.11</strong> Test on mobile (Staticrypt prompt, navigation, banner)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>5.12</strong> Test in a private/incognito window (should prompt for password again)</li>
+</ul>
+
+<h3 id="phase-6-write-part-3-article">Phase 6: Write Part 3 Article</h3>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>6.1</strong> Fill in Part 3 (<code class="language-plaintext highlighter-rouge">_drafts/2026-06-19-jekyll-draft-preview-site-part-3.md</code>) with real results from testing</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>6.2</strong> Document anything that didn’t work as expected and workarounds applied</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>6.3</strong> Add screenshots of the password prompt, draft banner, and Giscus comments</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>6.4</strong> Update <code class="language-plaintext highlighter-rouge">SUBDOMAIN-DRAFTS.md</code> with any changes discovered during implementation</li>
+</ul>
+
+<h3 id="phase-7-share-with-reviewers">Phase 7: Share with Reviewers</h3>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>7.1</strong> Send the URL (<code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code>) and password to reviewers</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>7.2</strong> Explain that Giscus comments require a GitHub account</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>7.3</strong> Provide a fallback contact method (email) for reviewers without GitHub accounts</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>7.4</strong> Promote the three-part blog series to <code class="language-plaintext highlighter-rouge">_posts/</code> when ready</li>
+</ul>
+
+<h2 id="quick-reference-what-goes-where">Quick Reference: What Goes Where</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>File</th>
+      <th>Repo</th>
+      <th>Purpose</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">_config_drafts.yml</code></td>
+      <td><code class="language-plaintext highlighter-rouge">mcgarrah.github.io</code></td>
+      <td>Jekyll config overlay for drafts build</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">.github/workflows/deploy-drafts.yml</code></td>
+      <td><code class="language-plaintext highlighter-rouge">mcgarrah.github.io</code></td>
+      <td>GitHub Actions workflow</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">CNAME</code></td>
+      <td><code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code> (auto-created by workflow)</td>
+      <td>GitHub Pages custom domain routing</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">DRAFTS_PASSWORD</code> secret</td>
+      <td><code class="language-plaintext highlighter-rouge">mcgarrah.github.io</code></td>
+      <td>Staticrypt shared password</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">DRAFTS_DEPLOY_TOKEN</code> secret</td>
+      <td><code class="language-plaintext highlighter-rouge">mcgarrah.github.io</code></td>
+      <td>GitHub PAT for cross-repo push</td>
+    </tr>
+    <tr>
+      <td>Draft preview banner</td>
+      <td><code class="language-plaintext highlighter-rouge">mcgarrah.github.io</code> <code class="language-plaintext highlighter-rouge">_layouts/default.html</code></td>
+      <td>Visual indicator for reviewers</td>
+    </tr>
+    <tr>
+      <td>Giscus config</td>
+      <td><code class="language-plaintext highlighter-rouge">_config_drafts.yml</code></td>
+      <td>Points comments to drafts repo Discussions</td>
+    </tr>
+  </tbody>
+</table>

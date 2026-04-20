@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Enabling SMART Monitoring on Seagate USB Drives | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Enabling SMART Monitoring on Seagate USB Drives" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="USB drives are notorious for hiding their SMART data behind finicky USB-to-SATA bridges. If you’ve ever tried to check the health of a Seagate USB drive and gotten frustrated with “unsupported field in scsi command” errors, you’re not alone. After wrestling with several Seagate drives in my homelab, I finally figured out the magic incantations needed to get SMART data working. Here’s how to do it properly. Update (2026-02-03): This article has been superseded by USB Drive SMART Updates: Fast-Track to the GRUB Solution which includes updated device IDs and production experience from my Ceph cluster deployment. Note: The decision to not allow this in Linux as a default was done for good reasons. You are playing with fire as some drives behave erratically. I have not experienced this with recently purchased USB drives, but older ones did have quirks and issues. So buyer beware." />
+<meta property="og:description" content="USB drives are notorious for hiding their SMART data behind finicky USB-to-SATA bridges. If you’ve ever tried to check the health of a Seagate USB drive and gotten frustrated with “unsupported field in scsi command” errors, you’re not alone. After wrestling with several Seagate drives in my homelab, I finally figured out the magic incantations needed to get SMART data working. Here’s how to do it properly. Update (2026-02-03): This article has been superseded by USB Drive SMART Updates: Fast-Track to the GRUB Solution which includes updated device IDs and production experience from my Ceph cluster deployment. Note: The decision to not allow this in Linux as a default was done for good reasons. You are playing with fire as some drives behave erratically. I have not experienced this with recently purchased USB drives, but older ones did have quirks and issues. So buyer beware." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/usb-drive-smart/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/usb-drive-smart/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2025-10-26T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Enabling SMART Monitoring on Seagate USB Drives" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-04-14T00:00:00+00:00","datePublished":"2025-10-26T00:00:00+00:00","description":"USB drives are notorious for hiding their SMART data behind finicky USB-to-SATA bridges. If you’ve ever tried to check the health of a Seagate USB drive and gotten frustrated with “unsupported field in scsi command” errors, you’re not alone. After wrestling with several Seagate drives in my homelab, I finally figured out the magic incantations needed to get SMART data working. Here’s how to do it properly. Update (2026-02-03): This article has been superseded by USB Drive SMART Updates: Fast-Track to the GRUB Solution which includes updated device IDs and production experience from my Ceph cluster deployment. Note: The decision to not allow this in Linux as a default was done for good reasons. You are playing with fire as some drives behave erratically. I have not experienced this with recently purchased USB drives, but older ones did have quirks and issues. So buyer beware.","headline":"Enabling SMART Monitoring on Seagate USB Drives","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/usb-drive-smart/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/usb-drive-smart/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/usb-drive-smart/">Enabling SMART Monitoring on Seagate USB Drives</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2025-10-26T00:00:00+00:00">October 26, 2025</time><span class="reading-time">5 min read</span></header>
+
+  <p>USB drives are notorious for hiding their SMART data behind finicky USB-to-SATA bridges. If you’ve ever tried to check the health of a Seagate USB drive and gotten frustrated with “unsupported field in scsi command” errors, you’re not alone.</p>
+
+<p>After wrestling with several Seagate drives in my homelab, I finally figured out the magic incantations needed to get SMART data working. Here’s how to do it properly.</p>
+
+<p><strong>Update (2026-02-03):</strong> This article has been superseded by <a href="/usb-drive-smart-updates/">USB Drive SMART Updates: Fast-Track to the GRUB Solution</a> which includes updated device IDs and production experience from my Ceph cluster deployment.</p>
+
+<p><strong>Note</strong>: The decision to not allow this in Linux as a default was done for good reasons. You are playing with fire as some drives behave erratically. I have not experienced this with recently purchased USB drives, but older ones did have quirks and issues. So buyer beware.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="the-problem">The Problem</h2>
+
+<p>Modern USB drives use UAS (USB Attached SCSI) which should make SMART data accessible, but many Seagate drives have quirky implementations that break standard SMART commands:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># This is what you'll see initially - frustrating!</span>
+root@poe:~# smartctl <span class="nt">-d</span> sat <span class="nt">-T</span> permissive <span class="nt">-a</span> /dev/sdd
+Read Device Identity failed: scsi error unsupported field <span class="k">in </span>scsi <span class="nb">command
+
+</span>Device Model:     <span class="o">[</span>No Information Found]
+Serial Number:    <span class="o">[</span>No Information Found]
+SMART support is: Ambiguous
+A mandatory SMART <span class="nb">command </span>failed: exiting.
+</code></pre></div></div>
+
+<p>Sound familiar? The issue is that these drives need special USB storage quirks to work properly.</p>
+
+<h2 id="step-1-identify-your-seagate-drive">Step 1: Identify Your Seagate Drive</h2>
+
+<p>First, find your drive’s USB vendor and product IDs:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check current quirks (probably empty)</span>
+<span class="nb">cat</span> /sys/module/usb_storage/parameters/quirks
+
+<span class="c"># Find your Seagate drive IDs</span>
+lsusb <span class="nt">-tv</span> | <span class="nb">grep</span> <span class="s2">"ID 0bc2"</span>
+</code></pre></div></div>
+
+<p>In my case, I found several Seagate models across my cluster:</p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">0bc2:ac2b</code> - BUP Portable drives</li>
+  <li><code class="language-plaintext highlighter-rouge">0bc2:ac41</code> - One Touch HDD drives</li>
+  <li><code class="language-plaintext highlighter-rouge">0bc2:2344</code> - Older Expansion drives</li>
+</ul>
+
+<h2 id="step-2-apply-usb-storage-quirks">Step 2: Apply USB Storage Quirks</h2>
+
+<p>The solution is to disable UAS for these specific drives and force them to use the older USB Mass Storage protocol. Here are three methods:</p>
+
+<h3 id="method-1-runtime-quirks-temporary">Method 1: Runtime Quirks (Temporary)</h3>
+
+<p>For immediate testing:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Apply quirks immediately (lost on reboot)</span>
+<span class="nb">echo</span> <span class="s2">"0bc2:2344:,0bc2:ac2b:,0bc2:ac41:"</span> <span class="o">&gt;</span> /sys/module/usb_storage/parameters/quirks
+
+<span class="c"># Verify it worked</span>
+<span class="nb">cat</span> /sys/module/usb_storage/parameters/quirks
+</code></pre></div></div>
+
+<h3 id="method-2-modprobe-configuration-persistent">Method 2: Modprobe Configuration (Persistent)</h3>
+
+<p>For permanent changes that survive reboots:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create modprobe configuration</span>
+<span class="nb">echo</span> <span class="s1">'options usb-storage quirks=0bc2:2344:,0bc2:ac2b:,0bc2:ac41:'</span> <span class="o">&gt;</span> /etc/modprobe.d/usbstorage-quirks.conf
+
+<span class="c"># Rebuild initramfs</span>
+update-initramfs <span class="nt">-u</span>
+</code></pre></div></div>
+
+<h3 id="method-3-grub-boot-parameters-most-reliable">Method 3: GRUB Boot Parameters (Most Reliable)</h3>
+
+<p>This method works even if the modprobe approach fails:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create GRUB configuration</span>
+<span class="nb">cat</span> <span class="o">&gt;</span> /etc/default/grub.d/usb-quirks.cfg <span class="o">&lt;&lt;</span> <span class="sh">'</span><span class="no">EOF</span><span class="sh">'
+# Override quirks for Seagate USB drives
+GRUB_CMDLINE_LINUX="</span><span class="nv">$GRUB_CMDLINE_LINUX</span><span class="sh"> usb_storage.quirks=0bc2:2344:,0bc2:ac2b:,0bc2:ac41:"
+</span><span class="no">EOF
+
+</span><span class="c"># Update GRUB (Debian/Ubuntu) or proxmox-boot-tool (Proxmox)</span>
+update-grub  <span class="c"># or: proxmox-boot-tool refresh</span>
+reboot
+</code></pre></div></div>
+
+<h2 id="step-3-verify-the-fix">Step 3: Verify the Fix</h2>
+
+<p>After applying quirks and reconnecting your drive:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check that quirks are active</span>
+<span class="nb">cat</span> /sys/module/usb_storage/parameters/quirks
+<span class="c"># Should show: 0bc2:2344:,0bc2:ac2b:,0bc2:ac41:</span>
+
+<span class="c"># Verify drive is using usb-storage instead of uas</span>
+lsscsi <span class="nt">-H</span>
+<span class="c"># Look for your drive - should show usb-storage, not uas</span>
+
+<span class="c"># Now try SMART commands</span>
+smartctl <span class="nt">-d</span> sat <span class="nt">-a</span> /dev/sdX
+</code></pre></div></div>
+
+<h2 id="success-smart-data-available">Success! SMART Data Available</h2>
+
+<p>With the quirks in place, you should now see proper SMART data:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Basic SMART info</span>
+smartctl <span class="nt">-d</span> sat <span class="nt">-i</span> /dev/sdX
+
+<span class="c"># Full SMART report</span>
+smartctl <span class="nt">-d</span> sat <span class="nt">-a</span> /dev/sdX
+
+<span class="c"># Health check</span>
+smartctl <span class="nt">-d</span> sat <span class="nt">-H</span> /dev/sdX
+</code></pre></div></div>
+
+<h2 id="common-seagate-usb-drive-ids">Common Seagate USB Drive IDs</h2>
+
+<p>Here are the most common Seagate USB drive IDs that need quirks:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">0bc2:2344</code> - Expansion Portable (older)</li>
+  <li><code class="language-plaintext highlighter-rouge">0bc2:ac2b</code> - BUP Portable series</li>
+  <li><code class="language-plaintext highlighter-rouge">0bc2:ac41</code> - One Touch HDD series</li>
+</ul>
+
+<p>If you have a different model, use <code class="language-plaintext highlighter-rouge">lsusb</code> to find your specific vendor:product ID.</p>
+
+<p><strong>For updated device coverage including newer models, see the <a href="/2026/02/03/usb-drive-smart-updates/">2026 update article</a>.</strong></p>
+
+<h2 id="my-multi-node-setup">My Multi-Node Setup</h2>
+
+<p>Across my Proxmox cluster, I found these Seagate drives:</p>
+
+<ul>
+  <li><strong>harlan</strong>: <code class="language-plaintext highlighter-rouge">0bc2:ac41</code> (One Touch HDD)</li>
+  <li><strong>kovacs</strong>: Multiple drives including <code class="language-plaintext highlighter-rouge">0bc2:ac41</code>, <code class="language-plaintext highlighter-rouge">0bc2:ac2b</code>, and <code class="language-plaintext highlighter-rouge">0bc2:2344</code></li>
+  <li><strong>poe</strong>: <code class="language-plaintext highlighter-rouge">0bc2:ac2b</code> (BUP Portable)</li>
+</ul>
+
+<p>Using the GRUB method, all nodes now have working SMART monitoring on their USB drives.</p>
+
+<h2 id="understanding-quirk-flags">Understanding Quirk Flags</h2>
+
+<p>The quirk string format is <code class="language-plaintext highlighter-rouge">vendor:product:flags</code>. Common flags:</p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">u</code> - Ignore UAS (USB Attached SCSI)</li>
+  <li><code class="language-plaintext highlighter-rouge">t</code> - Ignore TRIM commands</li>
+  <li>Empty (<code class="language-plaintext highlighter-rouge">:</code>) - Disable UAS completely</li>
+</ul>
+
+<p>For SMART access, we typically want empty flags to force USB Mass Storage mode.</p>
+
+<h2 id="troubleshooting-tips">Troubleshooting Tips</h2>
+
+<ol>
+  <li><strong>Still getting errors?</strong> Try unplugging and reconnecting the drive after applying quirks</li>
+  <li><strong>Multiple methods not working?</strong> Some drives need the <code class="language-plaintext highlighter-rouge">-T permissive</code> flag: <code class="language-plaintext highlighter-rouge">smartctl -d sat -T permissive -a /dev/sdX</code></li>
+  <li><strong>Performance concerns?</strong> USB Mass Storage is slower than UAS, but the difference is minimal for monitoring</li>
+  <li><strong>Persistent issues?</strong> Check <code class="language-plaintext highlighter-rouge">dmesg</code> for USB errors after connecting the drive</li>
+</ol>
+
+<h2 id="why-this-matters">Why This Matters</h2>
+
+<p>USB drives fail without warning. Having SMART data means you can:</p>
+
+<ul>
+  <li>Monitor drive health proactively</li>
+  <li>Set up alerts for failing drives</li>
+  <li>Plan replacements before catastrophic failure</li>
+  <li>Include USB drives in your monitoring stack</li>
+</ul>
+
+<p>In my homelab, I use these drives for backup storage and media serving. Being able to monitor their health is crucial for maintaining data integrity.</p>
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://blog.karssen.org/2022/05/19/getting-smart-information-from-a-seagate-expansion-portable-drive/">Karssen’s blog post</a> - Original inspiration</li>
+  <li><a href="https://www.smartmontools.org/wiki/SAT-with-UAS-Linux">smartmontools wiki</a> - Technical details</li>
+  <li><a href="https://www.reddit.com/r/DataHoarder/comments/nc392f/how_can_i_read_the_smart_data_of_a_16_tb_seagate/">r/DataHoarder discussion</a> - Community solutions</li>
+</ul>
+
+<p>Now go forth and monitor those USB drives properly! Your future self will thank you when you catch a failing drive before it takes your data with it.</p>
+
+<p><strong>For the latest device IDs and production deployment experience, see <a href="/2026/02/03/usb-drive-smart-updates/">USB Drive SMART Updates: Fast-Track to the GRUB Solution</a>.</strong>d refresh boot configuration
+cp /mnt/pve/cephfs/backups/usb-quirks.cfg /etc/default/grub.d/usb-quirks.cfg
+proxmox-boot-tool refresh
+```</p>
+
+<h2 id="related-posts">Related Posts</h2>
+
+<ul>
+  <li><a href="/usb-drive-smart-updates/">USB Drive SMART Updates</a> — Updated device IDs and production deployment experience</li>
+  <li><a href="/ceph-ssd-wal-db-usb-storage/">Hybrid Ceph Storage: SSD WAL/DB Acceleration</a> — The storage architecture these drives support</li>
+  <li><a href="/proxmox-ceph-homelab-settings/">Proxmox Ceph Settings for the Homelab</a> — Ceph configuration for homelab hardware</li>
+  <li><a href="/zfs-ceph-overlapping-failures/">When ZFS and Ceph Problems Collide</a> — What happens when USB Ceph drives fail</li>
+  <li><a href="/proxmox-ceph-guide/">Proxmox &amp; Ceph Homelab Guide</a> — All Proxmox and Ceph articles</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/seagate/">seagate</a>, 
+        
+          <a href="/tags/usb/">usb</a>, 
+        
+          <a href="/tags/smart/">smart</a>, 
+        
+          <a href="/tags/monitoring/">monitoring</a>, 
+        
+          <a href="/tags/storage/">storage</a>, 
+        
+          <a href="/tags/linux/">linux</a>, 
+        
+          <a href="/tags/proxmox/">proxmox</a>, 
+        
+          <a href="/tags/homelab/">homelab</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/technical/">technical</a>, 
+        
+          <a href="/categories/hardware/">hardware</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

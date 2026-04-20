@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>When ZFS and Ceph Problems Collide: Diagnosing Overlapping Failures on Proxmox | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="When ZFS and Ceph Problems Collide: Diagnosing Overlapping Failures on Proxmox" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="Diagnosing overlapping ZFS hostid mismatch and Ceph OSD failures on a Proxmox homelab cluster. Covers the correct Proxmox-specific fix for ZFS-8000-EY, recovering hung USB Ceph drives, replacing dead OSDs with specific IDs, and discovering WAL vs DB acceleration inconsistencies." />
+<meta property="og:description" content="Diagnosing overlapping ZFS hostid mismatch and Ceph OSD failures on a Proxmox homelab cluster. Covers the correct Proxmox-specific fix for ZFS-8000-EY, recovering hung USB Ceph drives, replacing dead OSDs with specific IDs, and discovering WAL vs DB acceleration inconsistencies." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/zfs-ceph-overlapping-failures/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/zfs-ceph-overlapping-failures/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-04-15T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="When ZFS and Ceph Problems Collide: Diagnosing Overlapping Failures on Proxmox" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-04-15T00:00:00+00:00","datePublished":"2026-04-15T00:00:00+00:00","description":"Diagnosing overlapping ZFS hostid mismatch and Ceph OSD failures on a Proxmox homelab cluster. Covers the correct Proxmox-specific fix for ZFS-8000-EY, recovering hung USB Ceph drives, replacing dead OSDs with specific IDs, and discovering WAL vs DB acceleration inconsistencies.","headline":"When ZFS and Ceph Problems Collide: Diagnosing Overlapping Failures on Proxmox","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/zfs-ceph-overlapping-failures/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/zfs-ceph-overlapping-failures/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/zfs-ceph-overlapping-failures/">When ZFS and Ceph Problems Collide: Diagnosing Overlapping Failures on Proxmox</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-04-15T00:00:00+00:00">April 15, 2026</time><span class="reading-time">9 min read</span></header>
+
+  <p>A routine ZFS scrub email kicked off what turned into a much bigger investigation on my <a href="/proxmox-ceph-guide/">AlteredCarbon Proxmox cluster</a>. What started as a simple hostid mismatch on a boot mirror ended up uncovering a dead USB Ceph drive, a ghost OSD that had been missing for three months, and an inconsistency in how SSD acceleration was configured across the cluster.</p>
+
+<p>This is the story of overlapping failures and why you should always check the full picture before rebooting.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="the-alert">The Alert</h2>
+
+<p>The ZFS scrub notification from harlan looked benign:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="go">ZFS has finished a scrub:
+
+   pool: rpool
+  state: ONLINE
+ status: Mismatch between pool hostid and system hostid on imported pool.
+   scan: scrub repaired 0B in 00:00:12 with 0 errors
+ config:
+        NAME                                STATE     READ WRITE CKSUM
+        rpool                               ONLINE       0     0     0
+          mirror-0                          ONLINE       0     0     0
+            ata-SSD_YS202010015363AA-part3  ONLINE       0     0     0
+            ata-SSD_YS202010025083AA-part3  ONLINE       0     0     0
+
+ errors: No known data errors
+</span></code></pre></div></div>
+
+<p>Zero errors, both SSDs healthy, pool ONLINE. The only issue was a hostid mismatch — a leftover from harlan’s emergency SSD migration months earlier when the original HDDs failed and required a full Proxmox reinstall.</p>
+
+<h2 id="problem-1-zfs-hostid-mismatch">Problem 1: ZFS Hostid Mismatch</h2>
+
+<p>When harlan was reinstalled on new SSDs, the fresh Proxmox installation generated a new <code class="language-plaintext highlighter-rouge">/etc/hostid</code>. But the rpool metadata still carried the old hostid from the previous installation. Every scrub would emit this warning until fixed.</p>
+
+<h3 id="the-wrong-fix-dont-do-this">The Wrong Fix (Don’t Do This)</h3>
+
+<p>My first instinct was the textbook ZFS fix:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>zpool <span class="nb">export </span>rpool
+zpool import rpool
+</code></pre></div></div>
+
+<p><strong>This hangs immediately.</strong> You cannot export rpool on a running system — it’s your root filesystem. The <code class="language-plaintext highlighter-rouge">zpool export</code> tries to unmount <code class="language-plaintext highlighter-rouge">/</code> and blocks forever. I had to open a second SSH session and <code class="language-plaintext highlighter-rouge">pkill -9 -f "zpool export"</code> to recover.</p>
+
+<h3 id="the-right-fix">The Right Fix</h3>
+
+<p>The correct approach for a Proxmox ZFS boot mirror:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Write the current system hostid to /etc/hostid</span>
+zgenhostid <span class="nt">-f</span> <span class="si">$(</span><span class="nb">hostid</span><span class="si">)</span>
+
+<span class="c"># Rebuild initramfs so the hostid is included in early boot</span>
+proxmox-boot-tool refresh
+
+<span class="c"># Verify both ESPs are synced</span>
+proxmox-boot-tool status
+</code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">proxmox-boot-tool refresh</code> is the key step — it rebuilds the initramfs and syncs both boot partitions in the ZFS mirror. Without it, the hostid file won’t be present during early boot when the pool is imported.</p>
+
+<p>You can verify the initramfs includes the hostid:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>lsinitramfs /boot/initrd.img-<span class="si">$(</span><span class="nb">uname</span> <span class="nt">-r</span><span class="si">)</span> | <span class="nb">grep hostid</span>
+</code></pre></div></div>
+
+<p>The warning clears on the next reboot.</p>
+
+<h2 id="problem-2-ceph-osds-were-already-down">Problem 2: Ceph OSDs Were Already Down</h2>
+
+<p>Before rebooting harlan for the hostid fix, I checked Ceph status and found a pre-existing disaster:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="go">health: HEALTH_WARN
+        noout,norebalance flag(s) set
+        2 osds down
+        Degraded data redundancy: 9.435% objects degraded
+</span></code></pre></div></div>
+
+<p>Two of harlan’s three Ceph OSDs (osd.0 and osd.6) had been down since <strong>March 16th</strong> — almost four weeks. Someone (me) had set <code class="language-plaintext highlighter-rouge">noout,norebalance</code> flags to prevent rebalancing and then… forgot about it.</p>
+
+<h3 id="osd0-usb-drive-hung">osd.0: USB Drive Hung</h3>
+
+<p>The logs told the story:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="go">bluestore(/var/lib/ceph/osd/ceph-0/block) _read_bdev_label failed to read
+from /var/lib/ceph/osd/ceph-0/block: (5) Input/output error
+</span></code></pre></div></div>
+
+<p>And <code class="language-plaintext highlighter-rouge">dmesg</code> confirmed USB drive failures:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>sd 7:0:0:0: [sde] tag#14 FAILED Result: hostbyte=DID_ERROR driverbyte=DRIVER_OK
+I/O error, dev sde, sector 9767536512 op 0x0:(READ)
+usb 4-4: reset SuperSpeed USB device number 3 using xhci_hcd
+</code></pre></div></div>
+
+<p>The Seagate 5TB USB drive backing osd.0 was experiencing repeated USB bus resets and I/O errors. The USB-to-SATA bridge was hung — every command touching <code class="language-plaintext highlighter-rouge">/dev/sde</code> would block indefinitely. This meant <code class="language-plaintext highlighter-rouge">ceph-volume lvm list</code>, <code class="language-plaintext highlighter-rouge">smartctl</code>, even <code class="language-plaintext highlighter-rouge">lvs</code> would all hang waiting for I/O that would never complete.</p>
+
+<h3 id="osd6-drive-completely-gone">osd.6: Drive Completely Gone</h3>
+
+<p>osd.6 was worse — its backing drive had failed months earlier. This was the same Seagate BUP Portable that had <a href="/ceph-osd-recovery-power-failure/">survived the power outage in September 2025</a> but apparently didn’t survive long after:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>root@harlan:~# <span class="nb">ls</span> <span class="nt">-la</span> /var/lib/ceph/osd/ceph-6/
+total 1
+drwxr-xr-x 2 ceph ceph 2 Jan 21 20:43 <span class="nb">.</span>
+drwxr-xr-x 6 ceph ceph 6 Jan 21 20:43 ..
+</code></pre></div></div>
+
+<p>Empty directory since January 21st. The OSD logs showed:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>auth: unable to find a keyring on /var/lib/ceph/osd/ceph-6/keyring:
+<span class="o">(</span>2<span class="o">)</span> No such file or directory
+</code></pre></div></div>
+
+<p>Only two USB drives showed up in <code class="language-plaintext highlighter-rouge">lsusb</code> — the third was simply not on the bus. When I plugged the labeled osd.6 drive into a different USB port, it enumerated for half a second then immediately disconnected:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">[</span>77793.916270] usb 4-1: Product: BUP Portable
+<span class="o">[</span>77793.916273] usb 4-1: Manufacturer: Seagate
+<span class="o">[</span>77794.468387] usb 4-1: USB disconnect, device number 4
+<span class="o">[</span>77794.469556] sd 8:0:0:0: <span class="o">[</span>sdf] Read Capacity<span class="o">(</span>16<span class="o">)</span> failed: Result: <span class="nv">hostbyte</span><span class="o">=</span>DID_ERROR
+<span class="o">[</span>77794.469577] sd 8:0:0:0: <span class="o">[</span>sdf] 0 512-byte logical blocks: <span class="o">(</span>0 B/0 B<span class="o">)</span>
+</code></pre></div></div>
+
+<p>Zero bytes, zero blocks. The drive was dead as a door nail.</p>
+
+<h2 id="the-recovery">The Recovery</h2>
+
+<h3 id="step-1-reboot-to-clear-usb-bus">Step 1: Reboot to Clear USB Bus</h3>
+
+<p>Rather than trying to surgically unplug the hung drive, I rebooted harlan. This:</p>
+
+<ul>
+  <li>Reset both USB bridges</li>
+  <li>Cleared the hung I/O state on sde</li>
+  <li>Applied the ZFS hostid fix (via the updated initramfs)</li>
+</ul>
+
+<p>After reboot, osd.0 came back up — the USB reset recovered sde. But osd.6’s drive was still dead.</p>
+
+<h3 id="step-2-remove-dead-osd6">Step 2: Remove Dead osd.6</h3>
+
+<p>Through the Proxmox Web UI: <strong>harlan → Ceph → OSD → select osd.6 → Out → Destroy</strong> (with cleanup enabled).</p>
+
+<p>This removed osd.6 from the CRUSH map, deleted its auth keys, and cleaned up the orphaned WAL LV on the MX500 SSD I use to accelerate access.</p>
+
+<h3 id="step-3-add-replacement-drive-as-new-osd6">Step 3: Add Replacement Drive as New osd.6</h3>
+
+<p>I had a replacement 5TB Seagate drive ready. The trick was ensuring it got OSD ID 6 (for my physical labeling) and matched the existing 100GB WAL configuration:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Pre-create a 100GB WAL LV on the MX500 to match existing OSDs</span>
+lvcreate <span class="nt">-L</span> 100G <span class="nt">-n</span> osd-wal-osd6 ceph-8c2b41c2-65d6-4f39-ae13-d6f5d208878c
+
+<span class="c"># Create the OSD with specific ID and WAL device</span>
+ceph-volume lvm create <span class="nt">--osd-id</span> 6 <span class="nt">--data</span> /dev/sdd <span class="se">\</span>
+  <span class="nt">--block</span>.wal ceph-8c2b41c2-65d6-4f39-ae13-d6f5d208878c/osd-wal-osd6
+</code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">--osd-id 6</code> flag was critical — without it, Ceph would assign the next available ID. The pre-sized LV was necessary because the Ceph config default for <code class="language-plaintext highlighter-rouge">bluestore_block_wal_size</code> was only 96MB, while the existing WALs were 100GB (created with pre-sized LVs originally).</p>
+
+<h3 id="step-4-clear-maintenance-flags">Step 4: Clear Maintenance Flags</h3>
+
+<p>With all 15 OSDs back up:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph osd <span class="nb">unset </span>noout
+ceph osd <span class="nb">unset </span>norebalance
+</code></pre></div></div>
+
+<p>Ceph immediately began backfilling data to the new osd.6. Within minutes, the cluster was recovering:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@harlan:~#</span><span class="w"> </span>ceph <span class="nt">-s</span>
+<span class="go">  cluster:
+    health: HEALTH_WARN
+            Degraded data redundancy: 4.863% objects degraded
+  services:
+    osd: 15 osds: 15 up (since 16m), 15 in (since 17m)
+  data:
+    usage:   30 TiB used, 39 TiB / 69 TiB avail
+  io:
+    recovery: 21 MiB/s, 5 objects/s
+</span></code></pre></div></div>
+
+<p>All 15 OSDs up, 69 TiB total capacity restored, recovery in progress. The degraded PGs will heal over several hours as data backfills to the new osd.6 across the USB 3.0 links.</p>
+
+<h2 id="bonus-discovery-wal-vs-db-inconsistency">Bonus Discovery: WAL vs DB Inconsistency</h2>
+
+<p>While investigating, I noticed the Proxmox UI showed different SSD acceleration types across nodes. Dumping the metadata revealed:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Host</th>
+      <th>OSDs</th>
+      <th>SSD Acceleration</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>harlan</td>
+      <td>0, 3, 6</td>
+      <td>WAL only</td>
+    </tr>
+    <tr>
+      <td>kovacs</td>
+      <td>2, 5, 8</td>
+      <td>WAL only</td>
+    </tr>
+    <tr>
+      <td>quell</td>
+      <td>9, 10, 11</td>
+      <td>WAL only</td>
+    </tr>
+    <tr>
+      <td>edgar</td>
+      <td>1, 4, 7</td>
+      <td><strong>DB</strong> (WAL + metadata)</td>
+    </tr>
+    <tr>
+      <td>poe</td>
+      <td>12, 13, 14</td>
+      <td><strong>DB</strong> (WAL + metadata)</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Edgar and Poe’s OSDs were created through the Proxmox Web UI, which defaults to <code class="language-plaintext highlighter-rouge">--block.db</code>. The other nodes were set up via CLI with <code class="language-plaintext highlighter-rouge">--block.wal</code>. The DB configuration is slightly better — it accelerates both writes and metadata reads on the SSD — but the practical difference is minimal when the bottleneck is USB 3.0 bandwidth.</p>
+
+<p>Future OSD rebuilds should standardize on DB to match the Proxmox UI default.</p>
+
+<h2 id="lessons-learned">Lessons Learned</h2>
+
+<ol>
+  <li>
+    <p><strong>Check Ceph before rebooting for ZFS issues.</strong> The hostid fix was trivial but the Ceph situation required careful handling. If I’d blindly rebooted with 2 OSDs down and degraded PGs, the recovery would have been messier.</p>
+  </li>
+  <li>
+    <p><strong>Don’t <code class="language-plaintext highlighter-rouge">zpool export rpool</code> on a running system.</strong> Use <code class="language-plaintext highlighter-rouge">zgenhostid</code> + <code class="language-plaintext highlighter-rouge">proxmox-boot-tool refresh</code> instead. The Proxmox tooling handles this correctly.</p>
+  </li>
+  <li>
+    <p><strong>Maintenance flags are dangerous when forgotten.</strong> <code class="language-plaintext highlighter-rouge">noout,norebalance</code> prevented Ceph from healing for almost four weeks. Set a calendar reminder when you enable maintenance flags.</p>
+  </li>
+  <li>
+    <p><strong>USB Ceph drives fail in annoying ways.</strong> A hung USB bridge blocks every LVM and Ceph command that touches the device. The only fix is physical disconnect or reboot. Label your drives — it saved significant time identifying which physical cable to check.</p>
+  </li>
+  <li>
+    <p><strong>Dead drives may not show up at all.</strong> osd.6’s drive wasn’t just failing — it was completely absent from the USB bus. No amount of software troubleshooting will find a drive that doesn’t enumerate.</p>
+  </li>
+  <li>
+    <p><strong>Document your OSD creation method.</strong> The WAL vs DB inconsistency was invisible until I dumped metadata across all 15 OSDs. Knowing which tool created each OSD helps explain configuration differences.</p>
+  </li>
+</ol>
+
+<h2 id="cluster-hardware-context">Cluster Hardware Context</h2>
+
+<p>For readers unfamiliar with this cluster: AlteredCarbon is a six-node Proxmox 8.4 cluster built from Dell OptiPlex 990 towers (2011-era i7-2600 CPUs). Each of the five Ceph OSD hosts has three 5TB Seagate USB drives for data and a Crucial MX500 500GB SATA SSD for WAL/DB acceleration. The sixth node (tanaka) runs without Ceph OSDs. Total raw storage is 69 TiB with 3x replication.</p>
+
+<p>It’s old hardware running enterprise software on a homelab budget. Things break. The key is having enough redundancy that nothing breaks catastrophically.</p>
+
+<h2 id="related-posts">Related Posts</h2>
+
+<ul>
+  <li><a href="/ceph-osd-recovery-power-failure/">Ceph OSD Recovery After Power Failure</a> — The prequel: a dead SAN switch caused OSD cascades, and the maintenance flags set during that recovery were still active months later</li>
+  <li><a href="/proxmox-zfs-boot-mirror-smart-analysis/">Monitoring ZFS Boot Mirror Health in Proxmox 8 Clusters</a> — The SMART monitoring that caught harlan’s original HDD failures</li>
+  <li><a href="/usb-drive-smart-updates/">USB Drive SMART Updates</a> — Configuring SMART monitoring for the replacement Seagate USB drives</li>
+  <li><a href="/proxmox-8-homelab/">ProxMox 8.2 for the Homelabs</a> — The original cluster build where ZFS boot mirrors saved the day</li>
+  <li><a href="/proxmox-ceph-homelab-settings/">Proxmox Ceph Settings for the Homelab</a> — BlueStore configuration context for the WAL vs DB discovery</li>
+  <li><a href="/homelab-storage-economics/">Homelab Storage Economics</a> — Cost analysis behind the USB drive replacement decisions</li>
+  <li><a href="/proxmox-ceph-guide/">Proxmox &amp; Ceph Homelab Guide</a> — All Proxmox and Ceph articles</li>
+</ul>
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://openzfs.github.io/openzfs-docs/msg/ZFS-8000-EY">ZFS-8000-EY: Pool hostid mismatch</a></li>
+  <li><a href="https://pve.proxmox.com/wiki/Host_Bootloader">Proxmox Boot Tool documentation</a></li>
+  <li><a href="https://docs.ceph.com/en/reef/rados/configuration/bluestore-config-ref/">Ceph BlueStore WAL vs DB</a></li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/proxmox/">proxmox</a>, 
+        
+          <a href="/tags/zfs/">zfs</a>, 
+        
+          <a href="/tags/ceph/">ceph</a>, 
+        
+          <a href="/tags/osd/">osd</a>, 
+        
+          <a href="/tags/usb/">usb</a>, 
+        
+          <a href="/tags/debugging/">debugging</a>, 
+        
+          <a href="/tags/homelab/">homelab</a>, 
+        
+          <a href="/tags/storage/">storage</a>, 
+        
+          <a href="/tags/bluestore/">bluestore</a>, 
+        
+          <a href="/tags/dell-optiplex-990/">dell-optiplex-990</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/proxmox/">proxmox</a>, 
+        
+          <a href="/categories/zfs/">zfs</a>, 
+        
+          <a href="/categories/ceph/">ceph</a>, 
+        
+          <a href="/categories/homelab/">homelab</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

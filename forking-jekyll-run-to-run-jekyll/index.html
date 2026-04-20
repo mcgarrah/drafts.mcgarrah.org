@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Forking Jekyll Run: From Abandoned Plugin to Run Jekyll | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Forking Jekyll Run: From Abandoned Plugin to Run Jekyll" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="How I forked the abandoned Jekyll Run VS Code extension, modernized its CI/CD infrastructure, and prepared it for independent publication as ‘Run Jekyll’. Covers GitHub Actions upgrades, dependency updates, VSIX packaging, Marketplace publishing setup, and the etiquette of forking open source projects." />
+<meta property="og:description" content="How I forked the abandoned Jekyll Run VS Code extension, modernized its CI/CD infrastructure, and prepared it for independent publication as ‘Run Jekyll’. Covers GitHub Actions upgrades, dependency updates, VSIX packaging, Marketplace publishing setup, and the etiquette of forking open source projects." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/forking-jekyll-run-to-run-jekyll/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/forking-jekyll-run-to-run-jekyll/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-05-25T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Forking Jekyll Run: From Abandoned Plugin to Run Jekyll" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-05-25T00:00:00+00:00","datePublished":"2026-05-25T00:00:00+00:00","description":"How I forked the abandoned Jekyll Run VS Code extension, modernized its CI/CD infrastructure, and prepared it for independent publication as ‘Run Jekyll’. Covers GitHub Actions upgrades, dependency updates, VSIX packaging, Marketplace publishing setup, and the etiquette of forking open source projects.","headline":"Forking Jekyll Run: From Abandoned Plugin to Run Jekyll","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/forking-jekyll-run-to-run-jekyll/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/forking-jekyll-run-to-run-jekyll/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/forking-jekyll-run-to-run-jekyll/">Forking Jekyll Run: From Abandoned Plugin to Run Jekyll</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-05-25T00:00:00+00:00">May 25, 2026</time><span class="reading-time">5 min read</span></header>
+
+  <p>The <a href="https://marketplace.visualstudio.com/items?itemName=Dedsec727.jekyll-run">Jekyll Run VS Code extension</a> hasn’t been updated since 2020. I <a href="/jekyll-run-plugin-multiroot-workspace-bug/">found three bugs</a>, <a href="/run-jekyll-bug-fixes-and-code-review/">fixed them</a>, and modernized the build infrastructure. The original author appears to have moved on — the repository has open issues with no responses and the last commit was five years ago.</p>
+
+<p>Rather than wait indefinitely for a PR review, I’m forking the extension as <strong>Run Jekyll</strong> — a maintained version that acknowledges the original work while providing a path forward for bug fixes and improvements.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="why-fork-instead-of-pr">Why Fork Instead of PR</h2>
+
+<p>I submitted a PR to the original repository. The respectful first step. But the repository shows no signs of activity:</p>
+
+<ul>
+  <li>Last commit: 2020</li>
+  <li>Open issues: unanswered</li>
+  <li>Dependencies: 42 known vulnerabilities (before I updated them)</li>
+</ul>
+
+<p>The MIT license explicitly permits forking and republishing. The original author built something useful — thousands of people use it. Forking keeps it alive.</p>
+
+<h2 id="the-rename-jekyll-run--run-jekyll">The Rename: Jekyll Run → Run Jekyll</h2>
+
+<p>Publishing a fork under the same name creates confusion. Users searching for “Jekyll Run” would find two extensions with the same name, different publishers, and different versions. That’s a bad experience.</p>
+
+<p><strong>Run Jekyll</strong> is distinct enough to avoid confusion while being immediately recognizable to existing users. The <code class="language-plaintext highlighter-rouge">package.json</code> changes:</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+    </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"run-jekyll"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"displayName"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Run Jekyll"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Build and Run your Jekyll static website (maintained fork of Jekyll Run)"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"publisher"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;your-marketplace-publisher-id&gt;"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1.8.0"</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>The README credits the original author and links to the upstream repository.</p>
+
+<h2 id="cicd-modernization">CI/CD Modernization</h2>
+
+<p>The original CI pipeline was from 2020 and couldn’t run on current GitHub Actions runners. Here’s what was updated:</p>
+
+<h3 id="github-actions-upgrades">GitHub Actions Upgrades</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Component</th>
+      <th>Before</th>
+      <th>After</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">actions/checkout</code></td>
+      <td>v2</td>
+      <td>v4</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">actions/setup-node</code></td>
+      <td>v1</td>
+      <td>v4</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">github/codeql-action</code></td>
+      <td>v1</td>
+      <td>v4</td>
+    </tr>
+    <tr>
+      <td>Node.js</td>
+      <td>12 (EOL)</td>
+      <td>20</td>
+    </tr>
+    <tr>
+      <td>Runner</td>
+      <td><code class="language-plaintext highlighter-rouge">ubuntu-18.04</code> (EOL)</td>
+      <td><code class="language-plaintext highlighter-rouge">ubuntu-latest</code></td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">GabrielBB/xvfb-action</code></td>
+      <td>v1.2 (all platforms)</td>
+      <td>v1.7 (Linux only)</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">vsce</code></td>
+      <td>v1 (deprecated)</td>
+      <td><code class="language-plaintext highlighter-rouge">@vscode/vsce</code> v3</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">vscode-test</code></td>
+      <td>v1.3 (broken)</td>
+      <td><code class="language-plaintext highlighter-rouge">@vscode/test-electron</code> v2.4</td>
+    </tr>
+    <tr>
+      <td>Stale bot</td>
+      <td>Probot config</td>
+      <td><code class="language-plaintext highlighter-rouge">actions/stale@v9</code></td>
+    </tr>
+    <tr>
+      <td>Action runtime</td>
+      <td>Node.js 20</td>
+      <td>Node.js 24 opt-in</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="cross-platform-testing">Cross-Platform Testing</h3>
+
+<p>The <code class="language-plaintext highlighter-rouge">ci-release.yml</code> workflow tests on macOS, Ubuntu, and Windows. The <code class="language-plaintext highlighter-rouge">xvfb-action</code> provides a headless display server for VS Code integration tests on Linux — macOS and Windows don’t need it:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Run headless test (Linux)</span>
+  <span class="na">if</span><span class="pi">:</span> <span class="s">runner.os == 'Linux'</span>
+  <span class="na">uses</span><span class="pi">:</span> <span class="s">GabrielBB/xvfb-action@v1.7</span>
+  <span class="na">with</span><span class="pi">:</span>
+    <span class="na">run</span><span class="pi">:</span> <span class="s">npm test</span>
+<span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Run test (macOS/Windows)</span>
+  <span class="na">if</span><span class="pi">:</span> <span class="s">runner.os != 'Linux'</span>
+  <span class="na">run</span><span class="pi">:</span> <span class="s">npm test</span>
+</code></pre></div></div>
+
+<h3 id="vsix-build-and-release">VSIX Build and Release</h3>
+
+<p>A new <code class="language-plaintext highlighter-rouge">build-vsix.yml</code> workflow builds the <code class="language-plaintext highlighter-rouge">.vsix</code> extension package and attaches it to GitHub Releases:</p>
+
+<ul>
+  <li>Triggers on release publish and manual <code class="language-plaintext highlighter-rouge">workflow_dispatch</code></li>
+  <li>Packages with <code class="language-plaintext highlighter-rouge">@vscode/vsce</code></li>
+  <li>Uploads as GitHub Actions artifact</li>
+  <li>Attaches to the GitHub Release for direct download</li>
+</ul>
+
+<p>Install from a release:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>gh release download v1.7.1 <span class="nt">--repo</span> mcgarrah/jekyll-run <span class="nt">--pattern</span> <span class="s1">'*.vsix'</span>
+code <span class="nt">--install-extension</span> jekyll-run.vsix
+</code></pre></div></div>
+
+<h3 id="marketplace-publishing">Marketplace Publishing</h3>
+
+<p>The <code class="language-plaintext highlighter-rouge">ci-publish.yml</code> workflow publishes to the VS Code Marketplace when a GitHub Release is created. It checks for the <code class="language-plaintext highlighter-rouge">PUBLISHER_TOKEN</code> secret and skips gracefully if not configured:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Check for Marketplace token</span>
+  <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+    <span class="s">if [ -z "$" ]; then</span>
+      <span class="s">echo "::warning::PUBLISHER_TOKEN not configured. Skipping publish."</span>
+    <span class="s">fi</span>
+</code></pre></div></div>
+
+<p>Setting up the token requires a <a href="/run-jekyll-vscode-marketplace-publisher-setup/">VS Code Marketplace publisher account</a>.</p>
+
+<h2 id="dependency-updates">Dependency Updates</h2>
+
+<p>All dependencies were updated from 2020 versions to current:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Package</th>
+      <th>Before</th>
+      <th>After</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>TypeScript</td>
+      <td>3.8</td>
+      <td>5.7</td>
+    </tr>
+    <tr>
+      <td>ESLint</td>
+      <td>6.8</td>
+      <td>8.57</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">@typescript-eslint/*</code></td>
+      <td>2.30</td>
+      <td>8.58</td>
+    </tr>
+    <tr>
+      <td>Mocha</td>
+      <td>7.1</td>
+      <td>11.7</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">@types/node</code></td>
+      <td>13.11</td>
+      <td>20.17</td>
+    </tr>
+    <tr>
+      <td>semantic-release</td>
+      <td>17.4</td>
+      <td>24.2</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Vulnerabilities reduced from 42 to 3 (remaining are transitive deps in npm and mocha that can’t be fixed from our side).</p>
+
+<p>Source code changes for TypeScript 5 compatibility:</p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">child.pid</code> is <code class="language-plaintext highlighter-rouge">number | undefined</code> (added non-null assertions)</li>
+  <li><code class="language-plaintext highlighter-rouge">resolve()</code> requires an argument in <code class="language-plaintext highlighter-rouge">Promise&lt;void&gt;</code> (pass <code class="language-plaintext highlighter-rouge">undefined</code>)</li>
+  <li><code class="language-plaintext highlighter-rouge">skipLibCheck: true</code> in <code class="language-plaintext highlighter-rouge">tsconfig.json</code> for node_modules type conflicts</li>
+  <li>ESLint rule <code class="language-plaintext highlighter-rouge">@typescript-eslint/semi</code> renamed to core <code class="language-plaintext highlighter-rouge">semi</code></li>
+</ul>
+
+<h2 id="building-from-source">Building from Source</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone https://github.com/mcgarrah/jekyll-run.git
+<span class="nb">cd </span>jekyll-run
+npm <span class="nb">install
+</span>npm run compile    <span class="c"># TypeScript → JavaScript</span>
+npm run lint       <span class="c"># ESLint check</span>
+npm <span class="nb">test</span>           <span class="c"># Run tests in Extension Development Host</span>
+vsce package       <span class="c"># Build .vsix</span>
+</code></pre></div></div>
+
+<h2 id="whats-next">What’s Next</h2>
+
+<ol>
+  <li>Apply the <a href="/run-jekyll-bug-fixes-and-code-review/">bug fixes and code review improvements</a></li>
+  <li>Rename to “Run Jekyll” in <code class="language-plaintext highlighter-rouge">package.json</code></li>
+  <li>Set up a VS Code Marketplace publisher account</li>
+  <li>Add the <code class="language-plaintext highlighter-rouge">PUBLISHER_TOKEN</code> secret to the repository</li>
+  <li>Create a v1.8.0 release — CI publishes to Marketplace automatically</li>
+</ol>
+
+<h2 id="related-posts">Related Posts</h2>
+
+<ul>
+  <li><a href="/jekyll-run-vscode-plugin-local-development/">Jekyll Run Plugin: Local Development Settings That Actually Work</a> — Configuration guide</li>
+  <li><a href="/jekyll-run-plugin-multiroot-workspace-bug/">Jekyll Run Plugin: Fixing the Multi-Root Workspace Crash</a> — macOS debugging story</li>
+  <li><a href="/run-jekyll-bug-fixes-and-code-review/">Run Jekyll: Bug Fixes and Code Review</a> — The actual code fixes</li>
+  <li><a href="/run-jekyll-vscode-marketplace-publisher-setup/">Setting Up a VS Code Marketplace Publisher Account</a> — Publishing prerequisites</li>
+  <li><a href="/vscode-extension-testing-jekyll-run/">Testing a VS Code Extension</a> — Test harness and CI</li>
+</ul>
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://github.com/Kanna727/jekyll-run">Jekyll Run Source Code</a> — Original repository (upstream)</li>
+  <li><a href="https://github.com/mcgarrah/jekyll-run">Run Jekyll Fork</a> — Maintained fork</li>
+  <li><a href="https://marketplace.visualstudio.com/items?itemName=Dedsec727.jekyll-run">Jekyll Run Extension</a> — Original Marketplace listing</li>
+  <li><a href="https://code.visualstudio.com/api/working-with-extensions/publishing-extension">VS Code Extension Publishing</a> — Official guide</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/jekyll/">jekyll</a>, 
+        
+          <a href="/tags/vscode/">vscode</a>, 
+        
+          <a href="/tags/vscode-extension/">vscode-extension</a>, 
+        
+          <a href="/tags/open-source/">open-source</a>, 
+        
+          <a href="/tags/github-actions/">github-actions</a>, 
+        
+          <a href="/tags/fork/">fork</a>, 
+        
+          <a href="/tags/publishing/">publishing</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/web-development/">web-development</a>, 
+        
+          <a href="/categories/technical/">technical</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

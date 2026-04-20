@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>OpenWRT LXC Native Implementation: From Debian Overlay to Pure Rootfs | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="OpenWRT LXC Native Implementation: From Debian Overlay to Pure Rootfs" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="DRAFT ahead of submitting Pull Request The journey to implement OpenWRT as an LXC container has been a fascinating exploration of containerization limits and creative problem-solving. After extensive experimentation, I’ve successfully deployed a native OpenWRT LXC implementation that provides full router functionality within Proxmox VE." />
+<meta property="og:description" content="DRAFT ahead of submitting Pull Request The journey to implement OpenWRT as an LXC container has been a fascinating exploration of containerization limits and creative problem-solving. After extensive experimentation, I’ve successfully deployed a native OpenWRT LXC implementation that provides full router functionality within Proxmox VE." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/openwrt-lxc-native-implementation-journey/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/openwrt-lxc-native-implementation-journey/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-02-02T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="OpenWRT LXC Native Implementation: From Debian Overlay to Pure Rootfs" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-02-02T00:00:00+00:00","datePublished":"2026-02-02T00:00:00+00:00","description":"DRAFT ahead of submitting Pull Request The journey to implement OpenWRT as an LXC container has been a fascinating exploration of containerization limits and creative problem-solving. After extensive experimentation, I’ve successfully deployed a native OpenWRT LXC implementation that provides full router functionality within Proxmox VE.","headline":"OpenWRT LXC Native Implementation: From Debian Overlay to Pure Rootfs","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/openwrt-lxc-native-implementation-journey/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/openwrt-lxc-native-implementation-journey/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/openwrt-lxc-native-implementation-journey/">OpenWRT LXC Native Implementation: From Debian Overlay to Pure Rootfs</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-02-02T00:00:00+00:00">February 02, 2026</time><span class="reading-time">9 min read</span></header>
+
+  <p><strong>DRAFT ahead of submitting Pull Request</strong></p>
+
+<p>The journey to implement OpenWRT as an LXC container has been a fascinating exploration of containerization limits and creative problem-solving. After extensive experimentation, I’ve successfully deployed a native OpenWRT LXC implementation that provides full router functionality within Proxmox VE.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="the-evolution-four-approaches-tested">The Evolution: Four Approaches Tested</h2>
+
+<h3 id="approach-1-debian--openwrt-chroot-failed">Approach 1: Debian + OpenWRT Chroot (Failed)</h3>
+
+<p>The initial implementation (November 16, 2025) attempted a hybrid approach using Debian 12 as the base container with OpenWRT running in a chroot environment:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># The original failed approach</span>
+<span class="nv">var_os</span><span class="o">=</span><span class="s2">"debian"</span>
+<span class="nv">var_version</span><span class="o">=</span><span class="s2">"12"</span>
+<span class="c"># Install OpenWRT rootfs in /opt/openwrt chroot with systemd service</span>
+</code></pre></div></div>
+
+<p><strong>Problems Encountered:</strong></p>
+
+<ul>
+  <li>LuCI web interface incompatibility with chroot environment</li>
+  <li>Package management (opkg) network access issues in chroot</li>
+  <li>Service initialization conflicts between systemd and OpenWRT’s procd</li>
+  <li>Resource overhead from dual operating systems (~500MB+ footprint)</li>
+  <li>Complex maintenance and update procedures</li>
+  <li>Runtime initialization failures for web interface</li>
+</ul>
+
+<h3 id="approach-2-managed-container-with-debian-os-type-failed">Approach 2: Managed Container with Debian OS Type (Failed)</h3>
+
+<p>Next, I tried using OpenWRT with Proxmox’s managed container system while forcing Debian compatibility:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Also failed - forced compatibility attempt</span>
+<span class="nt">--ostype</span> debian  <span class="c"># Tried to force OpenWRT into Debian container type</span>
+</code></pre></div></div>
+
+<p><strong>Critical Issues:</strong></p>
+
+<ul>
+  <li>Proxmox’s managed container system interfered with OpenWRT’s native init system</li>
+  <li>UCI configuration system conflicts with Debian expectations</li>
+  <li>Network stack incompatibilities between OpenWRT and Debian management</li>
+  <li>Service management collisions between procd and systemd expectations</li>
+</ul>
+
+<h3 id="approach-3-lxc-native-openwrt-os-type-investigation">Approach 3: LXC Native OpenWRT OS Type Investigation</h3>
+
+<p>During development, I researched LXC’s native OpenWRT support and discovered that while LXC itself supports <code class="language-plaintext highlighter-rouge">ostype=openwrt</code>, <strong>Proxmox VE does not implement this OS type in its tooling</strong>. This was not an oversight but a current limitation of Proxmox VE’s LXC management system.</p>
+
+<p><strong>Key Findings:</strong></p>
+
+<ul>
+  <li>LXC upstream supports OpenWRT as a native container OS type</li>
+  <li>Proxmox VE’s <code class="language-plaintext highlighter-rouge">pct</code> tooling lacks OpenWRT OS type implementation</li>
+  <li>Native LXC OpenWRT support exists but requires manual LXC configuration</li>
+  <li>Proxmox’s container management expects traditional Linux distributions</li>
+</ul>
+
+<p><strong>Why This Approach Wasn’t Viable:</strong></p>
+
+<ul>
+  <li>Would require bypassing Proxmox’s container management entirely</li>
+  <li>Loss of Proxmox VE integration and web interface management</li>
+  <li>Manual LXC configuration conflicts with Proxmox’s automated systems</li>
+  <li>No integration with Proxmox backup, migration, and monitoring tools</li>
+</ul>
+
+<h3 id="approach-4-native-openwrt-rootfs-with-unmanaged-os-type-success">Approach 4: Native OpenWRT Rootfs with Unmanaged OS Type (Success!)</h3>
+
+<p>The breakthrough came with using OpenWRT’s native rootfs directly as an unmanaged LXC container, informed by the LXC OpenWRT support research:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># The winning approach - informed by LXC native support</span>
+<span class="nt">--ostype</span> unmanaged  <span class="c"># Bypass Proxmox OS-specific management</span>
+<span class="nt">--unprivileged</span> 0    <span class="c"># Required for OpenWRT networking capabilities</span>
+<span class="c"># Direct OpenWRT rootfs template with custom creation logic</span>
+</code></pre></div></div>
+
+<h2 id="development-journey">Development Journey</h2>
+
+<p>The <code class="language-plaintext highlighter-rouge">feature/openwrt-lxc</code> branch represents a comprehensive development effort spanning 50+ commits over several weeks, evolving from a simple chroot concept to a sophisticated native implementation:</p>
+
+<h3 id="initial-chroot-implementation-november-16-2025">Initial Chroot Implementation (November 16, 2025)</h3>
+
+<ul>
+  <li><strong>First Commit</strong>: Debian base + OpenWRT chroot with systemd service management</li>
+  <li><strong>Hybrid Architecture</strong>: Attempt to combine Debian stability with OpenWRT functionality</li>
+  <li><strong>LuCI Issues</strong>: Immediate discovery of web interface incompatibility</li>
+  <li><strong>Resource Overhead</strong>: ~500MB+ footprint from dual OS approach</li>
+</ul>
+
+<h3 id="native-implementation-pivot-november-17-2025">Native Implementation Pivot (November 17, 2025)</h3>
+
+<ul>
+  <li><strong>Major Rewrite</strong>: Complete replacement of hybrid approach with native rootfs</li>
+  <li><strong>Template System</strong>: Introduction of automated OpenWRT template generation</li>
+  <li><strong>Build System Integration</strong>: Custom container creation bypassing standard LXC methods</li>
+  <li><strong>File Reorganization</strong>: Legacy chroot implementation renamed to <code class="language-plaintext highlighter-rouge">openwrt-debian-lxc</code></li>
+</ul>
+
+<h3 id="debugging-and-refinement-20-commits">Debugging and Refinement (20+ commits)</h3>
+
+<ul>
+  <li><strong>CTID Management</strong>: Extensive fixes for container ID handling and variable passing</li>
+  <li><strong>Startup Issues</strong>: Resolution of container creation and initialization problems</li>
+  <li><strong>Error Handling</strong>: Comprehensive debugging output and failure recovery</li>
+  <li><strong>Template Validation</strong>: Size, integrity, and timeout handling improvements</li>
+</ul>
+
+<h3 id="documentation-and-requirements-final-commits">Documentation and Requirements (Final commits)</h3>
+
+<ul>
+  <li><strong>Critical Requirements</strong>: Formal documentation of non-negotiable implementation details</li>
+  <li><strong>Memory Bank</strong>: Comprehensive context preservation for future development</li>
+  <li><strong>Architecture Notes</strong>: Detailed explanation of why native approach succeeded</li>
+</ul>
+
+<h2 id="the-native-implementation">The Native Implementation</h2>
+
+<h3 id="template-creation-process">Template Creation Process</h3>
+
+<p>The solution required creating custom OpenWRT LXC templates:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Automated template creation</span>
+<span class="nv">OPENWRT_VERSION</span><span class="o">=</span><span class="s2">"24.10.4"</span>
+wget <span class="s2">"https://downloads.openwrt.org/releases/</span><span class="k">${</span><span class="nv">OPENWRT_VERSION</span><span class="k">}</span><span class="s2">/targets/x86/64/openwrt-</span><span class="k">${</span><span class="nv">OPENWRT_VERSION</span><span class="k">}</span><span class="s2">-x86-64-rootfs.tar.gz"</span>
+
+<span class="c"># Convert to LXC template format</span>
+<span class="nb">tar</span> <span class="nt">-czf</span> <span class="s2">"openwrt-</span><span class="k">${</span><span class="nv">OPENWRT_VERSION</span><span class="k">}</span><span class="s2">-lxc_amd64.tar.gz"</span> <span class="nt">-C</span> extracted-rootfs <span class="nb">.</span>
+</code></pre></div></div>
+
+<h3 id="container-configuration-requirements">Container Configuration Requirements</h3>
+
+<p>The native approach requires specific LXC parameters:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pct create <span class="s2">"</span><span class="nv">$CTID</span><span class="s2">"</span> <span class="s2">"</span><span class="nv">$TEMPLATE_STORAGE</span><span class="s2">:vztmpl/</span><span class="nv">$var_template</span><span class="s2">"</span> <span class="se">\</span>
+  <span class="nt">--hostname</span> <span class="s2">"openwrt-lxc"</span> <span class="se">\</span>
+  <span class="nt">--memory</span> <span class="s2">"256"</span> <span class="se">\</span>
+  <span class="nt">--cores</span> <span class="s2">"1"</span> <span class="se">\</span>
+  <span class="nt">--rootfs</span> <span class="s2">"</span><span class="nv">$CONTAINER_STORAGE</span><span class="s2">:8"</span> <span class="se">\</span>
+  <span class="nt">--net0</span> <span class="s2">"name=eth0,bridge=vmbr0,ip=dhcp"</span> <span class="se">\</span>
+  <span class="nt">--unprivileged</span> 0 <span class="se">\ </span>          <span class="c"># CRITICAL: Must be privileged</span>
+  <span class="nt">--ostype</span> unmanaged <span class="se">\ </span>        <span class="c"># CRITICAL: Unmanaged container</span>
+  <span class="nt">--arch</span> amd64 <span class="se">\</span>
+  <span class="nt">--features</span> <span class="s2">"nesting=1"</span> <span class="se">\</span>
+  <span class="nt">--onboot</span> 1
+</code></pre></div></div>
+
+<h3 id="why-these-parameters-matter">Why These Parameters Matter</h3>
+
+<h4 id="privileged-container-unprivileged-0">Privileged Container (–unprivileged 0)</h4>
+
+<p>OpenWRT requires privileged access for:</p>
+
+<ul>
+  <li>Network interface management (bridges, VLANs)</li>
+  <li>Kernel module loading (iptables, netfilter)</li>
+  <li>Raw socket operations (routing protocols)</li>
+  <li>Device access (/dev/net/tun for VPN)</li>
+</ul>
+
+<h4 id="unmanaged-os-type-ostype-unmanaged">Unmanaged OS Type (–ostype unmanaged)</h4>
+
+<p>This prevents Proxmox from:</p>
+
+<ul>
+  <li>Interfering with OpenWRT’s init system (procd)</li>
+  <li>Modifying network configurations</li>
+  <li>Conflicting with UCI system</li>
+  <li>Breaking native package management</li>
+</ul>
+
+<h2 id="current-implementation-status">Current Implementation Status</h2>
+
+<h3 id="successful-deployment-metrics">Successful Deployment Metrics</h3>
+
+<ul>
+  <li><strong>Container ID</strong>: 102 (production example)</li>
+  <li><strong>OpenWRT Version</strong>: 24.10.4</li>
+  <li><strong>Template Size</strong>: 13MB (incredibly efficient!)</li>
+  <li><strong>LuCI Interface</strong>: Fully functional at http://192.168.86.51</li>
+  <li><strong>Package Management</strong>: 99%+ success rate with opkg</li>
+  <li><strong>Startup Time</strong>: &lt;30 seconds</li>
+  <li><strong>Memory Usage</strong>: &lt;128MB baseline</li>
+</ul>
+
+<h3 id="working-features">Working Features</h3>
+
+<p>✅ <strong>Native LuCI Web Interface</strong>: Full OpenWRT web management<br />
+✅ <strong>Package Management</strong>: opkg works with network access<br />
+✅ <strong>Service Management</strong>: Native procd init system<br />
+✅ <strong>Network Configuration</strong>: UCI system fully functional<br />
+✅ <strong>Firewall</strong>: iptables and netfilter working<br />
+✅ <strong>VPN Support</strong>: WireGuard and OpenVPN capable<br />
+✅ <strong>Updates</strong>: Native OpenWRT upgrade tools (owut for v24.x)</p>
+
+<h3 id="architecture-benefits">Architecture Benefits</h3>
+
+<h4 id="resource-efficiency">Resource Efficiency</h4>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Debian + OpenWRT Chroot: ~500MB+ footprint
+Native OpenWRT LXC:      ~5MB base, ~512MB full install
+</code></pre></div></div>
+
+<h4 id="performance-comparison">Performance Comparison</h4>
+
+<ul>
+  <li><strong>No Virtualization Overhead</strong>: Direct kernel access</li>
+  <li><strong>Native Network Stack</strong>: Full routing performance</li>
+  <li><strong>Minimal Resource Usage</strong>: Perfect for homelab environments</li>
+  <li><strong>Standard LXC Management</strong>: Integrates with Proxmox tools</li>
+</ul>
+
+<h2 id="technical-implementation-details">Technical Implementation Details</h2>
+
+<h3 id="template-management">Template Management</h3>
+
+<p>The <code class="language-plaintext highlighter-rouge">misc/create-openwrt-template.sh</code> script handles:</p>
+
+<ul>
+  <li>Automatic version detection from OpenWRT releases</li>
+  <li>Template validation and integrity checking</li>
+  <li>Timeout handling for reliable downloads</li>
+  <li>LXC-compatible format conversion</li>
+</ul>
+
+<h3 id="container-provisioning">Container Provisioning</h3>
+
+<p>The <code class="language-plaintext highlighter-rouge">ct/openwrt-lxc.sh</code> script provides:</p>
+
+<ul>
+  <li>Interactive and non-interactive deployment</li>
+  <li>Storage selection for templates and containers</li>
+  <li>Network configuration via Proxmox build system</li>
+  <li>Post-install OpenWRT configuration</li>
+</ul>
+
+<h3 id="post-install-configuration">Post-Install Configuration</h3>
+
+<p>The <code class="language-plaintext highlighter-rouge">install/openwrt-lxc-install.sh</code> handles:</p>
+
+<ul>
+  <li>Network interface setup for LXC environment</li>
+  <li>SSH access configuration</li>
+  <li>LuCI web interface enablement</li>
+  <li>Package updates and additional components</li>
+  <li>Version-specific tool installation (owut vs auc)</li>
+</ul>
+
+<h2 id="lessons-learned">Lessons Learned</h2>
+
+<h3 id="critical-requirements-discovery">Critical Requirements Discovery</h3>
+
+<p>Through extensive testing across 50+ commits, I identified these non-negotiable requirements:</p>
+
+<ol>
+  <li><strong>Native Rootfs Method</strong>: OpenWRT must run as the primary OS, not in chroot</li>
+  <li><strong>Unmanaged Container</strong>: Proxmox must not interfere with OpenWRT’s systems</li>
+  <li><strong>Privileged Access</strong>: Network functionality requires kernel-level access</li>
+  <li><strong>Template Integrity</strong>: Official OpenWRT rootfs ensures compatibility</li>
+  <li><strong>LXC vs Proxmox Limitations</strong>: While LXC supports OpenWRT natively, Proxmox VE tooling does not</li>
+  <li><strong>Build System Integration</strong>: Custom container creation required to bypass standard LXC creation</li>
+</ol>
+
+<h3 id="why-previous-approaches-failed">Why Previous Approaches Failed</h3>
+
+<h4 id="chroot-environment-issues-original-implementation">Chroot Environment Issues (Original Implementation)</h4>
+
+<ul>
+  <li>OpenWRT’s web interface (LuCI) expects native environment and fails in chroot</li>
+  <li>Package manager (opkg) needs direct network access, blocked by chroot isolation</li>
+  <li>Service dependencies break in chroot isolation (procd vs systemd conflicts)</li>
+  <li>Dual init systems create irreconcilable conflicts</li>
+  <li>Resource overhead from running two complete operating systems</li>
+</ul>
+
+<h4 id="managed-container-problems-debian-os-type-attempt">Managed Container Problems (Debian OS Type Attempt)</h4>
+
+<ul>
+  <li>Proxmox’s container management assumes traditional Linux distributions</li>
+  <li>UCI configuration system gets corrupted by Debian-style management</li>
+  <li>Network stack becomes unreliable due to OS type mismatch</li>
+  <li>Update mechanisms break due to conflicting package management expectations</li>
+</ul>
+
+<h4 id="lxc-native-openwrt-limitations-research-phase">LXC Native OpenWRT Limitations (Research Phase)</h4>
+
+<ul>
+  <li>LXC supports OpenWRT natively, but Proxmox VE does not implement this</li>
+  <li>Proxmox’s <code class="language-plaintext highlighter-rouge">pct</code> tooling lacks OpenWRT OS type support</li>
+  <li>Manual LXC configuration would bypass Proxmox integration entirely</li>
+  <li>Loss of Proxmox web interface, backup, and migration capabilities</li>
+</ul>
+
+<h2 id="current-minor-issues">Current Minor Issues</h2>
+
+<h3 id="package-dependencies-owrt-001">Package Dependencies (OWRT-001)</h3>
+
+<p>Some firewall libraries occasionally missing:</p>
+
+<ul>
+  <li>libip4tc2, libip6tc2, libiptext*, libxtables12</li>
+  <li>Impact: Limited security functionality</li>
+  <li>Status: Workaround implemented, permanent fix in progress</li>
+</ul>
+
+<h3 id="repository-access-owrt-002">Repository Access (OWRT-002)</h3>
+
+<p>Occasional package repository timeouts:</p>
+
+<ul>
+  <li>wget failures for Packages.gz</li>
+  <li>Impact: Reduced package availability during setup</li>
+  <li>Status: Fallback repositories being implemented</li>
+</ul>
+
+<h3 id="ip-detection-owrt-003">IP Detection (OWRT-003)</h3>
+
+<p>Container IP detection inconsistency:</p>
+
+<ul>
+  <li>Sometimes shows 192.168.1.1 instead of actual IP</li>
+  <li>Impact: User confusion about access URL</li>
+  <li>Status: Enhanced detection logic in development</li>
+</ul>
+
+<h2 id="future-enhancements">Future Enhancements</h2>
+
+<h3 id="planned-improvements">Planned Improvements</h3>
+
+<ul>
+  <li><strong>Multiple Version Support</strong>: Template management for different OpenWRT releases</li>
+  <li><strong>Advanced Networking</strong>: VLAN and bridge configuration options</li>
+  <li><strong>Monitoring Integration</strong>: Prometheus metrics and logging</li>
+  <li><strong>Backup/Restore</strong>: Container migration and configuration backup</li>
+  <li><strong>Performance Optimization</strong>: CPU and memory tuning options</li>
+</ul>
+
+<h3 id="integration-opportunities">Integration Opportunities</h3>
+
+<ul>
+  <li><strong>Proxmox SDN</strong>: Native integration with Software Defined Networking</li>
+  <li><strong>High Availability</strong>: Clustered router configurations</li>
+  <li><strong>Automation</strong>: Ansible playbooks for mass deployment</li>
+  <li><strong>Monitoring</strong>: Integration with existing homelab monitoring stacks</li>
+</ul>
+
+<h2 id="getting-started">Getting Started</h2>
+
+<p>To deploy the native OpenWRT LXC implementation:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Clone the repository</span>
+git clone https://github.com/mcgarrah/ProxmoxVE.git
+<span class="nb">cd </span>ProxmoxVE
+
+<span class="c"># Switch to OpenWRT feature branch</span>
+git checkout feature/openwrt-lxc
+
+<span class="c"># Deploy with minimal resources</span>
+<span class="nv">var_cpu</span><span class="o">=</span>1 <span class="nv">var_ram</span><span class="o">=</span>256 <span class="nv">var_disk</span><span class="o">=</span>8 bash ct/openwrt-lxc.sh
+</code></pre></div></div>
+
+<h3 id="access-methods">Access Methods</h3>
+
+<ul>
+  <li><strong>Web Interface</strong>: <code class="language-plaintext highlighter-rouge">http://[container-ip]</code> (LuCI)</li>
+  <li><strong>SSH Access</strong>: <code class="language-plaintext highlighter-rouge">ssh root@[container-ip]</code> (no password initially)</li>
+  <li><strong>Console</strong>: <code class="language-plaintext highlighter-rouge">pct enter [container-id]</code></li>
+  <li><strong>Management</strong>: Standard OpenWRT UCI commands</li>
+</ul>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>The native OpenWRT LXC implementation represents a significant achievement in containerized networking. By abandoning the hybrid Debian approach and embracing OpenWRT’s native requirements, we’ve created a solution that:</p>
+
+<ul>
+  <li>Provides full OpenWRT functionality in a container</li>
+  <li>Maintains minimal resource overhead</li>
+  <li>Integrates seamlessly with Proxmox VE</li>
+  <li>Offers reliable package management and updates</li>
+  <li>Supports advanced networking features</li>
+</ul>
+
+<p>This implementation proves that with the right approach, even specialized operating systems like OpenWRT can be successfully containerized while maintaining their full feature set. The key was understanding and respecting OpenWRT’s architectural requirements rather than trying to force it into a traditional container model.</p>
+
+<p>The journey from failed chroot experiments through LXC native support research to successful unmanaged container implementation demonstrates the importance of understanding both the software requirements and platform limitations. While LXC itself supports OpenWRT natively, Proxmox VE’s current tooling limitations required a creative solution using unmanaged containers.</p>
+
+<p>This approach bridges the gap between LXC’s native OpenWRT support and Proxmox VE’s container management, providing the best of both worlds: full OpenWRT functionality within Proxmox’s integrated management environment. The 50+ commits of iterative development show that sometimes the solution isn’t about making the software fit the container, but making the container fit both the software and the platform’s capabilities.</p>
+
+<p>For the latest updates and to contribute to this project, visit the <a href="https://github.com/mcgarrah/ProxmoxVE">ProxmoxVE repository</a> and check out the <code class="language-plaintext highlighter-rouge">feature/openwrt-lxc</code> branch.</p>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/openwrt/">openwrt</a>, 
+        
+          <a href="/tags/lxc/">lxc</a>, 
+        
+          <a href="/tags/proxmox/">proxmox</a>, 
+        
+          <a href="/tags/networking/">networking</a>, 
+        
+          <a href="/tags/router/">router</a>, 
+        
+          <a href="/tags/firewall/">firewall</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/homelab/">homelab</a>, 
+        
+          <a href="/categories/proxmox/">proxmox</a>, 
+        
+          <a href="/categories/networking/">networking</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Dell Wyse 3040 eMMC Storage Health Monitoring | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Dell Wyse 3040 eMMC Storage Health Monitoring" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="I found out awhile ago that eMMC storage is a different thing entirely when it comes to health monitoring. This is especially true when you’re booting from it like on the Dell Wyse 3040s of which I have several in my homelab. The goal is to get some status information on the eMMC storage health, but the usual SMART utilities don’t work on eMMC. root@pve1:~# smartctl -H /dev/mmcblk0 -d auto smartctl 7.3 2022-02-28 r5338 [x86_64-linux-6.8.12-1-pve] (local build) Copyright (C) 2002-22, Bruce Allen, Christian Franke, www.smartmontools.org /dev/mmcblk0: Unable to detect device type Please specify device type with the -d option. Turns out eMMC has its own health monitoring system that’s actually pretty useful once you know how to access it. I figured I would share my experience since it took some time to figure out. Maybe this will help someone else." />
+<meta property="og:description" content="I found out awhile ago that eMMC storage is a different thing entirely when it comes to health monitoring. This is especially true when you’re booting from it like on the Dell Wyse 3040s of which I have several in my homelab. The goal is to get some status information on the eMMC storage health, but the usual SMART utilities don’t work on eMMC. root@pve1:~# smartctl -H /dev/mmcblk0 -d auto smartctl 7.3 2022-02-28 r5338 [x86_64-linux-6.8.12-1-pve] (local build) Copyright (C) 2002-22, Bruce Allen, Christian Franke, www.smartmontools.org /dev/mmcblk0: Unable to detect device type Please specify device type with the -d option. Turns out eMMC has its own health monitoring system that’s actually pretty useful once you know how to access it. I figured I would share my experience since it took some time to figure out. Maybe this will help someone else." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/dell-wyse-3040-emmc-monitoring/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/dell-wyse-3040-emmc-monitoring/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2025-10-19T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Dell Wyse 3040 eMMC Storage Health Monitoring" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-04-14T00:00:00+00:00","datePublished":"2025-10-19T00:00:00+00:00","description":"I found out awhile ago that eMMC storage is a different thing entirely when it comes to health monitoring. This is especially true when you’re booting from it like on the Dell Wyse 3040s of which I have several in my homelab. The goal is to get some status information on the eMMC storage health, but the usual SMART utilities don’t work on eMMC. root@pve1:~# smartctl -H /dev/mmcblk0 -d auto smartctl 7.3 2022-02-28 r5338 [x86_64-linux-6.8.12-1-pve] (local build) Copyright (C) 2002-22, Bruce Allen, Christian Franke, www.smartmontools.org /dev/mmcblk0: Unable to detect device type Please specify device type with the -d option. Turns out eMMC has its own health monitoring system that’s actually pretty useful once you know how to access it. I figured I would share my experience since it took some time to figure out. Maybe this will help someone else.","headline":"Dell Wyse 3040 eMMC Storage Health Monitoring","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/dell-wyse-3040-emmc-monitoring/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/dell-wyse-3040-emmc-monitoring/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/dell-wyse-3040-emmc-monitoring/">Dell Wyse 3040 eMMC Storage Health Monitoring</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2025-10-19T00:00:00+00:00">October 19, 2025</time><span class="reading-time">5 min read</span></header>
+
+  <p>I found out awhile ago that eMMC storage is a different thing entirely when it comes to health monitoring. This is especially true when you’re booting from it like on the <a href="/tags/wyse3040/">Dell Wyse 3040s</a> of which I have several in my homelab. The goal is to get some status information on the eMMC storage health, but the usual SMART utilities don’t work on eMMC.</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@pve1:~#</span><span class="w"> </span>smartctl <span class="nt">-H</span> /dev/mmcblk0 <span class="nt">-d</span> auto
+<span class="go">smartctl 7.3 2022-02-28 r5338 [x86_64-linux-6.8.12-1-pve] (local build)
+Copyright (C) 2002-22, Bruce Allen, Christian Franke, www.smartmontools.org
+
+/dev/mmcblk0: Unable to detect device type
+Please specify device type with the -d option.
+</span></code></pre></div></div>
+
+<p>Turns out eMMC has its own health monitoring system that’s actually pretty useful once you know how to access it. I figured I would share my experience since it took some time to figure out. Maybe this will help someone else.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="what-is-emmc">What is eMMC?</h2>
+
+<p>eMMC (embedded MultiMediaCard) is basically flash storage that’s soldered directly to the board. Unlike traditional SSDs, it doesn’t support SMART monitoring, but it has its own health reporting system built into the <a href="https://en.wikipedia.org/wiki/JEDEC_memory_standards">JEDEC standard</a>.</p>
+
+<p>The <a href="/tags/wyse3040/">Dell Wyse 3040s</a> use 8GB eMMC for the boot drive, and since these are fanless units running 24/7, monitoring the storage health is pretty important.</p>
+
+<h2 id="installing-emmc-monitoring-tools">Installing eMMC Monitoring Tools</h2>
+
+<p>First, you need the <code class="language-plaintext highlighter-rouge">mmc-utils</code> package:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@pve1:~#</span><span class="w"> </span>apt <span class="nb">install </span>mmc-utils
+<span class="go">Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+The following NEW packages will be installed:
+  mmc-utils
+0 upgraded, 1 newly installed, 0 to remove and 6 not upgraded.
+Need to get 45.6 kB of archives.
+After this operation, 141 kB of additional disk space will be used.
+Get:1 http://deb.debian.org/debian bookworm/main amd64 mmc-utils amd64 0+git20220624.d7b343fd-1 [45.6 kB]
+Fetched 45.6 kB in 0s (209 kB/s)
+Selecting previously unselected package mmc-utils.
+(Reading database ... 53077 files and directories currently installed.)
+Preparing to unpack .../mmc-utils_0+git20220624.d7b343fd-1_amd64.deb ...
+Unpacking mmc-utils (0+git20220624.d7b343fd-1) ...
+Setting up mmc-utils (0+git20220624.d7b343fd-1) ...
+Processing triggers for man-db (2.11.2-2) ...
+</span></code></pre></div></div>
+
+<h2 id="basic-emmc-status-check">Basic eMMC Status Check</h2>
+
+<p>Check if the eMMC is responding properly:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@pve1:~#</span><span class="w"> </span>mmc status get /dev/mmcblk0
+<span class="go">SEND_STATUS response: 0x00000900
+DEVICE STATE: TRANS
+STATUS: READY_FOR_DATA
+</span></code></pre></div></div>
+
+<p>This shows the device is in transfer state and ready for data operations - basically healthy and operational.</p>
+
+<h2 id="emmc-health-monitoring">eMMC Health Monitoring</h2>
+
+<p>The key command for health monitoring is checking the Extended CSD (Card Specific Data):</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@pve1:~#</span><span class="w"> </span>mmc extcsd <span class="nb">read</span> /dev/mmcblk0 | <span class="nb">grep</span> <span class="nt">-E</span> <span class="s1">'LIFE|EOL'</span>
+<span class="go">eMMC Life Time Estimation A [EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_A]: 0x01
+eMMC Life Time Estimation B [EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_B]: 0x02
+eMMC Pre EOL information [EXT_CSD_PRE_EOL_INFO]: 0x01
+</span></code></pre></div></div>
+
+<h2 id="understanding-the-health-values">Understanding the Health Values</h2>
+
+<p>Here’s what these values mean:</p>
+
+<p><strong>Device Life Time Estimation Type A (0x01):</strong></p>
+
+<ul>
+  <li>Life time estimation for the MLC user partition eraseblocks</li>
+  <li>Provided in steps of 10%</li>
+  <li>0x01 means 0%-10% device life time used</li>
+</ul>
+
+<p><strong>Device Life Time Estimation Type B (0x02):</strong></p>
+
+<ul>
+  <li>Life time estimation for the SLC boot partition eraseblocks</li>
+  <li>Provided in steps of 10%</li>
+  <li>0x02 means 10%-20% device life time used</li>
+</ul>
+
+<p><strong>Pre EOL Information (0x01):</strong></p>
+
+<ul>
+  <li>Overall status for reserved blocks</li>
+  <li>0x01 = Normal: consumed less than 80% of reserved blocks</li>
+  <li>0x02 = Warning: consumed 80% of reserved blocks</li>
+  <li>0x03 = Urgent: consumed 90% of reserved blocks</li>
+</ul>
+
+<h2 id="what-this-means-for-my-dell-wyse-units">What This Means for My Dell Wyse Units</h2>
+
+<p>My eMMC health looks pretty good:</p>
+
+<ul>
+  <li>User partition: 0-10% wear (excellent)</li>
+  <li>Boot partition: 10-20% wear (still very good)</li>
+  <li>Reserved blocks: Normal status</li>
+</ul>
+
+<p>Since these units have been running Proxmox for a while, this suggests the eMMC is holding up well under the workload.</p>
+
+<h2 id="creating-a-simple-monitoring-script">Creating a Simple Monitoring Script</h2>
+
+<p>I created a simple script to check eMMC health across my cluster:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+<span class="c"># emmc-health.sh - Check eMMC health on Dell Wyse 3040s</span>
+
+<span class="nb">echo</span> <span class="s2">"eMMC Health Check - </span><span class="si">$(</span><span class="nb">date</span><span class="si">)</span><span class="s2">"</span>
+<span class="nb">echo</span> <span class="s2">"=================================="</span>
+
+<span class="k">if</span> <span class="o">[</span> <span class="o">!</span> <span class="nt">-e</span> /dev/mmcblk0 <span class="o">]</span><span class="p">;</span> <span class="k">then
+    </span><span class="nb">echo</span> <span class="s2">"No eMMC device found"</span>
+    <span class="nb">exit </span>1
+<span class="k">fi</span>
+
+<span class="c"># Get health values</span>
+<span class="nv">LIFE_A</span><span class="o">=</span><span class="si">$(</span>mmc extcsd <span class="nb">read</span> /dev/mmcblk0 | <span class="nb">grep</span> <span class="s2">"LIFE_TIME_EST_TYP_A"</span> | <span class="nb">awk</span> <span class="s1">'{print $NF}'</span><span class="si">)</span>
+<span class="nv">LIFE_B</span><span class="o">=</span><span class="si">$(</span>mmc extcsd <span class="nb">read</span> /dev/mmcblk0 | <span class="nb">grep</span> <span class="s2">"LIFE_TIME_EST_TYP_B"</span> | <span class="nb">awk</span> <span class="s1">'{print $NF}'</span><span class="si">)</span>
+<span class="nv">EOL</span><span class="o">=</span><span class="si">$(</span>mmc extcsd <span class="nb">read</span> /dev/mmcblk0 | <span class="nb">grep</span> <span class="s2">"PRE_EOL_INFO"</span> | <span class="nb">awk</span> <span class="s1">'{print $NF}'</span><span class="si">)</span>
+
+<span class="nb">echo</span> <span class="s2">"User Partition Wear: </span><span class="nv">$LIFE_A</span><span class="s2"> (0x01 = 0-10%, 0x02 = 10-20%, etc.)"</span>
+<span class="nb">echo</span> <span class="s2">"Boot Partition Wear: </span><span class="nv">$LIFE_B</span><span class="s2">"</span>
+<span class="nb">echo</span> <span class="s2">"Reserved Block Status: </span><span class="nv">$EOL</span><span class="s2"> (0x01 = Normal, 0x02 = Warning, 0x03 = Urgent)"</span>
+
+<span class="c"># Simple health assessment</span>
+<span class="k">if</span> <span class="o">[</span> <span class="s2">"</span><span class="nv">$EOL</span><span class="s2">"</span> <span class="o">=</span> <span class="s2">"0x01"</span> <span class="o">]</span> <span class="o">&amp;&amp;</span> <span class="o">[</span> <span class="s2">"</span><span class="nv">$LIFE_A</span><span class="s2">"</span> <span class="nt">-le</span> <span class="s2">"0x03"</span> <span class="o">]</span> <span class="o">&amp;&amp;</span> <span class="o">[</span> <span class="s2">"</span><span class="nv">$LIFE_B</span><span class="s2">"</span> <span class="nt">-le</span> <span class="s2">"0x03"</span> <span class="o">]</span><span class="p">;</span> <span class="k">then
+    </span><span class="nb">echo</span> <span class="s2">"Status: HEALTHY"</span>
+<span class="k">else
+    </span><span class="nb">echo</span> <span class="s2">"Status: CHECK REQUIRED"</span>
+<span class="k">fi</span>
+</code></pre></div></div>
+
+<h2 id="why-this-matters">Why This Matters</h2>
+
+<p>Unlike traditional hard drives or SSDs, eMMC doesn’t give you SMART data, but the JEDEC health reporting is actually more straightforward. The 10% increments are coarse, but for homelab monitoring, knowing if you’re in the “normal” range versus “warning” is usually sufficient.</p>
+
+<p>For my <a href="/tags/wyse3040/">Dell Wyse 3040</a> test cluster, this gives me confidence that the storage isn’t wearing out prematurely under the Proxmox workload. Since these units are 150 miles away, early warning of storage issues is pretty valuable. Recently, I have converted all my <a href="/dell-wyse-3040-tailscale/">Tailscale on with Debian 12</a> remote nodes running on these and want alerts if their storage is in trouble.</p>
+
+<h2 id="references">References</h2>
+
+<p>The health monitoring was introduced in JEDEC standard revision 5.0. The <a href="https://www.cnx-software.com/2019/08/16/wear-estimation-emmc-flash-memory/">CNX Software article on eMMC wear estimation</a> has good background on the technical details.</p>
+
+<p>For more <a href="/tags/wyse3040/">Dell Wyse 3040 content</a>, check out my other posts on running <a href="/proxmox-8-dell-wyse-3040/">Proxmox clusters on these units</a> or <a href="/dell-wyse-3040-tailscale/">Tailscale on with Debian 12</a>.</p>
+
+<h2 id="related-posts">Related Posts</h2>
+
+<ul>
+  <li><a href="/proxmox-8-dell-wyse-3040/">ProxMox 8.2.2 Cluster on Dell Wyse 3040s</a> — Building a cluster from thin clients</li>
+  <li><a href="/dell-wyse-3040-tailscale/">Tailscale on Dell Wyse 3040</a> — Remote access setup</li>
+  <li><a href="/dell-wyse-3040-cmos-battery/">Dell Wyse 3040 CMOS Battery Replacement</a> — Hardware maintenance</li>
+  <li><a href="/dell-wyse-3040-reboot/">Debian 12 SystemD Nightly Reboots on Dell Wyse 3040s</a> — Stability workarounds</li>
+  <li><a href="/essential-cli-tools-linux/">Essential CLI Tools for Linux System Management</a> — Monitoring tools used on these devices</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/dell-wyse-3040/">dell-wyse-3040</a>, 
+        
+          <a href="/tags/emmc/">emmc</a>, 
+        
+          <a href="/tags/monitoring/">monitoring</a>, 
+        
+          <a href="/tags/storage/">storage</a>, 
+        
+          <a href="/tags/health/">health</a>, 
+        
+          <a href="/tags/homelab/">homelab</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/technical/">technical</a>, 
+        
+          <a href="/categories/hardware/">hardware</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

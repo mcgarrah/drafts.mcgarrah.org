@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Jekyll’s Invisible Bug: When Code Fences Don’t Protect Your Liquid Examples | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Jekyll’s Invisible Bug: When Code Fences Don’t Protect Your Liquid Examples" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="A deep dive into Jekyll’s Liquid rendering behavior inside Markdown code fences. Explains why code blocks don’t protect Liquid tags, how to detect unprotected tags across an entire site, the difference between silent failures and build crashes, and the correct use of raw/endraw tags with edge cases for nested examples." />
+<meta property="og:description" content="A deep dive into Jekyll’s Liquid rendering behavior inside Markdown code fences. Explains why code blocks don’t protect Liquid tags, how to detect unprotected tags across an entire site, the difference between silent failures and build crashes, and the correct use of raw/endraw tags with edge cases for nested examples." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/jekyll-liquid-code-fence-rendering-trap/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/jekyll-liquid-code-fence-rendering-trap/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-05-01T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Jekyll’s Invisible Bug: When Code Fences Don’t Protect Your Liquid Examples" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-05-01T00:00:00+00:00","datePublished":"2026-05-01T00:00:00+00:00","description":"A deep dive into Jekyll’s Liquid rendering behavior inside Markdown code fences. Explains why code blocks don’t protect Liquid tags, how to detect unprotected tags across an entire site, the difference between silent failures and build crashes, and the correct use of raw/endraw tags with edge cases for nested examples.","headline":"Jekyll’s Invisible Bug: When Code Fences Don’t Protect Your Liquid Examples","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/jekyll-liquid-code-fence-rendering-trap/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/jekyll-liquid-code-fence-rendering-trap/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/jekyll-liquid-code-fence-rendering-trap/">Jekyll's Invisible Bug: When Code Fences Don't Protect Your Liquid Examples</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-05-01T00:00:00+00:00">May 01, 2026</time><span class="reading-time">8 min read</span></header>
+
+  <p>I had a blog post about reading time calculation that crashed my Jekyll build. The error pointed to a draft file, but the code it complained about was inside a Markdown code fence — supposedly safe, display-only text. It wasn’t.</p>
+
+<p>Jekyll’s Liquid template engine processes <strong>every</strong> <code class="language-plaintext highlighter-rouge">{{ }}</code> and <code class="language-plaintext highlighter-rouge">{% %}</code> tag in your Markdown files before the Markdown processor ever sees them. Code fences, backtick spans, indented code blocks — none of them protect Liquid syntax from execution. If you write posts about Jekyll, Liquid, GitHub Actions, or anything else that uses double-curly-brace syntax, your examples are being silently eaten or actively breaking your build.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="the-problem">The Problem</h2>
+
+<p>Consider a blog post explaining how Jekyll’s reading time calculation works. You’d naturally include the implementation:</p>
+
+<div class="language-markdown highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">```</span><span class="nl">liquid
+</span><span class="cp">{%-</span><span class="w"> </span><span class="nt">assign</span><span class="w"> </span><span class="nv">words_per_minute</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">200</span><span class="w"> </span><span class="cp">-%}</span>
+<span class="cp">{%-</span><span class="w"> </span><span class="nt">assign</span><span class="w"> </span><span class="nv">number_of_words</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">include</span><span class="p">.</span><span class="nv">post</span><span class="p">.</span><span class="nv">content</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nf">number_of_words</span><span class="w"> </span><span class="cp">-%}</span>
+<span class="p">```</span>
+</code></pre></div></div>
+
+<p>This looks safe. It’s inside a fenced code block. Every other language treats code fences as literal text.</p>
+
+<p>Jekyll doesn’t. The Liquid engine runs first, sees the <code class="language-plaintext highlighter-rouge">{% %}</code> tags, and tries to execute them. In this case, <code class="language-plaintext highlighter-rouge">include.post.content</code> is nil (there’s no include context), so <code class="language-plaintext highlighter-rouge">number_of_words</code> gets nil input and the build crashes:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Liquid Exception: undefined method `split' for nil:NilClass
+</code></pre></div></div>
+
+<h2 id="why-it-sneaks-up-on-you">Why It Sneaks Up on You</h2>
+
+<p>The insidious part is that most unprotected Liquid doesn’t crash — it <strong>silently renders as empty text</strong>. A code example like:</p>
+
+<div class="language-markdown highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">```</span><span class="nl">html
+</span><span class="nt">&lt;meta</span> <span class="na">property=</span><span class="s">"og:url"</span> <span class="na">content=</span><span class="s">"{{ site.url }}{{ page.url }}"</span><span class="nt">&gt;</span>
+<span class="p">```</span>
+</code></pre></div></div>
+
+<p>Won’t crash because <code class="language-plaintext highlighter-rouge">site.url</code> and <code class="language-plaintext highlighter-rouge">page.url</code> are valid variables. Jekyll evaluates them, substitutes the values, and your “code example” now shows your actual URL instead of the template syntax. The Markdown renders, the page looks fine at a glance, and you don’t notice that your readers see <code class="language-plaintext highlighter-rouge">https://mcgarrah.org/some-post/</code> where they should see <code class="language-plaintext highlighter-rouge">{{ site.url }}{{ page.url }}</code>.</p>
+
+<p>You only discover the problem when:</p>
+
+<ol>
+  <li><strong>A variable is nil</strong> — build crashes with <code class="language-plaintext highlighter-rouge">undefined method</code> errors</li>
+  <li><strong>A tag is unbalanced</strong> — <code class="language-plaintext highlighter-rouge">Liquid syntax error: 'if' tag was never closed</code></li>
+  <li><strong>A reader reports</strong> that your code examples are blank or show wrong values</li>
+  <li><strong>You view source</strong> and notice the Liquid output instead of Liquid syntax</li>
+</ol>
+
+<h3 id="what-triggers-build-failures-vs-silent-corruption">What Triggers Build Failures vs Silent Corruption</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Pattern</th>
+      <th>Result</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">{{ site.url }}</code></td>
+      <td>Silent — renders as your actual URL</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">{{ page.title }}</code></td>
+      <td>Silent — renders as the post’s title</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">{{ include.post.content }}</code></td>
+      <td><strong>Crash</strong> — nil when not inside an include</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">{% if paginator.previous_page %}</code> with matching <code class="language-plaintext highlighter-rouge">{% endif %}</code></td>
+      <td>Silent — evaluates the condition, renders nothing</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">{% if condition %}</code> without <code class="language-plaintext highlighter-rouge">{% endif %}</code></td>
+      <td><strong>Crash</strong> — unclosed tag error</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">${{ secrets.GITHUB_TOKEN }}</code></td>
+      <td>Silent — renders as empty string</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">{% seo %}</code></td>
+      <td><strong>Crash or unexpected output</strong> — executes the SEO plugin</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="the-fix-raw--endraw-tags">The Fix: raw / endraw Tags</h2>
+
+<p>The <code>{&#37; raw %}</code> and <code>{&#37; endraw %}</code> tags tell Liquid to pass content through without processing. Wrap your code examples:</p>
+
+<div class="language-markdown highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">```</span><span class="nl">liquid
+</span><span class="cp">{%-</span><span class="w"> </span><span class="nt">assign</span><span class="w"> </span><span class="nv">words_per_minute</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">200</span><span class="w"> </span><span class="cp">-%}</span>
+<span class="cp">{%-</span><span class="w"> </span><span class="nt">assign</span><span class="w"> </span><span class="nv">number_of_words</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nv">include</span><span class="p">.</span><span class="nv">post</span><span class="p">.</span><span class="nv">content</span><span class="w"> </span><span class="p">|</span><span class="w"> </span><span class="nf">number_of_words</span><span class="w"> </span><span class="cp">-%}</span>
+<span class="p">```</span>
+</code></pre></div></div>
+
+<p>Place <code>{&#37; raw %}</code> immediately after the opening code fence and <code>{&#37; endraw %}</code> just before the closing fence.</p>
+
+<h3 id="inline-code-too">Inline Code Too</h3>
+
+<p>Backtick inline code is equally unprotected. This in your Markdown:</p>
+
+<div class="language-markdown highlighter-rouge"><div class="highlight"><pre class="highlight"><code>The <span class="sb">`{% seo %}`</span> tag generates meta tags.
+</code></pre></div></div>
+
+<p>Needs to become:</p>
+
+<div class="language-markdown highlighter-rouge"><div class="highlight"><pre class="highlight"><code>The {<span class="ni">&amp;#37;</span> raw %}<span class="sb">`{&amp;#37; seo %}`</span>{<span class="ni">&amp;#37;</span> endraw %} tag generates meta tags.
+</code></pre></div></div>
+
+<h3 id="the-nested-rawendraw-problem">The Nested raw/endraw Problem</h3>
+
+<p>You can’t show literal <code>{&#37; raw %}</code> or <code>{&#37; endraw %}</code> text inside a <code>{&#37; raw %}</code> block — Liquid sees the inner <code>{&#37; endraw %}</code> and terminates the block early. For posts that need to display the raw/endraw tags themselves (like this one), use HTML character entities:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>&lt;code&gt;{&amp;#37; raw %}&lt;/code&gt; and &lt;code&gt;{&amp;#37; endraw %}&lt;/code&gt;
+</code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">&amp;#37;</code> entity renders as <code class="language-plaintext highlighter-rouge">%</code>, producing <code>{&#37; raw %}</code> visually while avoiding Liquid parsing.</p>
+
+<h3 id="github-actions-expressions">GitHub Actions Expressions</h3>
+
+<p>GitHub Actions uses <code class="language-plaintext highlighter-rouge">${{ }}</code> syntax which Liquid also intercepts. Any workflow YAML in a code block needs the same treatment:</p>
+
+<div class="language-markdown highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">```</span><span class="nl">yaml
+</span><span class="pi">{</span><span class="err">&amp;</span><span class="c1">#37; raw %}</span>
+<span class="nv">- name</span><span class="pi">:</span> <span class="nv">Build</span>
+  <span class="nv">run</span><span class="pi">:</span> <span class="nv">bundle exec jekyll build --baseurl "$</span><span class="pi">{{</span> <span class="nv">steps.pages.outputs.base_path</span> <span class="pi">}}</span><span class="s2">"</span>
+<span class="s">{&amp;#37;</span><span class="nv"> </span><span class="s">endraw</span><span class="nv"> </span><span class="s">%}</span>
+<span class="p">```</span>
+</code></pre></div></div>
+
+<h2 id="finding-every-affected-file">Finding Every Affected File</h2>
+
+<p>After discovering this problem in one draft, I found it in a dozen more files. Here’s a script that scans your entire site for unprotected Liquid tags outside of <code class="language-plaintext highlighter-rouge">raw</code> blocks:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#!/usr/bin/env python3
+</span><span class="sh">"""</span><span class="s">Scan Jekyll posts/drafts for unprotected Liquid tags.</span><span class="sh">"""</span>
+<span class="kn">import</span> <span class="n">re</span><span class="p">,</span> <span class="n">glob</span>
+
+<span class="n">LEGIT_TAGS</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="sh">'</span><span class="s">{% highlight</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">{% endhighlight</span><span class="sh">'</span><span class="p">,</span>
+    <span class="sh">'</span><span class="s">{% include</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">{% post_url</span><span class="sh">'</span><span class="p">,</span>
+    <span class="sh">'</span><span class="s">{% comment</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">{% endcomment</span><span class="sh">'</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="nf">sorted</span><span class="p">(</span><span class="n">glob</span><span class="p">.</span><span class="nf">glob</span><span class="p">(</span><span class="sh">'</span><span class="s">_posts/*.md</span><span class="sh">'</span><span class="p">)</span> <span class="o">+</span> <span class="n">glob</span><span class="p">.</span><span class="nf">glob</span><span class="p">(</span><span class="sh">'</span><span class="s">_drafts/*.md</span><span class="sh">'</span><span class="p">)):</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="nf">open</span><span class="p">(</span><span class="n">f</span><span class="p">).</span><span class="nf">read</span><span class="p">()</span>
+    <span class="c1"># Strip raw blocks
+</span>    <span class="n">cleaned</span> <span class="o">=</span> <span class="n">re</span><span class="p">.</span><span class="nf">sub</span><span class="p">(</span>
+        <span class="sa">r</span><span class="sh">'</span><span class="s">\{%-?\s*raw\s*-?%\}.*?\{%-?\s*endraw\s*-?%\}</span><span class="sh">'</span><span class="p">,</span>
+        <span class="sh">''</span><span class="p">,</span> <span class="n">content</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="n">re</span><span class="p">.</span><span class="n">DOTALL</span>
+    <span class="p">)</span>
+    <span class="c1"># Strip front matter
+</span>    <span class="n">cleaned</span> <span class="o">=</span> <span class="n">re</span><span class="p">.</span><span class="nf">sub</span><span class="p">(</span><span class="sa">r</span><span class="sh">'</span><span class="s">^---.*?---</span><span class="sh">'</span><span class="p">,</span> <span class="sh">''</span><span class="p">,</span> <span class="n">cleaned</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="n">re</span><span class="p">.</span><span class="n">DOTALL</span><span class="p">)</span>
+
+    <span class="n">found</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nf">enumerate</span><span class="p">(</span><span class="n">cleaned</span><span class="p">.</span><span class="nf">split</span><span class="p">(</span><span class="sh">'</span><span class="se">\n</span><span class="sh">'</span><span class="p">),</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="k">if</span> <span class="sh">'</span><span class="s">{%</span><span class="sh">'</span> <span class="ow">in</span> <span class="n">line</span> <span class="ow">or</span> <span class="sh">'</span><span class="s">{{</span><span class="sh">'</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="n">line</span><span class="p">.</span><span class="nf">strip</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nf">any</span><span class="p">(</span><span class="n">x</span> <span class="ow">in</span> <span class="n">s</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">LEGIT_TAGS</span><span class="p">):</span>
+                <span class="k">continue</span>
+            <span class="n">found</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="sa">f</span><span class="sh">'</span><span class="s">  L</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="n">s</span><span class="p">[</span><span class="si">:</span><span class="mi">120</span><span class="p">]</span><span class="si">}</span><span class="sh">'</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">found</span><span class="p">:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">'</span><span class="se">\n</span><span class="s">=== </span><span class="si">{</span><span class="n">f</span><span class="si">}</span><span class="s"> ===</span><span class="sh">'</span><span class="p">)</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sh">'</span><span class="se">\n</span><span class="sh">'</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">found</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p>Run it from your Jekyll project root:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>python3 find-unprotected-liquid.py
+</code></pre></div></div>
+
+<p>The script strips <code class="language-plaintext highlighter-rouge">raw</code>/<code class="language-plaintext highlighter-rouge">endraw</code> blocks and front matter first, then reports any remaining Liquid syntax. It skips legitimate Jekyll tags like <code class="language-plaintext highlighter-rouge">{% highlight %}</code> and <code class="language-plaintext highlighter-rouge">{% include %}</code> that are meant to execute.</p>
+
+<h2 id="why-this-happens">Why This Happens</h2>
+
+<p>Jekyll’s rendering pipeline processes files in this order:</p>
+
+<ol>
+  <li><strong>Liquid template engine</strong> — evaluates all <code class="language-plaintext highlighter-rouge">{{ }}</code> and <code class="language-plaintext highlighter-rouge">{% %}</code> tags</li>
+  <li><strong>Markdown processor</strong> (Kramdown) — converts Markdown to HTML</li>
+  <li><strong>Layout rendering</strong> — wraps content in layout templates</li>
+</ol>
+
+<p>Liquid runs first because Jekyll needs to resolve template variables and includes before Markdown processing. This is the correct design for a template engine — but it means Liquid has no concept of Markdown code fences. By the time Kramdown sees your triple-backtick block, Liquid has already consumed or evaluated everything inside it.</p>
+
+<p>This is documented in <a href="https://jekyllrb.com/docs/liquid/">Jekyll’s Liquid processing docs</a>, but it’s easy to miss because every other context where you write code (GitHub READMEs, Stack Overflow, documentation sites) treats code fences as sacred.</p>
+
+<h2 id="posts-that-commonly-need-this">Posts That Commonly Need This</h2>
+
+<p>If you write about any of these topics, check your code examples:</p>
+
+<ul>
+  <li><strong>Jekyll configuration</strong> — <code class="language-plaintext highlighter-rouge">{{ site.* }}</code>, <code class="language-plaintext highlighter-rouge">{{ page.* }}</code> variables</li>
+  <li><strong>Liquid templates</strong> — <code class="language-plaintext highlighter-rouge">{% if %}</code>, <code class="language-plaintext highlighter-rouge">{% for %}</code>, <code class="language-plaintext highlighter-rouge">{% assign %}</code> tags</li>
+  <li><strong>GitHub Actions workflows</strong> — <code class="language-plaintext highlighter-rouge">${{ secrets.* }}</code>, <code class="language-plaintext highlighter-rouge">${{ env.* }}</code>, <code class="language-plaintext highlighter-rouge">${{ steps.* }}</code></li>
+  <li><strong>Jinja2 templates</strong> — same <code class="language-plaintext highlighter-rouge">{{ }}</code> syntax as Liquid</li>
+  <li><strong>Ansible playbooks</strong> — <code class="language-plaintext highlighter-rouge">{{ variable }}</code> syntax</li>
+  <li><strong>Mustache/Handlebars</strong> — <code class="language-plaintext highlighter-rouge">{{ }}</code> and <code class="language-plaintext highlighter-rouge">{{{ }}}</code> syntax</li>
+  <li><strong>Vue.js templates</strong> — <code class="language-plaintext highlighter-rouge">{{ }}</code> interpolation syntax</li>
+</ul>
+
+<h2 id="lessons-learned">Lessons Learned</h2>
+
+<ol>
+  <li><strong>Code fences are not a security boundary</strong> for Liquid. Never assume content inside backticks is safe from template processing.</li>
+  <li><strong>Silent failures are worse than crashes.</strong> The posts that render “successfully” with wrong content are harder to catch than the ones that blow up the build.</li>
+  <li><strong>Scan proactively.</strong> After fixing one post, scan everything. The same pattern tends to appear in clusters — if you wrote one post about Jekyll internals, you probably wrote several.</li>
+  <li><strong>Keep the detection script.</strong> Run it as part of your pre-commit or CI workflow to catch new instances before they ship.</li>
+</ol>
+
+<h2 id="related-posts">Related Posts</h2>
+
+<ul>
+  <li><a href="/jekyll-markdown-feature-reference/">How the Sausage Is Made: Every Feature Powering This Jekyll Blog</a> — Complete feature reference including Liquid escaping</li>
+  <li><a href="/jekyll-mermaid-diagram-rendering-challenges/">Mermaid Diagram Rendering Challenges</a> — Another case where Jekyll’s rendering pipeline causes surprises</li>
+</ul>
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://jekyllrb.com/docs/liquid/">Jekyll Liquid Processing</a> — Official docs on how Liquid interacts with content</li>
+  <li><a href="https://shopify.github.io/liquid/tags/template/#raw">Liquid raw Tag</a> — Shopify’s Liquid documentation</li>
+  <li><a href="https://jekyllrb.com/docs/plugins/hooks/">Jekyll Rendering Order</a> — The pipeline that explains why Liquid runs before Markdown</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/jekyll/">jekyll</a>, 
+        
+          <a href="/tags/liquid/">liquid</a>, 
+        
+          <a href="/tags/markdown/">markdown</a>, 
+        
+          <a href="/tags/debugging/">debugging</a>, 
+        
+          <a href="/tags/code-blocks/">code-blocks</a>, 
+        
+          <a href="/tags/github-pages/">github-pages</a>, 
+        
+          <a href="/tags/raw-tag/">raw-tag</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/web-development/">web-development</a>, 
+        
+          <a href="/categories/technical/">technical</a>, 
+        
+          <a href="/categories/jekyll/">jekyll</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

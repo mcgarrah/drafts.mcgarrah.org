@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Ruby Gem Release Automation - Part 1: Infrastructure Implementation | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Ruby Gem Release Automation - Part 1: Infrastructure Implementation" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="How to build a complete Ruby gem release automation pipeline with GitHub Actions, Read the Docs integration, RubyGems trusted publishing, and a single-command release script that replaces 13 manual steps." />
+<meta property="og:description" content="How to build a complete Ruby gem release automation pipeline with GitHub Actions, Read the Docs integration, RubyGems trusted publishing, and a single-command release script that replaces 13 manual steps." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/ruby-gem-release-automation/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/ruby-gem-release-automation/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-04-11T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Ruby Gem Release Automation - Part 1: Infrastructure Implementation" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-04-11T00:00:00+00:00","datePublished":"2026-04-11T00:00:00+00:00","description":"How to build a complete Ruby gem release automation pipeline with GitHub Actions, Read the Docs integration, RubyGems trusted publishing, and a single-command release script that replaces 13 manual steps.","headline":"Ruby Gem Release Automation - Part 1: Infrastructure Implementation","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/ruby-gem-release-automation/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/ruby-gem-release-automation/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/ruby-gem-release-automation/">Ruby Gem Release Automation - Part 1: Infrastructure Implementation</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-04-11T00:00:00+00:00">April 11, 2026</time><span class="reading-time">14 min read</span></header>
+
+  <!-- excerpt-end -->
+
+<p>While developing the <a href="https://github.com/mcgarrah/jekyll-pandoc-exports">jekyll-pandoc-exports</a> plugin, I discovered that building the actual functionality was only half the battle. The real challenge was creating a professional release pipeline that could handle documentation, testing, and publishing automatically. This is Part 1 of a three-part series - here I’ll cover the infrastructure and automation challenges. In <a href="/jekyll-pandoc-exports-plugin/">Part 2</a> I cover the plugin’s technical implementation, and in <a href="/jekyll-pandoc-exports-resume-integration/">Part 3</a> I walk through integrating it into a real project and the bugs that surfaced.</p>
+
+<h2 id="the-manual-release-hell">The Manual Release Hell</h2>
+
+<p>Initially, my release process looked like this nightmare checklist:</p>
+
+<ol>
+  <li>Update version in <code class="language-plaintext highlighter-rouge">lib/jekyll-pandoc-exports/version.rb</code></li>
+  <li>Update <code class="language-plaintext highlighter-rouge">CHANGELOG.md</code> with new version details</li>
+  <li>Run tests locally and fix any issues</li>
+  <li>Commit version changes to development branch</li>
+  <li>Create pull request from dev to main</li>
+  <li>Manually review and merge PR</li>
+  <li>Create and push git tag</li>
+  <li>Build gem locally with <code class="language-plaintext highlighter-rouge">gem build</code></li>
+  <li>Test gem installation locally</li>
+  <li>Push to RubyGems with <code class="language-plaintext highlighter-rouge">gem push</code></li>
+  <li>Update documentation and push to Read the Docs</li>
+  <li>Create GitHub release with changelog</li>
+  <li>Reset development branch for next iteration</li>
+</ol>
+
+<p>This 13-step process was error-prone, time-consuming, and frankly demoralizing. I needed automation. This was something I already learned in my work writing a <a href="/oneworldsync-python-module/">Python Library</a> the previous year.</p>
+
+<h2 id="the-infrastructure-challenge">The Infrastructure Challenge</h2>
+
+<h3 id="read-the-docs-integration">Read the Docs Integration</h3>
+
+<p>Coming from Python development, I expected Read the Docs integration to be straightforward. It wasn’t. Ruby gems have different documentation patterns than Python packages:</p>
+
+<p><strong>MkDocs Configuration</strong> (<code class="language-plaintext highlighter-rouge">.readthedocs.yaml</code>):</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">version</span><span class="pi">:</span> <span class="m">2</span>
+
+<span class="na">build</span><span class="pi">:</span>
+  <span class="na">os</span><span class="pi">:</span> <span class="s">ubuntu-22.04</span>
+  <span class="na">tools</span><span class="pi">:</span>
+    <span class="na">python</span><span class="pi">:</span> <span class="s2">"</span><span class="s">3.11"</span>
+
+<span class="na">mkdocs</span><span class="pi">:</span>
+  <span class="na">configuration</span><span class="pi">:</span> <span class="s">docs/mkdocs.yml</span>
+
+<span class="na">python</span><span class="pi">:</span>
+  <span class="na">install</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">requirements</span><span class="pi">:</span> <span class="s">docs/requirements.txt</span>
+</code></pre></div></div>
+
+<p><strong>Documentation Structure</strong>:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>docs/
+├── mkdocs.yml
+├── requirements.txt
+├── index.md
+├── installation.md
+├── quick-start.md
+├── configuration.md
+├── hooks.md
+├── cli.md
+└── testing.md
+</code></pre></div></div>
+
+<p>Unlike Python’s Sphinx autodoc, Ruby documentation required manual organization and cross-referencing.</p>
+
+<h3 id="rubygems-publishing-automation">RubyGems Publishing Automation</h3>
+
+<p>RubyGems publishing presented unique challenges compared to PyPI:</p>
+
+<p><strong>Trusted Publishers Setup</strong>:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># .github/workflows/publish.yml</span>
+<span class="na">name</span><span class="pi">:</span> <span class="s">Publish to RubyGems</span>
+<span class="na">on</span><span class="pi">:</span>
+  <span class="na">release</span><span class="pi">:</span>
+    <span class="na">types</span><span class="pi">:</span> <span class="pi">[</span><span class="nv">published</span><span class="pi">]</span>
+
+<span class="na">jobs</span><span class="pi">:</span>
+  <span class="na">publish</span><span class="pi">:</span>
+    <span class="na">runs-on</span><span class="pi">:</span> <span class="s">ubuntu-latest</span>
+    <span class="na">permissions</span><span class="pi">:</span>
+      <span class="na">contents</span><span class="pi">:</span> <span class="s">read</span>
+      <span class="na">id-token</span><span class="pi">:</span> <span class="s">write</span>
+    <span class="na">steps</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/checkout@v4</span>
+      <span class="pi">-</span> <span class="na">uses</span><span class="pi">:</span> <span class="s">ruby/setup-ruby@v1</span>
+        <span class="na">with</span><span class="pi">:</span>
+          <span class="na">ruby-version</span><span class="pi">:</span> <span class="s1">'</span><span class="s">3.2'</span>
+          <span class="na">bundler-cache</span><span class="pi">:</span> <span class="kc">true</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Publish to RubyGems</span>
+        <span class="na">uses</span><span class="pi">:</span> <span class="s">rubygems/release-gem@v1</span>
+</code></pre></div></div>
+
+<p>The trusted publishers feature was newer and less documented than PyPI’s equivalent.</p>
+
+<h2 id="github-actions-complexity">GitHub Actions Complexity</h2>
+
+<h3 id="multi-ruby-testing-matrix">Multi-Ruby Testing Matrix</h3>
+
+<p>Ruby version compatibility testing proved more complex than Python:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">strategy</span><span class="pi">:</span>
+  <span class="na">matrix</span><span class="pi">:</span>
+    <span class="na">ruby-version</span><span class="pi">:</span> <span class="pi">[</span><span class="s1">'</span><span class="s">3.0'</span><span class="pi">,</span> <span class="s1">'</span><span class="s">3.1'</span><span class="pi">,</span> <span class="s1">'</span><span class="s">3.2'</span><span class="pi">,</span> <span class="s1">'</span><span class="s">3.3'</span><span class="pi">]</span>
+    <span class="na">os</span><span class="pi">:</span> <span class="pi">[</span><span class="nv">ubuntu-latest</span><span class="pi">,</span> <span class="nv">macos-latest</span><span class="pi">]</span>
+</code></pre></div></div>
+
+<p><strong>Bundler Cache Issues</strong>:
+The biggest headache was Bundler’s frozen lockfile behavior in CI:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Install dependencies</span>
+  <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+    <span class="s">bundle config set --local deployment false</span>
+    <span class="s">bundle config set --local frozen false</span>
+    <span class="s">bundle install</span>
+</code></pre></div></div>
+
+<p>This took weeks to resolve properly across all Ruby versions.</p>
+
+<h3 id="release-workflow-orchestration">Release Workflow Orchestration</h3>
+
+<p>The release workflow needed to coordinate multiple moving parts:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">name</span><span class="pi">:</span> <span class="s">Release</span>
+<span class="na">on</span><span class="pi">:</span>
+  <span class="na">workflow_dispatch</span><span class="pi">:</span>
+    <span class="na">inputs</span><span class="pi">:</span>
+      <span class="na">version</span><span class="pi">:</span>
+        <span class="na">description</span><span class="pi">:</span> <span class="s1">'</span><span class="s">Version</span><span class="nv"> </span><span class="s">to</span><span class="nv"> </span><span class="s">release'</span>
+        <span class="na">required</span><span class="pi">:</span> <span class="kc">true</span>
+        <span class="na">type</span><span class="pi">:</span> <span class="s">string</span>
+
+<span class="na">jobs</span><span class="pi">:</span>
+  <span class="na">release</span><span class="pi">:</span>
+    <span class="na">runs-on</span><span class="pi">:</span> <span class="s">ubuntu-latest</span>
+    <span class="na">steps</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Create PR</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+          <span class="s">gh pr create --title "Release v${{ inputs.version }}" \</span>
+                      <span class="s">--body "$changelog_content" \</span>
+                      <span class="s">--base main --head dev</span>
+      
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Auto-merge PR</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+          <span class="s">gh pr merge --auto --squash</span>
+      
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Create and push tag</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+          <span class="s">git tag "v${{ inputs.version }}"</span>
+          <span class="s">git push origin "v${{ inputs.version }}"</span>
+      
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Create GitHub release</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+          <span class="s">gh release create "v${{ inputs.version }}" \</span>
+                           <span class="s">--title "Release v${{ inputs.version }}" \</span>
+                           <span class="s">--notes "$changelog_content"</span>
+</code></pre></div></div>
+
+<h2 id="the-binrelease-script">The bin/release Script</h2>
+
+<p>The breakthrough was creating a comprehensive Ruby release script with extensive error checking and validation:</p>
+
+<div class="language-ruby highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#!/usr/bin/env ruby</span>
+
+<span class="k">class</span> <span class="nc">ReleaseManager</span>
+  <span class="k">def</span> <span class="nf">initialize</span>
+    <span class="vi">@changelog_path</span> <span class="o">=</span> <span class="s1">'CHANGELOG.md'</span>
+    <span class="vi">@version_file</span> <span class="o">=</span> <span class="s1">'lib/jekyll-pandoc-exports/version.rb'</span>
+    <span class="vi">@current_version</span> <span class="o">=</span> <span class="n">get_current_version</span>
+  <span class="k">end</span>
+  
+  <span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="n">new_version</span> <span class="o">=</span> <span class="kp">nil</span><span class="p">,</span> <span class="n">skip_tests</span> <span class="o">=</span> <span class="kp">false</span><span class="p">)</span>
+    <span class="c1"># Version validation</span>
+    <span class="k">unless</span> <span class="n">valid_version?</span><span class="p">(</span><span class="n">new_version</span><span class="p">)</span>
+      <span class="nb">puts</span> <span class="s2">"Invalid version format. Use semantic versioning (e.g., 1.0.0)"</span>
+      <span class="nb">exit</span> <span class="mi">1</span>
+    <span class="k">end</span>
+    
+    <span class="k">if</span> <span class="n">version_exists?</span><span class="p">(</span><span class="n">new_version</span><span class="p">)</span>
+      <span class="nb">puts</span> <span class="s2">"Version </span><span class="si">#{</span><span class="n">new_version</span><span class="si">}</span><span class="s2"> already exists in CHANGELOG.md"</span>
+      <span class="nb">exit</span> <span class="mi">1</span>
+    <span class="k">end</span>
+    
+    <span class="c1"># Update version and changelog</span>
+    <span class="n">update_version_file</span><span class="p">(</span><span class="n">new_version</span><span class="p">)</span>
+    <span class="n">update_changelog</span><span class="p">(</span><span class="n">new_version</span><span class="p">)</span>
+    
+    <span class="c1"># Run tests with skip option</span>
+    <span class="k">unless</span> <span class="n">skip_tests</span>
+      <span class="k">unless</span> <span class="nb">system</span><span class="p">(</span><span class="s1">'bundle exec rake test'</span><span class="p">)</span>
+        <span class="nb">puts</span> <span class="s2">"Tests failed! Use --skip-tests to bypass for patch releases."</span>
+        <span class="nb">exit</span> <span class="mi">1</span>
+      <span class="k">end</span>
+    <span class="k">end</span>
+    
+    <span class="c1"># Git operations with error handling</span>
+    <span class="nb">system</span><span class="p">(</span><span class="s2">"git add </span><span class="si">#{</span><span class="vi">@version_file</span><span class="si">}</span><span class="s2"> </span><span class="si">#{</span><span class="vi">@changelog_path</span><span class="si">}</span><span class="s2"> Gemfile.lock"</span><span class="p">)</span>
+    <span class="nb">system</span><span class="p">(</span><span class="s2">"git commit -m 'Bump version to </span><span class="si">#{</span><span class="n">new_version</span><span class="si">}</span><span class="s2">'"</span><span class="p">)</span>
+    
+    <span class="n">current_branch</span> <span class="o">=</span> <span class="sb">`git branch --show-current`</span><span class="p">.</span><span class="nf">strip</span>
+    
+    <span class="k">if</span> <span class="n">current_branch</span> <span class="o">==</span> <span class="s1">'main'</span>
+      <span class="c1"># Direct release from main</span>
+      <span class="nb">system</span><span class="p">(</span><span class="s2">"git tag v</span><span class="si">#{</span><span class="n">new_version</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+      <span class="nb">system</span><span class="p">(</span><span class="s2">"git push origin main &amp;&amp; git push origin v</span><span class="si">#{</span><span class="n">new_version</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">else</span>
+      <span class="c1"># PR workflow with auto-merge</span>
+      <span class="nb">system</span><span class="p">(</span><span class="s2">"git push origin </span><span class="si">#{</span><span class="n">current_branch</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+      
+      <span class="n">pr_title</span> <span class="o">=</span> <span class="s2">"Release v</span><span class="si">#{</span><span class="n">new_version</span><span class="si">}</span><span class="s2">: </span><span class="si">#{</span><span class="n">get_release_description</span><span class="p">(</span><span class="n">new_version</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+      <span class="n">pr_body</span> <span class="o">=</span> <span class="n">generate_pr_body</span><span class="p">(</span><span class="n">new_version</span><span class="p">)</span>
+      
+      <span class="c1"># Create and merge PR</span>
+      <span class="k">unless</span> <span class="nb">system</span><span class="p">(</span><span class="s2">"gh pr create --base main --head </span><span class="si">#{</span><span class="n">current_branch</span><span class="si">}</span><span class="s2"> --title '</span><span class="si">#{</span><span class="n">pr_title</span><span class="si">}</span><span class="s2">' --body '</span><span class="si">#{</span><span class="n">pr_body</span><span class="si">}</span><span class="s2">'"</span><span class="p">)</span>
+        <span class="nb">puts</span> <span class="s2">"❌ Failed to create PR. Manual steps required."</span>
+        <span class="nb">exit</span> <span class="mi">1</span>
+      <span class="k">end</span>
+      
+      <span class="k">unless</span> <span class="nb">system</span><span class="p">(</span><span class="s2">"gh pr merge --merge --delete-branch=false"</span><span class="p">)</span>
+        <span class="nb">puts</span> <span class="s2">"❌ Failed to merge PR automatically."</span>
+        <span class="nb">exit</span> <span class="mi">1</span>
+      <span class="k">end</span>
+      
+      <span class="c1"># Create release tag</span>
+      <span class="nb">system</span><span class="p">(</span><span class="s2">"git checkout main &amp;&amp; git pull origin main"</span><span class="p">)</span>
+      <span class="nb">system</span><span class="p">(</span><span class="s2">"git tag v</span><span class="si">#{</span><span class="n">new_version</span><span class="si">}</span><span class="s2"> &amp;&amp; git push origin v</span><span class="si">#{</span><span class="n">new_version</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">end</span>
+    
+    <span class="nb">puts</span> <span class="s2">"✅ Release v</span><span class="si">#{</span><span class="n">new_version</span><span class="si">}</span><span class="s2"> completed!"</span>
+    <span class="nb">puts</span> <span class="s2">"🔗 Verify at: https://rubygems.org/gems/jekyll-pandoc-exports"</span>
+  <span class="k">end</span>
+  
+  <span class="kp">private</span>
+  
+  <span class="k">def</span> <span class="nf">valid_version?</span><span class="p">(</span><span class="n">version</span><span class="p">)</span>
+    <span class="n">version</span><span class="o">&amp;</span><span class="p">.</span><span class="nf">match?</span><span class="p">(</span><span class="sr">/^\d+\.\d+\.\d+$/</span><span class="p">)</span>
+  <span class="k">end</span>
+  
+  <span class="k">def</span> <span class="nf">version_exists?</span><span class="p">(</span><span class="n">version</span><span class="p">)</span>
+    <span class="no">File</span><span class="p">.</span><span class="nf">exist?</span><span class="p">(</span><span class="vi">@changelog_path</span><span class="p">)</span> <span class="o">&amp;&amp;</span> 
+    <span class="no">File</span><span class="p">.</span><span class="nf">read</span><span class="p">(</span><span class="vi">@changelog_path</span><span class="p">).</span><span class="nf">include?</span><span class="p">(</span><span class="s2">"## [</span><span class="si">#{</span><span class="n">version</span><span class="si">}</span><span class="s2">]"</span><span class="p">)</span>
+  <span class="k">end</span>
+  
+  <span class="k">def</span> <span class="nf">update_version_file</span><span class="p">(</span><span class="n">new_version</span><span class="p">)</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="no">File</span><span class="p">.</span><span class="nf">read</span><span class="p">(</span><span class="vi">@version_file</span><span class="p">)</span>
+    <span class="n">updated</span> <span class="o">=</span> <span class="n">content</span><span class="p">.</span><span class="nf">gsub</span><span class="p">(</span><span class="sr">/VERSION = ['"][^'"]+['"]/</span><span class="p">,</span> <span class="s2">"VERSION = '</span><span class="si">#{</span><span class="n">new_version</span><span class="si">}</span><span class="s2">'"</span><span class="p">)</span>
+    <span class="no">File</span><span class="p">.</span><span class="nf">write</span><span class="p">(</span><span class="vi">@version_file</span><span class="p">,</span> <span class="n">updated</span><span class="p">)</span>
+  <span class="k">end</span>
+  
+  <span class="k">def</span> <span class="nf">update_changelog</span><span class="p">(</span><span class="n">new_version</span><span class="p">)</span>
+    <span class="c1"># Sophisticated changelog parsing and updating</span>
+    <span class="c1"># Handles unreleased sections and proper formatting</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="no">ReleaseManager</span><span class="p">.</span><span class="nf">new</span><span class="p">.</span><span class="nf">run</span><span class="p">(</span><span class="no">ARGV</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="no">ARGV</span><span class="p">.</span><span class="nf">include?</span><span class="p">(</span><span class="s1">'--skip-tests'</span><span class="p">))</span>
+</code></pre></div></div>
+
+<p><strong>Key Ruby Script Features:</strong></p>
+
+<ul>
+  <li><strong>Semantic version validation</strong> with regex patterns</li>
+  <li><strong>Duplicate version detection</strong> in changelog</li>
+  <li><strong>Conditional test execution</strong> with <code class="language-plaintext highlighter-rouge">--skip-tests</code> flag</li>
+  <li><strong>Branch-aware workflow</strong> (main vs development branches)</li>
+  <li><strong>Comprehensive error handling</strong> with meaningful messages</li>
+  <li><strong>Automatic changelog generation</strong> with proper formatting</li>
+  <li><strong>PR body generation</strong> with extracted changelog content</li>
+</ul>
+
+<p>Usage Examples:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">./bin/release 0.1.6</code> - Full release with testing</li>
+  <li><code class="language-plaintext highlighter-rouge">./bin/release 0.1.8 --skip-tests</code> - Quick patch release</li>
+</ul>
+
+<p>The Ruby implementation is much more robust than a simple bash script that I started with initially, with proper error handling, validation, and structured code organization.</p>
+
+<h3 id="the-binreset-dev-companion-script">The bin/reset-dev Companion Script</h3>
+
+<p>After releases, the development branch needs to be reset to match main. This enhanced Ruby script handles the cleanup with proper validation:</p>
+
+<div class="language-ruby highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#!/usr/bin/env ruby</span>
+
+<span class="k">class</span> <span class="nc">DevResetManager</span>
+  <span class="no">VERSION_FILE</span> <span class="o">=</span> <span class="s1">'lib/jekyll-pandoc-exports/version.rb'</span>
+  
+  <span class="k">def</span> <span class="nf">run</span>
+    <span class="k">if</span> <span class="no">ARGV</span><span class="p">.</span><span class="nf">include?</span><span class="p">(</span><span class="s1">'--help'</span><span class="p">)</span> <span class="o">||</span> <span class="no">ARGV</span><span class="p">.</span><span class="nf">include?</span><span class="p">(</span><span class="s1">'-h'</span><span class="p">)</span>
+      <span class="n">show_help</span>
+      <span class="nb">exit</span> <span class="mi">0</span>
+    <span class="k">end</span>
+    
+    <span class="c1"># Validate environment before proceeding</span>
+    <span class="n">validate_environment</span>
+    
+    <span class="nb">puts</span> <span class="s2">"🔄 Hard resetting dev branch to match main..."</span>
+    <span class="nb">puts</span> <span class="s2">"⚠️  WARNING: This will discard ALL changes on dev branch!"</span>
+    
+    <span class="c1"># Execute the reset commands with status updates</span>
+    <span class="nb">puts</span> <span class="s2">"📥 Pulling latest main..."</span>
+    <span class="nb">system</span><span class="p">(</span><span class="s2">"git pull origin main"</span><span class="p">)</span>
+    
+    <span class="nb">puts</span> <span class="s2">"🔄 Switching to dev branch..."</span>
+    <span class="nb">system</span><span class="p">(</span><span class="s2">"git checkout dev"</span><span class="p">)</span>
+    
+    <span class="nb">puts</span> <span class="s2">"💥 Hard resetting dev to main..."</span>
+    <span class="nb">system</span><span class="p">(</span><span class="s2">"git reset --hard main"</span><span class="p">)</span>
+    
+    <span class="nb">puts</span> <span class="s2">"📤 Force pushing dev branch..."</span>
+    <span class="nb">system</span><span class="p">(</span><span class="s2">"git push origin dev --force"</span><span class="p">)</span>
+    
+    <span class="nb">puts</span> <span class="s2">"✅ Dev branch hard reset complete!"</span>
+    <span class="nb">puts</span> <span class="s2">"📊 Dev branch is now identical to main branch"</span>
+    <span class="nb">puts</span> <span class="s2">"🚀 Ready for next development cycle!"</span>
+    
+    <span class="n">suggest_next_version</span>
+  <span class="k">end</span>
+  
+  <span class="kp">private</span>
+  
+  <span class="k">def</span> <span class="nf">validate_environment</span>
+    <span class="c1"># Check if git command exists</span>
+    <span class="k">unless</span> <span class="nb">system</span><span class="p">(</span><span class="s1">'which git &gt; /dev/null 2&gt;&amp;1'</span><span class="p">)</span>
+      <span class="nb">puts</span> <span class="s2">"❌ Error: Git command not found. Please install Git."</span>
+      <span class="nb">exit</span> <span class="mi">1</span>
+    <span class="k">end</span>
+    
+    <span class="c1"># Check if we're in a git repository</span>
+    <span class="k">unless</span> <span class="nb">system</span><span class="p">(</span><span class="s1">'git rev-parse --git-dir &gt; /dev/null 2&gt;&amp;1'</span><span class="p">)</span>
+      <span class="nb">puts</span> <span class="s2">"❌ Error: Not in a Git repository. Please run from project root."</span>
+      <span class="nb">exit</span> <span class="mi">1</span>
+    <span class="k">end</span>
+    
+    <span class="c1"># Check if main and dev branches exist</span>
+    <span class="k">unless</span> <span class="nb">system</span><span class="p">(</span><span class="s1">'git show-ref --verify --quiet refs/heads/main'</span><span class="p">)</span>
+      <span class="nb">puts</span> <span class="s2">"❌ Error: 'main' branch does not exist."</span>
+      <span class="nb">exit</span> <span class="mi">1</span>
+    <span class="k">end</span>
+    
+    <span class="k">unless</span> <span class="nb">system</span><span class="p">(</span><span class="s1">'git show-ref --verify --quiet refs/heads/dev'</span><span class="p">)</span>
+      <span class="nb">puts</span> <span class="s2">"❌ Error: 'dev' branch does not exist."</span>
+      <span class="nb">exit</span> <span class="mi">1</span>
+    <span class="k">end</span>
+    
+    <span class="nb">puts</span> <span class="s2">"✅ Environment validation passed"</span>
+  <span class="k">end</span>
+  
+  <span class="k">def</span> <span class="nf">suggest_next_version</span>
+    <span class="n">current_version</span> <span class="o">=</span> <span class="n">get_current_version</span>
+    <span class="k">return</span> <span class="k">unless</span> <span class="n">current_version</span>
+    
+    <span class="n">parts</span> <span class="o">=</span> <span class="n">current_version</span><span class="p">.</span><span class="nf">split</span><span class="p">(</span><span class="s1">'.'</span><span class="p">).</span><span class="nf">map</span><span class="p">(</span><span class="o">&amp;</span><span class="ss">:to_i</span><span class="p">)</span>
+    <span class="n">patch_version</span> <span class="o">=</span> <span class="s2">"</span><span class="si">#{</span><span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">.</span><span class="si">#{</span><span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">.</span><span class="si">#{</span><span class="n">parts</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="si">}</span><span class="s2">"</span>
+    <span class="n">minor_version</span> <span class="o">=</span> <span class="s2">"</span><span class="si">#{</span><span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">.</span><span class="si">#{</span><span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="si">}</span><span class="s2">.0"</span>
+    
+    <span class="nb">puts</span> <span class="s2">"💡 Next versions:"</span>
+    <span class="nb">puts</span> <span class="s2">"   Patch: </span><span class="si">#{</span><span class="n">patch_version</span><span class="si">}</span><span class="s2"> (bug fixes)"</span>
+    <span class="nb">puts</span> <span class="s2">"   Minor: </span><span class="si">#{</span><span class="n">minor_version</span><span class="si">}</span><span class="s2"> (new features)"</span>
+    <span class="nb">puts</span> <span class="s2">"🏷️  When ready: bin/release &lt;version&gt;"</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="no">DevResetManager</span><span class="p">.</span><span class="nf">new</span><span class="p">.</span><span class="nf">run</span>
+</code></pre></div></div>
+
+<p><strong>Features:</strong></p>
+
+<ul>
+  <li><strong>Hard reset</strong> dev branch to match main exactly</li>
+  <li><strong>Version suggestions</strong> for next development cycle</li>
+  <li><strong>Warning messages</strong> about destructive operations</li>
+  <li><strong>Simple workflow</strong> for post-release cleanup</li>
+  <li><strong>Environment validation</strong> checks Git installation and repository state</li>
+  <li><strong>Branch existence verification</strong> ensures main and dev branches exist</li>
+  <li><strong>Help system</strong> with <code class="language-plaintext highlighter-rouge">--help</code> flag</li>
+  <li><strong>Detailed status updates</strong> during each operation</li>
+  <li><strong>Error handling</strong> with meaningful exit codes</li>
+</ul>
+
+<p>Usage: <code class="language-plaintext highlighter-rouge">./bin/reset-dev</code> or <code class="language-plaintext highlighter-rouge">./bin/reset-dev --help</code></p>
+
+<p>I am much less proud of this script but it gets the job done. And I got my Ruby groove back doing these rather than just blast out a <code class="language-plaintext highlighter-rouge">bash</code> or <code class="language-plaintext highlighter-rouge">zsh</code> shell script. It has been several years since I did <strong>Ruby for Rails</strong> or <strong>Groovy for Grails</strong>. So the syntax needed a bit of time to saturate my brain and get the muscle memory back.</p>
+
+<h2 id="lessons-learned">Lessons Learned</h2>
+
+<h3 id="ruby-vs-python-ecosystem-differences">Ruby vs Python Ecosystem Differences</h3>
+
+<p><strong>Dependency Management</strong>: Bundler’s behavior differs significantly from pip/poetry. Frozen lockfiles in CI required careful configuration.</p>
+
+<p><strong>Documentation</strong>: Ruby lacks Python’s autodoc ecosystem. Manual documentation organization was necessary.</p>
+
+<p><strong>Testing</strong>: Ruby’s testing culture emphasizes different patterns than Python’s pytest ecosystem.</p>
+
+<h3 id="github-actions-gotchas">GitHub Actions Gotchas</h3>
+
+<p><strong>Permissions</strong>: Token permissions for trusted publishing required specific scopes.</p>
+
+<p><strong>Timing</strong>: Automated workflows needed careful sequencing and wait conditions.</p>
+
+<p><strong>Matrix Builds</strong>: Ruby version compatibility testing had unique edge cases.</p>
+
+<p><strong>Frozen Lockfiles</strong>: The most insidious issue was <code class="language-plaintext highlighter-rouge">Gemfile.lock</code> version drift between the gemspec and the lockfile. When you bump the version in <code class="language-plaintext highlighter-rouge">version.rb</code> but forget to run <code class="language-plaintext highlighter-rouge">bundle install</code> before committing, the lockfile still references the old version. The CI publish workflow runs with <code class="language-plaintext highlighter-rouge">bundler-cache: true</code>, which sets frozen mode — and frozen mode refuses to install when the gemspec version doesn’t match the lockfile. The fix is simple (run <code class="language-plaintext highlighter-rouge">bundle install</code> after version bumps), but the failure mode is confusing: the gem builds and tests pass locally, the PR merges, the tag is created, and then the publish workflow fails silently on a bundler error. I hit this during the v0.1.12 release and had to delete the tag, update the lockfile, re-tag, and manually trigger the publish workflow.</p>
+
+<h3 id="jekyll-3x-compatibility">Jekyll 3.x Compatibility</h3>
+
+<p>A subtle Ruby language issue surfaced when integrating the plugin into my <a href="/jekyll-pandoc-exports-resume-integration/">resume site</a>, which uses the <code class="language-plaintext highlighter-rouge">github-pages</code> gem (Jekyll 3.10.0). The plugin’s <code class="language-plaintext highlighter-rouge">:post_write</code> hook block used <code class="language-plaintext highlighter-rouge">return</code> to exit early:</p>
+
+<div class="language-ruby highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="no">Jekyll</span><span class="o">::</span><span class="no">Hooks</span><span class="p">.</span><span class="nf">register</span> <span class="ss">:site</span><span class="p">,</span> <span class="ss">:post_write</span> <span class="k">do</span> <span class="o">|</span><span class="n">site</span><span class="o">|</span>
+  <span class="n">config</span> <span class="o">=</span> <span class="n">setup_configuration</span><span class="p">(</span><span class="n">site</span><span class="p">)</span>
+  <span class="k">return</span> <span class="k">unless</span> <span class="n">config</span><span class="p">[</span><span class="s1">'enabled'</span><span class="p">]</span>  <span class="c1"># LocalJumpError in Jekyll 3.x</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<p>In Ruby, <code class="language-plaintext highlighter-rouge">return</code> inside a <code class="language-plaintext highlighter-rouge">do...end</code> block tries to return from the enclosing method — but hook blocks have no enclosing method in Jekyll 3.x’s invocation path, causing a <code class="language-plaintext highlighter-rouge">LocalJumpError</code>. The fix was replacing <code class="language-plaintext highlighter-rouge">return</code> with <code class="language-plaintext highlighter-rouge">next</code>, which is the correct way to exit early from a block. This worked fine in Jekyll 4.x due to differences in how it invokes hooks, so the bug was invisible during development and testing.</p>
+
+<p>This is the kind of issue that only surfaces when real users integrate your gem into their projects — another argument for eating your own dog food early.</p>
+
+<h3 id="release-automation-benefits">Release Automation Benefits</h3>
+
+<p>The automated pipeline reduced release time from 2+ hours to 5 minutes:</p>
+
+<ul>
+  <li><strong>Zero Manual Steps</strong>: Single <code class="language-plaintext highlighter-rouge">bin/release</code> command</li>
+  <li><strong>Consistent Process</strong>: No forgotten steps or human errors</li>
+  <li><strong>Immediate Feedback</strong>: Automated verification and links</li>
+  <li><strong>Documentation Sync</strong>: Read the Docs builds automatically</li>
+</ul>
+
+<h2 id="infrastructure-components">Infrastructure Components</h2>
+
+<h3 id="final-architecture">Final Architecture</h3>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Development   │──▶│  GitHub Actions  │───▶│   RubyGems.org  │
+│     Branch      │    │   CI/CD Pipeline │    │   Publication   │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│  bin/release    │    │  Read the Docs   │    │  GitHub Release │
+│     Script      │    │  Documentation   │    │    Creation     │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+</code></pre></div></div>
+
+<h3 id="key-files">Key Files</h3>
+
+<ul>
+  <li><strong><code class="language-plaintext highlighter-rouge">.github/workflows/</code></strong>: CI/CD pipeline definitions</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">docs/</code></strong>: MkDocs documentation source</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">bin/release</code></strong>: Automated release orchestration</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">bin/reset-dev</code></strong>: Post-release development setup</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">.readthedocs.yaml</code></strong>: Documentation build configuration</li>
+</ul>
+
+<h2 id="the-payoff">The Payoff</h2>
+
+<p>After weeks of infrastructure work, the release process became:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Release with full testing:</span>
+./bin/release 1.2.0
+
+<span class="c"># Quick patch release (skip tests):</span>
+./bin/release 1.2.1 <span class="nt">--skip-tests</span>
+
+<span class="c"># Reset dev branch for next cycle:</span>
+./bin/reset-dev
+</code></pre></div></div>
+
+<p>Two commands handle the complete release cycle:</p>
+
+<ul>
+  <li>PR creation and merging</li>
+  <li>Git tagging and pushing</li>
+  <li>GitHub release creation</li>
+  <li>RubyGems publication</li>
+  <li>Documentation updates</li>
+  <li>Development branch reset</li>
+</ul>
+
+<h2 id="next-steps">Next Steps</h2>
+
+<p>In <a href="/jekyll-pandoc-exports-plugin/">Part 2</a>, I cover the plugin’s technical implementation — the Jekyll hooks system, Pandoc integration, and the architecture that makes automated document exports work. In <a href="/jekyll-pandoc-exports-resume-integration/">Part 3</a>, I walk through integrating the plugin into my resume site, where the Jekyll 3.x compatibility bug and several other issues surfaced — and where the release automation described above proved its value by enabling rapid fix-test-release cycles.</p>
+
+<p>Professional release automation isn’t just about convenience — it’s about enabling sustainable open-source development.</p>
+
+<hr />
+
+<p><strong>Resources:</strong></p>
+
+<ul>
+  <li><a href="https://jekyll-pandoc-exports.readthedocs.io/en/latest/release-process/">Release Workflow Documentation</a></li>
+  <li><a href="https://github.com/mcgarrah/jekyll-pandoc-exports/tree/main/.github/workflows">GitHub Actions Workflows</a></li>
+  <li><a href="https://github.com/mcgarrah/jekyll-pandoc-exports/blob/main/bin/release">bin/release Script</a></li>
+  <li><a href="https://github.com/mcgarrah/jekyll-pandoc-exports/blob/main/.readthedocs.yaml">Read the Docs Configuration</a></li>
+</ul>
+
+<h2 id="related-posts">Related Posts</h2>
+
+<ul>
+  <li><a href="/jekyll-pandoc-exports-plugin/">Jekyll Pandoc Exports Plugin</a> — Part 2: The plugin this pipeline releases</li>
+  <li><a href="/jekyll-pandoc-exports-resume-integration/">Pandoc Exports Resume Integration</a> — Part 3: Real-world integration and bug fixes</li>
+  <li><a href="/jekyll-markdown-feature-reference/">How the Sausage Is Made</a> — Complete feature reference including Pandoc exports</li>
+  <li><a href="/setting-up-jekyll-blog-github-pages/">Building This Blog</a> — The Jekyll setup that uses this plugin</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/ruby-gem/">ruby-gem</a>, 
+        
+          <a href="/tags/github-actions/">github-actions</a>, 
+        
+          <a href="/tags/readthedocs/">readthedocs</a>, 
+        
+          <a href="/tags/rubygems/">rubygems</a>, 
+        
+          <a href="/tags/release-automation/">release-automation</a>, 
+        
+          <a href="/tags/devops/">devops</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/ruby/">ruby</a>, 
+        
+          <a href="/categories/devops/">devops</a>, 
+        
+          <a href="/categories/automation/">automation</a>, 
+        
+          <a href="/categories/ci-cd/">ci-cd</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Hybrid Ceph Storage: SSD WAL/DB Acceleration with USB Drive Data | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Hybrid Ceph Storage: SSD WAL/DB Acceleration with USB Drive Data" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="Architecture and implementation guide for hybrid Ceph BlueStore storage with SSD WAL/DB acceleration and USB HDD data drives. Covers WAL vs DB differences, sizing, ceph-volume creation, Proxmox UI setup, performance results, cost analysis, and operational lessons from a 15-OSD Proxmox homelab cluster." />
+<meta property="og:description" content="Architecture and implementation guide for hybrid Ceph BlueStore storage with SSD WAL/DB acceleration and USB HDD data drives. Covers WAL vs DB differences, sizing, ceph-volume creation, Proxmox UI setup, performance results, cost analysis, and operational lessons from a 15-OSD Proxmox homelab cluster." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/ceph-ssd-wal-db-usb-storage/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/ceph-ssd-wal-db-usb-storage/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-04-16T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Hybrid Ceph Storage: SSD WAL/DB Acceleration with USB Drive Data" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-04-16T00:00:00+00:00","datePublished":"2026-04-16T00:00:00+00:00","description":"Architecture and implementation guide for hybrid Ceph BlueStore storage with SSD WAL/DB acceleration and USB HDD data drives. Covers WAL vs DB differences, sizing, ceph-volume creation, Proxmox UI setup, performance results, cost analysis, and operational lessons from a 15-OSD Proxmox homelab cluster.","headline":"Hybrid Ceph Storage: SSD WAL/DB Acceleration with USB Drive Data","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/ceph-ssd-wal-db-usb-storage/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/ceph-ssd-wal-db-usb-storage/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/ceph-ssd-wal-db-usb-storage/">Hybrid Ceph Storage: SSD WAL/DB Acceleration with USB Drive Data</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-04-16T00:00:00+00:00">April 16, 2026</time><span class="reading-time">16 min read</span></header>
+
+  <p>Running Ceph in a homelab means making tradeoffs. You want distributed storage — high availability, scalability, data protection — but enterprise hardware costs spiral fast. My answer: put the brains on SSD and the bulk on cheap USB drives.</p>
+
+<p>After building a <a href="/proxmox-ceph-homelab-settings/">15-OSD Ceph cluster</a> with 69 TiB of raw storage across five Dell OptiPlex 990 nodes, I’ve learned that separating the WAL (Write-Ahead Log) and DB (RocksDB metadata) onto fast SSDs while keeping bulk data on 5TB USB drives delivers excellent performance at a fraction of all-SSD costs.</p>
+
+<p>If you read my recent post about <a href="/zfs-ceph-overlapping-failures/">discovering WAL vs DB inconsistencies</a> across the cluster, this is the deeper explanation of what those terms mean, why the separation matters, and how to set it up.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="the-theory-why-separate-wal-and-db">The Theory: Why Separate WAL and DB?</h2>
+
+<p>Ceph’s BlueStore backend has three types of data with very different I/O patterns:</p>
+
+<ul>
+  <li><strong>Data</strong> — the actual objects you store. Large sequential writes and reads. Tolerates slow storage.</li>
+  <li><strong>WAL (Write-Ahead Log)</strong> — a journal of pending writes. Small, constant, latency-sensitive. Every write hits the WAL first.</li>
+  <li><strong>DB (RocksDB metadata)</strong> — the index that maps object names to locations. Small random reads on every operation. Heavily accessed during scrubs, recovery, and listing operations.</li>
+</ul>
+
+<p>By default, all three live on the same device. On a USB HDD, that means every metadata lookup and every write journal entry competes with bulk data I/O on a drive that’s already slow (USB 3.0 caps at ~125 MB/s, and HDDs add seek latency on top).</p>
+
+<p>Separating WAL and DB onto an SSD means:</p>
+
+<ul>
+  <li><strong>Writes complete faster</strong> — the WAL acknowledges writes at SSD speed, then data flushes to the HDD in the background</li>
+  <li><strong>Metadata lookups are instant</strong> — directory listings, object lookups, and scrub operations hit the SSD instead of waiting for HDD seeks</li>
+  <li><strong>Recovery is faster</strong> — when an OSD comes back after a failure, the metadata operations that drive peering and backfill run at SSD speed</li>
+</ul>
+
+<h2 id="wal-vs-db-which-should-you-use">WAL vs DB: Which Should You Use?</h2>
+
+<p>This is the question I didn’t ask carefully enough when building the cluster, which led to the <a href="/zfs-ceph-overlapping-failures/">inconsistency I discovered</a> across nodes.</p>
+
+<h3 id="wal-only---blockwal">WAL Only (<code class="language-plaintext highlighter-rouge">--block.wal</code>)</h3>
+
+<ul>
+  <li>SSD stores <strong>only the Write-Ahead Log</strong></li>
+  <li>RocksDB metadata lives on the HDD with the data</li>
+  <li>Accelerates writes but metadata reads still hit the HDD</li>
+  <li>Created via CLI: <code class="language-plaintext highlighter-rouge">ceph-volume lvm create --block.wal /dev/ssd-partition</code></li>
+</ul>
+
+<h3 id="db---blockdb">DB (<code class="language-plaintext highlighter-rouge">--block.db</code>)</h3>
+
+<ul>
+  <li>SSD stores <strong>both the RocksDB metadata and the WAL</strong></li>
+  <li>Accelerates writes (WAL) <strong>and</strong> metadata lookups (DB)</li>
+  <li>Strictly better than WAL-only if you have the SSD space</li>
+  <li>Created via Proxmox UI (default) or CLI: <code class="language-plaintext highlighter-rouge">ceph-volume lvm create --block.db /dev/ssd-partition</code></li>
+</ul>
+
+<h3 id="the-recommendation">The Recommendation</h3>
+
+<p><strong>Use DB.</strong> It’s what the Proxmox Web UI creates by default, it provides more acceleration for the same SSD space, and there’s no downside. The only reason to use WAL-only is if you’re extremely constrained on SSD capacity and want to dedicate every byte to write journaling.</p>
+
+<p>In my cluster, the nodes created via the Proxmox UI (edgar, poe) got DB, while the nodes created via CLI (harlan, kovacs, quell) got WAL-only. Both work fine, but future rebuilds will standardize on DB.</p>
+
+<h3 id="what-are-wal-only-nodes-actually-losing">What Are WAL-Only Nodes Actually Losing?</h3>
+
+<p>With 9 of 15 OSDs running WAL-only, the performance gap is worth understanding. The difference comes down to where RocksDB metadata reads happen:</p>
+
+<ul>
+  <li><strong>DB nodes (edgar, poe)</strong>: metadata reads hit the MX500 SSD — sub-millisecond latency</li>
+  <li><strong>WAL-only nodes (harlan, kovacs, quell)</strong>: metadata reads hit the USB HDD — 5-15ms seek latency per operation</li>
+</ul>
+
+<p>For a cluster with 2.94M objects, that’s a lot of RocksDB lookups. The impact shows up in:</p>
+
+<ul>
+  <li><strong>Scrub operations</strong> — each object’s checksum requires a metadata lookup. WAL-only OSDs scrub slower because every lookup waits for an HDD seek.</li>
+  <li><strong>Recovery and backfill</strong> — peering decisions require reading metadata for every PG. DB nodes peer faster after a restart.</li>
+  <li><strong>CephFS directory listings</strong> — listing a directory with thousands of files triggers metadata reads for each entry. DB nodes respond noticeably faster.</li>
+  <li><strong>OSD startup time</strong> — the OSD replays its RocksDB on startup. DB nodes boot faster because the replay reads from SSD.</li>
+</ul>
+
+<p>You can compare OSD latency between WAL-only and DB nodes with:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Compare apply latency across OSDs (lower is better)</span>
+<span class="k">for </span>osd <span class="k">in </span>0 3 6 1 4 7<span class="p">;</span> <span class="k">do
+  </span><span class="nv">LAT</span><span class="o">=</span><span class="si">$(</span>ceph osd perf 2&gt;/dev/null | <span class="nb">grep</span> <span class="s2">"^</span><span class="se">\s</span><span class="s2">*</span><span class="nv">$osd</span><span class="s2">"</span> | <span class="nb">awk</span> <span class="s1">'{print $3}'</span><span class="si">)</span>
+  <span class="nv">HOST</span><span class="o">=</span><span class="si">$(</span>ceph osd metadata <span class="nv">$osd</span> 2&gt;/dev/null | <span class="nb">grep</span> <span class="s1">'"hostname"'</span> | <span class="nb">awk</span> <span class="nt">-F</span><span class="s1">'"'</span> <span class="s1">'{print $4}'</span><span class="si">)</span>
+  <span class="nv">TYPE</span><span class="o">=</span><span class="s2">"WAL"</span>
+  ceph osd metadata <span class="nv">$osd</span> 2&gt;/dev/null | <span class="nb">grep</span> <span class="nt">-q</span> bluefs_db <span class="o">&amp;&amp;</span> <span class="nv">TYPE</span><span class="o">=</span><span class="s2">"DB"</span>
+  <span class="nb">echo</span> <span class="s2">"osd.</span><span class="nv">$osd</span><span class="s2">  </span><span class="nv">$HOST</span><span class="s2">  </span><span class="nv">$TYPE</span><span class="s2">  apply_latency: </span><span class="k">${</span><span class="nv">LAT</span><span class="k">}</span><span class="s2">ms"</span>
+<span class="k">done</span>
+</code></pre></div></div>
+
+<p>I haven’t run a formal A/B comparison yet — designing a test that isolates the WAL vs DB variable without disrupting a live cluster with 10 TiB of data is tricky. The OSDs serve different PGs with different access patterns, so raw latency numbers aren’t directly comparable. A proper test would require creating matched OSDs on the same node with identical data, which means temporarily destroying and recreating an OSD. That’s a project for a maintenance window, not a Tuesday afternoon. If I get to it, I’ll publish the results as a follow-up.</p>
+
+<h2 id="my-hardware-setup">My Hardware Setup</h2>
+
+<h3 id="the-alteredcarbon-cluster">The AlteredCarbon Cluster</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Node</th>
+      <th>Role</th>
+      <th>CPU</th>
+      <th>RAM</th>
+      <th>Boot</th>
+      <th>Ceph SSD</th>
+      <th>Ceph Data</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>harlan</td>
+      <td>OSD host</td>
+      <td>i7-2600</td>
+      <td>31 GB</td>
+      <td>2x 128GB SSD (ZFS mirror)</td>
+      <td>CT500MX500SSD1 (500GB)</td>
+      <td>3x 5TB Seagate USB</td>
+    </tr>
+    <tr>
+      <td>kovacs</td>
+      <td>OSD host</td>
+      <td>i7-2600</td>
+      <td>31 GB</td>
+      <td>2x 149GB HDD (ZFS mirror)</td>
+      <td>CT500MX500SSD1 (500GB)</td>
+      <td>3x 5TB Seagate USB</td>
+    </tr>
+    <tr>
+      <td>poe</td>
+      <td>OSD host</td>
+      <td>i7-2600</td>
+      <td>31 GB</td>
+      <td>2x 149GB HDD (ZFS mirror)</td>
+      <td>CT500MX500SSD1 (500GB)</td>
+      <td>3x 5TB Seagate USB</td>
+    </tr>
+    <tr>
+      <td>edgar</td>
+      <td>OSD host</td>
+      <td>i7-2600</td>
+      <td>31 GB</td>
+      <td>2x 931GB HDD (ZFS mirror)</td>
+      <td>CT500MX500SSD1 (500GB)</td>
+      <td>3x 5TB Seagate USB</td>
+    </tr>
+    <tr>
+      <td>quell</td>
+      <td>OSD host</td>
+      <td>i7-2600</td>
+      <td>31 GB</td>
+      <td>2x 128GB SSD (ZFS mirror)</td>
+      <td>CT500MX500SSD1 (500GB)</td>
+      <td>3x 5TB Seagate USB</td>
+    </tr>
+    <tr>
+      <td>tanaka</td>
+      <td>Monitor only</td>
+      <td>i5-2400</td>
+      <td>16 GB</td>
+      <td>2x 465GB HDD (ZFS mirror)</td>
+      <td>—</td>
+      <td>—</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>15 OSDs</strong> across 5 hosts. <strong>69 TiB raw</strong>, <strong>39 TiB available</strong> with 3x replication. Each OSD host has one Crucial MX500 500GB SATA SSD partitioned into three 100GB LVs for WAL/DB acceleration.</p>
+
+<p>The cluster hasn’t always been this size. Kovacs lost two USB drives during a <a href="/ceph-osd-recovery-power-failure/">power failure in September 2025</a> and ran with a single OSD for months before replacement drives restored it to three. Poe was added as the fifth OSD host during the same period. The hardware table above reflects the current state.</p>
+
+<h3 id="ssd-selection-crucial-mx500">SSD Selection: Crucial MX500</h3>
+
+<p>The MX500 was chosen for:</p>
+
+<ul>
+  <li><strong>Endurance</strong> — 180 TBW for the 500GB model, adequate for WAL/DB workloads</li>
+  <li><strong>Price</strong> — ~$50-60, shared across 3 OSDs = ~$17-20 per OSD</li>
+  <li><strong>SATA interface</strong> — fits the Dell OptiPlex 990’s available SATA ports (one remaining after boot mirror and DVD removal)</li>
+  <li><strong>Reliability</strong> — well-established consumer SSD with consistent performance</li>
+</ul>
+
+<p>Each 500GB MX500 is partitioned into three 100GB LVM logical volumes, one per OSD. The remaining ~165GB is unallocated — available for wear leveling overhead or a future fourth OSD if I ever find a way to squeeze another USB drive onto a node.</p>
+
+<h3 id="usb-drive-selection-seagate-5tb-portables">USB Drive Selection: Seagate 5TB Portables</h3>
+
+<p>The Ceph data drives are a mix of Seagate models:</p>
+
+<ul>
+  <li><strong>Seagate One Touch HDD</strong> (0bc2:ac41) — 5TB, USB 3.0</li>
+  <li><strong>Seagate BUP Portable</strong> (0bc2:ab9a) — 5TB, USB 3.0</li>
+  <li><strong>Seagate Expansion</strong> (0bc2:2344) — 5TB, USB 3.0</li>
+</ul>
+
+<p>All require <a href="/usb-drive-smart/">USB storage quirks for SMART monitoring</a> and stable operation:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">echo</span> <span class="s1">'options usb-storage quirks=0bc2:ac2b:,0bc2:ac41:,0bc2:2344:,0bc2:ab9a:'</span> <span class="o">&gt;</span> /etc/modprobe.d/usbstorage-quirks.conf
+update-initramfs <span class="nt">-u</span>
+</code></pre></div></div>
+
+<h2 id="sizing-wal-and-db-partitions">Sizing WAL and DB Partitions</h2>
+
+<p>The Ceph documentation recommends:</p>
+
+<ul>
+  <li><strong>WAL</strong>: 1-2% of OSD data size (but minimum useful size is ~1GB)</li>
+  <li><strong>DB</strong>: 4% of OSD data size for optimal RocksDB performance</li>
+</ul>
+
+<p>For a 5TB OSD:</p>
+
+<ul>
+  <li><strong>WAL only</strong>: ~50-100GB</li>
+  <li><strong>DB (includes WAL)</strong>: ~200GB ideal, 100GB workable</li>
+</ul>
+
+<p>My cluster uses <strong>100GB per OSD</strong> for both WAL-only and DB configurations. This is slightly undersized for the DB recommendation but works well in practice because the actual data stored per OSD (~2-2.5 TiB with 3x replication) generates less metadata than the raw capacity would suggest.</p>
+
+<h3 id="what-happens-if-db-is-too-small">What Happens If DB Is Too Small?</h3>
+
+<p>If the RocksDB metadata outgrows the DB device, Ceph spills the overflow onto the data device (the USB HDD). Performance degrades gracefully — you don’t lose data, you just lose the acceleration for the spilled portion. Monitor with:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph daemon osd.X perf dump | <span class="nb">grep</span> <span class="nt">-i</span> bluefs
+</code></pre></div></div>
+
+<h2 id="creating-hybrid-osds">Creating Hybrid OSDs</h2>
+
+<h3 id="method-1-proxmox-web-ui-recommended">Method 1: Proxmox Web UI (Recommended)</h3>
+
+<p><strong>Proxmox → Node → Ceph → OSD → Create: OSD</strong></p>
+
+<ul>
+  <li><strong>Disk</strong>: select the USB drive (e.g., /dev/sdd)</li>
+  <li><strong>DB Disk</strong>: select the MX500 (e.g., /dev/sdc)</li>
+  <li><strong>DB Disk Size</strong>: 100 GiB</li>
+  <li><strong>WAL Disk</strong>: leave empty (DB includes WAL)</li>
+</ul>
+
+<p>The UI creates the LVM logical volume on the SSD automatically. This creates a <strong>DB</strong> configuration (recommended).</p>
+
+<h3 id="method-2-cli-with-pre-sized-lv">Method 2: CLI with Pre-Sized LV</h3>
+
+<p>For more control, or to force a specific OSD ID:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Create a 100GB LV on the MX500's VG</span>
+lvcreate <span class="nt">-L</span> 100G <span class="nt">-n</span> osd-db-osd6 ceph-8c2b41c2-65d6-4f39-ae13-d6f5d208878c
+
+<span class="c"># Create the OSD with DB on the pre-sized LV</span>
+ceph-volume lvm create <span class="nt">--osd-id</span> 6 <span class="nt">--data</span> /dev/sdd <span class="se">\</span>
+  <span class="nt">--block</span>.db ceph-8c2b41c2-65d6-4f39-ae13-d6f5d208878c/osd-db-osd6
+</code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">--osd-id</code> flag is useful when replacing a failed drive and you want to keep the same OSD number for physical labeling. I used this approach when <a href="/zfs-ceph-overlapping-failures/">replacing osd.6 on harlan</a> after a USB drive failure.</p>
+
+<h3 id="method-3-cli-with-wal-only-legacy">Method 3: CLI with WAL Only (Legacy)</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>lvcreate <span class="nt">-L</span> 100G <span class="nt">-n</span> osd-wal-osd6 ceph-8c2b41c2-65d6-4f39-ae13-d6f5d208878c
+
+ceph-volume lvm create <span class="nt">--osd-id</span> 6 <span class="nt">--data</span> /dev/sdd <span class="se">\</span>
+  <span class="nt">--block</span>.wal ceph-8c2b41c2-65d6-4f39-ae13-d6f5d208878c/osd-wal-osd6
+</code></pre></div></div>
+
+<p>This is how the original harlan, kovacs, and quell OSDs were created. It works but provides less acceleration than DB.</p>
+
+<h3 id="verifying-the-configuration">Verifying the Configuration</h3>
+
+<p>After creation, verify the OSD has the SSD device attached:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph osd metadata osd.6 | <span class="nb">grep</span> <span class="nt">-E</span> <span class="s1">'"id"|"hostname"|bluefs_wal|bluefs_db|bluestore_bdev'</span>
+</code></pre></div></div>
+
+<p>For a cluster-wide view:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">for </span>osd <span class="k">in</span> <span class="si">$(</span>ceph osd <span class="nb">ls</span> | <span class="nb">sort</span> <span class="nt">-n</span><span class="si">)</span><span class="p">;</span> <span class="k">do
+  </span><span class="nv">HOST</span><span class="o">=</span><span class="si">$(</span>ceph osd metadata <span class="nv">$osd</span> 2&gt;/dev/null | <span class="nb">grep</span> <span class="s1">'"hostname"'</span> | <span class="nb">awk</span> <span class="nt">-F</span><span class="s1">'"'</span> <span class="s1">'{print $4}'</span><span class="si">)</span>
+  <span class="nv">TYPE</span><span class="o">=</span><span class="s2">"WAL"</span>
+  ceph osd metadata <span class="nv">$osd</span> 2&gt;/dev/null | <span class="nb">grep</span> <span class="nt">-q</span> bluefs_db <span class="o">&amp;&amp;</span> <span class="nv">TYPE</span><span class="o">=</span><span class="s2">"DB"</span>
+  <span class="nb">echo</span> <span class="s2">"osd.</span><span class="nv">$osd</span><span class="s2">  </span><span class="nv">$HOST</span><span class="s2">  </span><span class="nv">$TYPE</span><span class="s2">"</span>
+<span class="k">done</span>
+</code></pre></div></div>
+
+<h2 id="performance-results">Performance Results</h2>
+
+<h3 id="what-the-ssd-acceleration-changes">What the SSD Acceleration Changes</h3>
+
+<p>I don’t have formal before/after benchmarks — I added the MX500 SSDs when building the OSDs, not as a retrofit. But the improvement is obvious in daily use, and the theory explains why: the SSD eliminates HDD seek latency for the operations that happen most frequently (metadata lookups and write journaling), while the USB 3.0 bus (~125 MB/s) remains the bottleneck for bulk data.</p>
+
+<p><strong>Observed improvements with SSD WAL/DB:</strong></p>
+
+<ul>
+  <li><strong>Small write latency</strong>: Writes acknowledge at SSD speed before flushing to HDD in the background</li>
+  <li><strong>Directory listings on CephFS</strong>: Responsive even for directories with thousands of files (our media library has ~2.94M objects)</li>
+  <li><strong>OSD peering after restart</strong>: Minutes instead of tens of minutes — I saw this directly during the <a href="/zfs-ceph-overlapping-failures/">April 2026 osd.6 replacement</a> when the new OSD peered quickly despite backfilling 4.5TB of data</li>
+  <li><strong>Scrub operations</strong>: Faster completion with less impact on client I/O</li>
+</ul>
+
+<h3 id="where-it-doesnt-help">Where It Doesn’t Help</h3>
+
+<ul>
+  <li><strong>Large sequential reads</strong> (streaming media from Jellyfin) — bottlenecked by USB 3.0, not metadata</li>
+  <li><strong>Large sequential writes</strong> (bulk file copies to CephFS) — same USB bottleneck</li>
+  <li><strong>Network-limited operations</strong> — 1GbE is often the bottleneck before USB is</li>
+</ul>
+
+<h3 id="current-cluster-performance">Current Cluster Performance</h3>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@harlan:~#</span><span class="w"> </span>ceph <span class="nt">-s</span>
+<span class="go">  data:
+    pools:   4 pools, 577 pgs
+    objects: 2.94M objects, 10 TiB
+    usage:   30 TiB used, 39 TiB / 69 TiB avail
+</span></code></pre></div></div>
+
+<p>The cluster handles 10 TiB of stored data (30 TiB with 3x replication) across CephFS for media storage and RBD for VM block devices. The hybrid configuration keeps metadata operations responsive even during Ceph recovery and rebalancing events.</p>
+
+<h2 id="cost-analysis">Cost Analysis</h2>
+
+<h3 id="per-osd-cost-comparison">Per-OSD Cost Comparison</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Configuration</th>
+      <th>Drive Cost</th>
+      <th>SSD Cost</th>
+      <th>Total per OSD</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Hybrid (USB + SSD WAL/DB)</strong></td>
+      <td>$100-129 (5TB USB)</td>
+      <td>~$17-20 (1/3 of MX500)</td>
+      <td><strong>$117-149</strong></td>
+    </tr>
+    <tr>
+      <td><strong>All-SSD</strong></td>
+      <td>$400-600 (5TB enterprise SSD)</td>
+      <td>included</td>
+      <td><strong>$400-600</strong></td>
+    </tr>
+    <tr>
+      <td><strong>USB only (no SSD)</strong></td>
+      <td>$100-129 (5TB USB)</td>
+      <td>$0</td>
+      <td><strong>$100-129</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="full-cluster-cost">Full Cluster Cost</h3>
+
+<p>For the 15-OSD AlteredCarbon cluster:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Configuration</th>
+      <th>Total Cost</th>
+      <th>Performance</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Hybrid (actual)</strong></td>
+      <td>~$1,800-2,200</td>
+      <td>Excellent for homelab</td>
+    </tr>
+    <tr>
+      <td><strong>All-SSD equivalent</strong></td>
+      <td>~$6,000-9,000</td>
+      <td>Overkill for USB bandwidth</td>
+    </tr>
+    <tr>
+      <td><strong>USB only</strong></td>
+      <td>~$1,500-1,900</td>
+      <td>Sluggish metadata</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The hybrid approach adds ~$300 (5x MX500 SSDs) to the USB-only cost and delivers the majority of the SSD performance benefit. The all-SSD option would be wasted on USB 3.0 bandwidth — you’d pay 4x more and still be bottlenecked by the bus.</p>
+
+<h3 id="when-the-math-changes">When the Math Changes</h3>
+
+<p>The hybrid approach stops making sense when:</p>
+
+<ul>
+  <li>You upgrade to <strong>10GbE networking</strong> — the USB drives become the clear bottleneck, and all-SSD or NVMe becomes worth the cost</li>
+  <li>You switch to <strong>SATA-connected HDDs</strong> — internal SATA is fast enough that WAL/DB separation provides less relative improvement</li>
+  <li>You need <strong>consistent low latency</strong> — databases and high-IOPS workloads need all-SSD regardless of cost</li>
+</ul>
+
+<h2 id="operational-considerations">Operational Considerations</h2>
+
+<h3 id="ssd-wear-monitoring">SSD Wear Monitoring</h3>
+
+<p>The MX500 SSDs handle constant WAL/DB writes. Monitor wear with:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>smartctl <span class="nt">-A</span> /dev/sdc | <span class="nb">grep</span> <span class="nt">-E</span> <span class="s2">"Wear_Leveling|Media_Wearout|Available_Reservd"</span>
+</code></pre></div></div>
+
+<p>At 100GB per OSD with 3 OSDs per SSD, the write amplification is modest. My MX500s show minimal wear after months of operation. Budget for replacement every 3-5 years depending on write volume.</p>
+
+<h3 id="usb-drive-health">USB Drive Health</h3>
+
+<p>USB Ceph drives fail in <a href="/zfs-ceph-overlapping-failures/">annoying ways</a> — hung USB bridges that block every command, drives that disappear from the bus entirely, and enclosures that enumerate for half a second then disconnect.</p>
+
+<p>Essential monitoring:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>smartctl <span class="nt">-H</span> /dev/sdd <span class="nt">-d</span> sat,12
+</code></pre></div></div>
+
+<p>See <a href="/usb-drive-smart/">Enabling SMART Monitoring on Seagate USB Drives</a> and <a href="/usb-drive-smart-updates/">USB Drive SMART Updates</a> for the full setup including USB quirks and GRUB configuration.</p>
+
+<p><strong>Label your drives.</strong> When a drive fails, knowing which physical USB cable corresponds to which OSD saves significant debugging time.</p>
+
+<h3 id="the-single-ssd-risk">The Single SSD Risk</h3>
+
+<p>The biggest risk of this architecture: <strong>one SSD failure takes out three OSDs simultaneously.</strong> Every OSD on that node loses its WAL/DB device and goes down at once. On a node with three 5TB OSDs, that’s ~13.6 TiB of raw capacity disappearing in an instant.</p>
+
+<p>We mitigate this with cluster design. The AlteredCarbon cluster has 5 OSD hosts with 3 OSDs each. Ceph’s CRUSH map distributes replicas across hosts, so losing an entire node (all 3 OSDs) still leaves 2 copies of every object on the remaining 4 hosts. The cluster continues serving data in a degraded state while you replace the SSD.</p>
+
+<p>This is the same failure domain as losing the node itself — a power supply failure, motherboard death, or even accidentally unplugging the wrong power cable would have the same effect. The SSD doesn’t make the failure <em>worse</em>, it just adds another component that can trigger it.</p>
+
+<p><strong>If you only have 3 OSD hosts</strong>, this risk is more serious. Losing one node’s SSD means losing one-third of your OSDs, and with <code class="language-plaintext highlighter-rouge">min_size=2</code> you’d be one more failure away from data unavailability. Four or more OSD hosts is the minimum I’d recommend for this architecture.</p>
+
+<h3 id="ssd-failure-recovery">SSD Failure Recovery</h3>
+
+<p>If the WAL/DB SSD fails, the affected OSDs will go down. Recovery depends on the failure mode:</p>
+
+<p><strong>SSD dies, data drives intact:</strong></p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># The OSD data is still on the USB drive</span>
+<span class="c"># Replace the SSD, create new LVs, and recreate the OSDs</span>
+<span class="c"># Ceph will rebuild WAL/DB from the data on the USB drive</span>
+systemctl stop ceph-osd@0 ceph-osd@3 ceph-osd@6
+<span class="c"># Replace SSD, partition, create LVs</span>
+<span class="c"># Recreate OSDs pointing to existing data drives with new WAL/DB LVs</span>
+</code></pre></div></div>
+
+<p><strong>USB drive dies, SSD intact:</strong></p>
+
+<p>The WAL/DB on the SSD is useless without the data drive. Remove the dead OSD, clean up the orphaned LV on the SSD, and add a replacement drive. This is exactly what I did when <a href="/zfs-ceph-overlapping-failures/">osd.6’s Seagate BUP Portable died</a>.</p>
+
+<h3 id="rebalancing-with-hybrid-osds">Rebalancing with Hybrid OSDs</h3>
+
+<p>During <a href="/ceph-rebalance/">Ceph rebalancing</a>, the SSD acceleration helps significantly. Metadata operations that drive the rebalancing process (peering, PG migration decisions) run at SSD speed, even though the actual data movement is limited by USB bandwidth. This means rebalancing <em>starts</em> faster and <em>tracks progress</em> more efficiently, even if the bulk data transfer rate is the same.</p>
+
+<h2 id="lessons-learned">Lessons Learned</h2>
+
+<ol>
+  <li>
+    <p><strong>Use DB, not WAL-only.</strong> The Proxmox UI defaults to DB for good reason. It accelerates both writes and metadata reads for the same SSD space.</p>
+  </li>
+  <li>
+    <p><strong>100GB per OSD is a good starting point.</strong> For 5TB data drives with typical homelab workloads (media, backups, VMs), 100GB DB partitions haven’t spilled to the HDD.</p>
+  </li>
+  <li>
+    <p><strong>One SSD per node, partitioned for all OSDs.</strong> A single 500GB MX500 handles three OSDs comfortably. No need for one SSD per OSD.</p>
+  </li>
+  <li>
+    <p><strong>The SSD doesn’t fix the USB bottleneck.</strong> Large sequential I/O is still limited by USB 3.0. The SSD fixes the <em>metadata</em> bottleneck, which is what makes the cluster feel responsive.</p>
+  </li>
+  <li>
+    <p><strong>Label everything.</strong> Physical drive labels with OSD numbers save hours during failures. I learned this the hard way during the <a href="/zfs-ceph-overlapping-failures/">April 2026 osd.6 replacement</a>.</p>
+  </li>
+  <li>
+    <p><strong>Monitor SSD wear and USB health separately.</strong> They fail in different ways — SSDs wear out gradually (SMART attributes), USB drives fail suddenly (bus disconnects, bridge hangs).</p>
+  </li>
+  <li>
+    <p><strong>Document your creation method.</strong> Whether you used the Proxmox UI (DB) or CLI (WAL), knowing which method created each OSD explains configuration differences when you’re debugging at 2 AM.</p>
+  </li>
+</ol>
+
+<h2 id="related-posts">Related Posts</h2>
+
+<ul>
+  <li><a href="/zfs-ceph-overlapping-failures/">When ZFS and Ceph Problems Collide</a> — Discovering the WAL vs DB inconsistency across the cluster</li>
+  <li><a href="/ceph-osd-recovery-power-failure/">Ceph OSD Recovery After Power Failure</a> — Recovering from cascading OSD failures on the same hardware</li>
+  <li><a href="/proxmox-ceph-homelab-settings/">Proxmox Ceph Settings for the Homelab</a> — Tuning scrub intervals and pool settings for homelab hardware</li>
+  <li><a href="/proxmox-ceph-performance/">Optimizing Ceph Performance in Proxmox</a> — mClock tuning and IOPS optimization</li>
+  <li><a href="/usb-drive-smart/">Enabling SMART Monitoring on Seagate USB Drives</a> — Getting health data from USB Ceph drives</li>
+  <li><a href="/usb-drive-smart-updates/">USB Drive SMART Updates</a> — Updated SMART configuration for new drive models</li>
+  <li><a href="/homelab-storage-economics/">Homelab Storage Economics: Ceph vs Single Drive</a> — Cost analysis of distributed storage</li>
+  <li><a href="/proxmox-ceph-nearfull/">Managing Ceph Nearfull Warnings</a> — Capacity management for the cluster</li>
+  <li><a href="/proxmox-ceph-guide/">Proxmox &amp; Ceph Homelab Guide</a> — All Proxmox and Ceph articles</li>
+</ul>
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://docs.ceph.com/en/reef/rados/configuration/bluestore-config-ref/">Ceph BlueStore Configuration Reference</a> — Official WAL/DB documentation</li>
+  <li><a href="https://florian.ca/ceph-calculator/">Florian’s Ceph Calculator</a> — Planning OSD layouts and capacity</li>
+  <li><a href="https://pve.proxmox.com/pve-docs/chapter-pveceph.html">Proxmox Ceph Documentation</a> — Proxmox-specific Ceph guidance</li>
+  <li><a href="https://github.com/mcgarrah/k8s-proxmox/blob/main/docs/CEPH-OSD-SSD-ACCELERATION.md">Ceph OSD SSD Acceleration Reference</a> — Full OSD-to-device mapping for the AlteredCarbon cluster</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/proxmox/">proxmox</a>, 
+        
+          <a href="/tags/ceph/">ceph</a>, 
+        
+          <a href="/tags/ssd/">ssd</a>, 
+        
+          <a href="/tags/usb/">usb</a>, 
+        
+          <a href="/tags/storage/">storage</a>, 
+        
+          <a href="/tags/performance/">performance</a>, 
+        
+          <a href="/tags/homelab/">homelab</a>, 
+        
+          <a href="/tags/wal/">wal</a>, 
+        
+          <a href="/tags/db/">db</a>, 
+        
+          <a href="/tags/bluestore/">bluestore</a>, 
+        
+          <a href="/tags/dell-optiplex-990/">dell-optiplex-990</a>, 
+        
+          <a href="/tags/seagate/">seagate</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/proxmox/">proxmox</a>, 
+        
+          <a href="/categories/ceph/">ceph</a>, 
+        
+          <a href="/categories/homelab/">homelab</a>, 
+        
+          <a href="/categories/storage/">storage</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

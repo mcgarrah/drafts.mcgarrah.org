@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Using Github Actions with pip-audit to audit pip library versions | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Using Github Actions with pip-audit to audit pip library versions" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="I’ve got several Python and TypeScript projects scattered around that need constant dependency babysitting. Dependabot does a decent job but keeps missing Python pip security issues that pip-audit catches. The problem is pip-audit wants everything pinned to exact versions, but I prefer flexible &gt;= constraints in my requirements files. After getting tired of manually running security audits and then forgetting about them for months, I built this GitHub Actions workflow to handle it automatically. You can see it in action on my Shiny Quiz repository and Django demo application." />
+<meta property="og:description" content="I’ve got several Python and TypeScript projects scattered around that need constant dependency babysitting. Dependabot does a decent job but keeps missing Python pip security issues that pip-audit catches. The problem is pip-audit wants everything pinned to exact versions, but I prefer flexible &gt;= constraints in my requirements files. After getting tired of manually running security audits and then forgetting about them for months, I built this GitHub Actions workflow to handle it automatically. You can see it in action on my Shiny Quiz repository and Django demo application." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/github-actions-pip-audit-pr/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/github-actions-pip-audit-pr/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2025-09-09T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Using Github Actions with pip-audit to audit pip library versions" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2025-09-14T00:00:00+00:00","datePublished":"2025-09-09T00:00:00+00:00","description":"I’ve got several Python and TypeScript projects scattered around that need constant dependency babysitting. Dependabot does a decent job but keeps missing Python pip security issues that pip-audit catches. The problem is pip-audit wants everything pinned to exact versions, but I prefer flexible &gt;= constraints in my requirements files. After getting tired of manually running security audits and then forgetting about them for months, I built this GitHub Actions workflow to handle it automatically. You can see it in action on my Shiny Quiz repository and Django demo application.","headline":"Using Github Actions with pip-audit to audit pip library versions","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/github-actions-pip-audit-pr/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/github-actions-pip-audit-pr/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/github-actions-pip-audit-pr/">Using Github Actions with pip-audit to audit pip library versions</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2025-09-09T00:00:00+00:00">September 09, 2025</time><span class="reading-time">12 min read</span></header>
+
+  <p>I’ve got several Python and TypeScript projects scattered around that need constant dependency babysitting. Dependabot does a decent job but keeps missing Python pip security issues that <code class="language-plaintext highlighter-rouge">pip-audit</code> catches. The problem is <code class="language-plaintext highlighter-rouge">pip-audit</code> wants everything pinned to exact versions, but I prefer flexible <code class="language-plaintext highlighter-rouge">&gt;=</code> constraints in my requirements files.</p>
+
+<p>After getting tired of manually running security audits and then forgetting about them for months, I built this GitHub Actions workflow to handle it automatically. You can see it in action on my <a href="https://github.com/mcgarrah/shiny-quiz">Shiny Quiz</a> repository and Django demo application.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="problems-to-solve">Problems to solve</h2>
+
+<ol>
+  <li>Alert me to security vulnerabilities in my python dependencies</li>
+  <li>Allow for flexible versions with <code class="language-plaintext highlighter-rouge">&gt;=</code> rather than <code class="language-plaintext highlighter-rouge">==</code> versions</li>
+  <li>Automatically scan and alert me at least weekly</li>
+  <li>Automatically create PRs to update dependencies</li>
+</ol>
+
+<h2 id="solution">Solution</h2>
+
+<p>The <code class="language-plaintext highlighter-rouge">pip-audit-pr.yaml</code> Github Actions Workflow does the following:</p>
+
+<ol>
+  <li>Runs weekly and on-demand via workflow_dispatch</li>
+  <li>Sets up a python environment with the required dependencies</li>
+  <li>Pins flexible version requirements (<code class="language-plaintext highlighter-rouge">&gt;=</code> to <code class="language-plaintext highlighter-rouge">==</code>) for accurate vulnerability detection</li>
+  <li>Runs <code class="language-plaintext highlighter-rouge">pip-audit</code> with automatic fixes</li>
+  <li>Converts requirements back to flexible versioning</li>
+  <li>Creates a pull request if vulnerabilities were found and fixed</li>
+</ol>
+
+<h2 id="what-it-does">What it does</h2>
+
+<p>The workflow is pretty straightforward - it temporarily pins my flexible version requirements so <code class="language-plaintext highlighter-rouge">pip-audit</code> can do its thing, then converts everything back to <code class="language-plaintext highlighter-rouge">&gt;=</code> constraints after applying security fixes. It runs weekly (because I’ll definitely forget otherwise) and creates pull requests when it finds vulnerabilities. Those PRs end up with an email sent to me so I can see I need to do something.</p>
+
+<h2 id="getting-it-working">Getting it working</h2>
+
+<p>You’ll need a few things set up first:</p>
+
+<ol>
+  <li>A <code class="language-plaintext highlighter-rouge">requirements.txt</code> file (obviously)</li>
+  <li>The helper script in a <code class="language-plaintext highlighter-rouge">scripts/</code> directory</li>
+  <li>GitHub Actions permissions - go to Settings &gt; Actions &gt; General and enable “Allow GitHub Actions to create and approve pull requests” or you’ll get cryptic errors</li>
+</ol>
+
+<h2 id="the-workflow">The Workflow</h2>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">name</span><span class="pi">:</span> <span class="s">pip-audit pull request</span>
+
+<span class="c1"># This workflow uses pip-audit to check for vulnerabilities in Python dependencies</span>
+<span class="c1"># and automatically creates a pull request with fixes if any vulnerabilities are found.</span>
+<span class="c1">#</span>
+<span class="c1"># **Note**: If you have errors for PR (merge request) creation, you may need to:</span>
+<span class="c1">#   1. Go to Settings &gt; Actions &gt; General</span>
+<span class="c1">#   2. Under "Pull request workflows" enable "Allow GitHub Actions to create and approve pull requests"</span>
+
+<span class="na">on</span><span class="pi">:</span>
+  <span class="c1"># Runs weekly on Sundays at midnight UTC</span>
+  <span class="na">schedule</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">cron</span><span class="pi">:</span> <span class="s1">'</span><span class="s">0</span><span class="nv"> </span><span class="s">0</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">0'</span>
+  <span class="c1"># Allows manual runs from the Actions tab</span>
+  <span class="na">workflow_dispatch</span><span class="pi">:</span>
+
+<span class="na">permissions</span><span class="pi">:</span>
+  <span class="na">contents</span><span class="pi">:</span> <span class="s">write</span>
+  <span class="na">pull-requests</span><span class="pi">:</span> <span class="s">write</span>
+
+<span class="na">concurrency</span><span class="pi">:</span>
+  <span class="na">group</span><span class="pi">:</span> <span class="s">pip-audit-${{ github.ref }}</span>
+  <span class="na">cancel-in-progress</span><span class="pi">:</span> <span class="kc">true</span>
+
+<span class="na">jobs</span><span class="pi">:</span>
+  <span class="na">pip-audit-fixes</span><span class="pi">:</span>
+    <span class="na">runs-on</span><span class="pi">:</span> <span class="s">ubuntu-latest</span>
+
+    <span class="na">steps</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Checkout repository</span>
+      <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/checkout@v4</span>
+
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Set up Python</span>
+      <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/setup-python@v5</span>
+      <span class="na">with</span><span class="pi">:</span>
+        <span class="na">python-version</span><span class="pi">:</span> <span class="s1">'</span><span class="s">3.13'</span>
+        <span class="na">cache</span><span class="pi">:</span> <span class="s1">'</span><span class="s">pip'</span>
+
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Create virtual environment</span>
+      <span class="na">run</span><span class="pi">:</span> <span class="s">python -m venv .venv</span>
+
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Install dependencies for audit</span>
+      <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+        <span class="s">source .venv/bin/activate</span>
+        <span class="s">pip install -r requirements.txt</span>
+
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Pin requirements to exact versions</span>
+      <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+        <span class="s">source .venv/bin/activate</span>
+        <span class="s">python scripts/pin_requirements.py pin</span>
+
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Install pip-audit</span>
+      <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+        <span class="s">source .venv/bin/activate</span>
+        <span class="s">pip install pip-audit</span>
+
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Perform pip-audit with fixes</span>
+      <span class="na">id</span><span class="pi">:</span> <span class="s">audit</span>
+      <span class="c1"># Run pip-audit directly with --fix flag on pinned requirements</span>
+      <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+        <span class="s">source .venv/bin/activate</span>
+        <span class="s">pip-audit --fix -o audit-output.txt -r requirements-pinned.txt</span>
+        <span class="s">exit_code=$?</span>
+        <span class="s">echo "exit_code=$exit_code" &gt;&gt; $GITHUB_OUTPUT</span>
+        <span class="s"># Copy the potentially updated pinned requirements back to main requirements file</span>
+        <span class="s">cp requirements-pinned.txt requirements.txt</span>
+        <span class="s"># Remove the defunct pinned requirements file</span>
+        <span class="s">rm requirements-pinned.txt</span>
+      <span class="c1"># The `continue-on-error` ensures the workflow continues to the next step</span>
+      <span class="c1"># if a vulnerability was found and fixed, which triggers the non-zero exit code.</span>
+      <span class="na">continue-on-error</span><span class="pi">:</span> <span class="kc">true</span>
+
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Convert fixed pinned requirements back to flexible versioning</span>
+      <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+        <span class="s">source .venv/bin/activate</span>
+        <span class="s"># Convert requirements back to flexible versioning</span>
+        <span class="s">python scripts/pin_requirements.py unpin</span>
+
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Check for changes</span>
+      <span class="na">id</span><span class="pi">:</span> <span class="s">changes</span>
+      <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+        <span class="s">if git diff --quiet; then</span>
+          <span class="s">echo "has_changes=false" &gt;&gt; $GITHUB_OUTPUT</span>
+        <span class="s">else</span>
+          <span class="s">echo "has_changes=true" &gt;&gt; $GITHUB_OUTPUT</span>
+        <span class="s">fi</span>
+
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Read audit output</span>
+      <span class="na">id</span><span class="pi">:</span> <span class="s">audit_output</span>
+      <span class="na">if</span><span class="pi">:</span> <span class="s">steps.changes.outputs.has_changes == 'true'</span>
+      <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+        <span class="s">if [ -f audit-output.txt ]; then</span>
+          <span class="s">echo "audit_details&lt;&lt;EOF" &gt;&gt; $GITHUB_OUTPUT</span>
+          <span class="s">cat audit-output.txt &gt;&gt; $GITHUB_OUTPUT</span>
+          <span class="s">echo "EOF" &gt;&gt; $GITHUB_OUTPUT</span>
+          <span class="s">rm audit-output.txt</span>
+        <span class="s">else</span>
+          <span class="s">echo "audit_details=No audit output file found" &gt;&gt; $GITHUB_OUTPUT</span>
+        <span class="s">fi</span>
+
+    <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Create Pull Request with fix</span>
+      <span class="c1"># This step only runs if pip-audit made changes</span>
+      <span class="na">if</span><span class="pi">:</span> <span class="s">steps.changes.outputs.has_changes == 'true'</span>
+      <span class="na">uses</span><span class="pi">:</span> <span class="s">peter-evans/create-pull-request@v6</span>
+      <span class="na">continue-on-error</span><span class="pi">:</span> <span class="kc">true</span>
+      <span class="na">with</span><span class="pi">:</span>
+        <span class="na">token</span><span class="pi">:</span> <span class="s">${{ secrets.GITHUB_TOKEN }}</span>
+        <span class="na">commit-message</span><span class="pi">:</span> <span class="s1">'</span><span class="s">fix:</span><span class="nv"> </span><span class="s">Apply</span><span class="nv"> </span><span class="s">security</span><span class="nv"> </span><span class="s">fixes</span><span class="nv"> </span><span class="s">via</span><span class="nv"> </span><span class="s">pip-audit'</span>
+        <span class="na">title</span><span class="pi">:</span> <span class="s1">'</span><span class="s">Security</span><span class="nv"> </span><span class="s">updates</span><span class="nv"> </span><span class="s">from</span><span class="nv"> </span><span class="s">pip-audit'</span>
+        <span class="na">body</span><span class="pi">:</span> <span class="pi">|</span>
+          <span class="s">This PR automatically applies security fixes found by `pip-audit`.</span>
+          <span class="s">It's generated by the `pip-audit-pr` GitHub Action.</span>
+          
+          <span class="s">---</span>
+          
+          <span class="s">**Audit Results:**</span>
+          <span class="s">Changes Detected: ${{ steps.changes.outputs.has_changes }}</span>
+          <span class="s">Exit Code: ${{ steps.audit.outputs.exit_code }}</span>
+          
+          <span class="s">**Audit Details:**</span>
+          <span class="s">${{ steps.audit_output.outputs.audit_details }}</span>
+
+          <span class="s">---</span>
+          <span class="no">          </span>
+        <span class="na">branch</span><span class="pi">:</span> <span class="s1">'</span><span class="s">automated-pip-audit-fixes'</span>
+        <span class="c1"># Ensures a clean branch for the PR</span>
+        <span class="na">delete-branch</span><span class="pi">:</span> <span class="kc">true</span>
+
+</code></pre></div></div>
+
+<h2 id="the-helper-script">The Helper Script</h2>
+
+<p>The workflow relies on a Python helper script that handles the conversion between flexible and pinned versions:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">#!/usr/bin/env python3
+</span><span class="sh">"""</span><span class="s">
+Pin/unpin requirements.txt versions for security auditing.
+</span><span class="sh">"""</span>
+
+<span class="kn">import</span> <span class="n">argparse</span>
+<span class="kn">import</span> <span class="n">re</span>
+<span class="kn">from</span> <span class="n">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+
+<span class="k">def</span> <span class="nf">extract_version_from_requirement</span><span class="p">(</span><span class="n">requirement_line</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Extract the minimum version from a requirement line.</span><span class="sh">"""</span>
+    <span class="c1"># Match patterns like package&gt;=1.2.3 or package==1.2.3
+</span>    <span class="n">match</span> <span class="o">=</span> <span class="n">re</span><span class="p">.</span><span class="nf">search</span><span class="p">(</span><span class="sa">r</span><span class="sh">'</span><span class="s">([a-zA-Z0-9_-]+)([&gt;&lt;=!]+)([0-9.]+)</span><span class="sh">'</span><span class="p">,</span> <span class="n">requirement_line</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
+        <span class="n">package_name</span><span class="p">,</span> <span class="n">operator</span><span class="p">,</span> <span class="n">version</span> <span class="o">=</span> <span class="k">match</span><span class="p">.</span><span class="nf">groups</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">package_name</span><span class="p">,</span> <span class="n">version</span>
+    <span class="k">return</span> <span class="bp">None</span><span class="p">,</span> <span class="bp">None</span>
+
+<span class="k">def</span> <span class="nf">unpin_requirements</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="sh">'</span><span class="s">requirements.txt</span><span class="sh">'</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Convert pinned requirements back to flexible versions.</span><span class="sh">"""</span>
+    <span class="n">requirements_file</span> <span class="o">=</span> <span class="n">Path</span><span class="p">.</span><span class="nf">cwd</span><span class="p">()</span> <span class="o">/</span> <span class="n">filename</span>
+    
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Looking for requirements.txt at: </span><span class="si">{</span><span class="n">requirements_file</span><span class="p">.</span><span class="nf">absolute</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">requirements_file</span><span class="p">.</span><span class="nf">exists</span><span class="p">():</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">requirements.txt not found!</span><span class="sh">"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">False</span>
+    
+    <span class="c1"># Read current requirements
+</span>    <span class="k">with</span> <span class="nf">open</span><span class="p">(</span><span class="n">requirements_file</span><span class="p">,</span> <span class="sh">'</span><span class="s">r</span><span class="sh">'</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="n">f</span><span class="p">.</span><span class="nf">readlines</span><span class="p">()</span>
+    
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Read </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span><span class="si">}</span><span class="s"> lines from requirements.txt</span><span class="sh">"</span><span class="p">)</span>
+    <span class="n">unpinned_lines</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+        <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="p">.</span><span class="nf">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span> <span class="ow">or</span> <span class="n">line</span><span class="p">.</span><span class="nf">startswith</span><span class="p">(</span><span class="sh">'</span><span class="s">#</span><span class="sh">'</span><span class="p">):</span>
+            <span class="n">unpinned_lines</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+            <span class="k">continue</span>
+            
+        <span class="c1"># Convert == to &gt;=
+</span>        <span class="k">if</span> <span class="sh">'</span><span class="s">==</span><span class="sh">'</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+            <span class="n">unpinned_line</span> <span class="o">=</span> <span class="n">line</span><span class="p">.</span><span class="nf">replace</span><span class="p">(</span><span class="sh">'</span><span class="s">==</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">&gt;=</span><span class="sh">'</span><span class="p">)</span>
+            <span class="n">unpinned_lines</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">unpinned_line</span><span class="p">)</span>
+            <span class="n">package_name</span> <span class="o">=</span> <span class="n">line</span><span class="p">.</span><span class="nf">split</span><span class="p">(</span><span class="sh">'</span><span class="s">==</span><span class="sh">'</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Unpinned </span><span class="si">{</span><span class="n">package_name</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">unpinned_lines</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+    
+    <span class="c1"># Write unpinned requirements back to file
+</span>    <span class="k">with</span> <span class="nf">open</span><span class="p">(</span><span class="n">requirements_file</span><span class="p">,</span> <span class="sh">'</span><span class="s">w</span><span class="sh">'</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">unpinned_lines</span><span class="p">:</span>
+            <span class="n">f</span><span class="p">.</span><span class="nf">write</span><span class="p">(</span><span class="n">line</span> <span class="o">+</span> <span class="sh">'</span><span class="se">\n</span><span class="sh">'</span><span class="p">)</span>
+    
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Updated </span><span class="si">{</span><span class="n">requirements_file</span><span class="si">}</span><span class="s"> with flexible versions</span><span class="sh">"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">True</span>
+
+<span class="k">def</span> <span class="nf">pin_requirements</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="sh">'</span><span class="s">requirements.txt</span><span class="sh">'</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Convert flexible requirements to pinned versions in a temporary file.</span><span class="sh">"""</span>
+    <span class="n">requirements_file</span> <span class="o">=</span> <span class="n">Path</span><span class="p">.</span><span class="nf">cwd</span><span class="p">()</span> <span class="o">/</span> <span class="n">filename</span>
+    <span class="n">base_name</span> <span class="o">=</span> <span class="nc">Path</span><span class="p">(</span><span class="n">filename</span><span class="p">).</span><span class="n">stem</span>
+    <span class="n">pinned_file</span> <span class="o">=</span> <span class="n">Path</span><span class="p">.</span><span class="nf">cwd</span><span class="p">()</span> <span class="o">/</span> <span class="sa">f</span><span class="sh">'</span><span class="si">{</span><span class="n">base_name</span><span class="si">}</span><span class="s">-pinned.txt</span><span class="sh">'</span>
+    
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Looking for requirements.txt at: </span><span class="si">{</span><span class="n">requirements_file</span><span class="p">.</span><span class="nf">absolute</span><span class="p">()</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">requirements_file</span><span class="p">.</span><span class="nf">exists</span><span class="p">():</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">requirements.txt not found!</span><span class="sh">"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">False</span>
+    
+    <span class="c1"># Read current requirements
+</span>    <span class="k">with</span> <span class="nf">open</span><span class="p">(</span><span class="n">requirements_file</span><span class="p">,</span> <span class="sh">'</span><span class="s">r</span><span class="sh">'</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="n">f</span><span class="p">.</span><span class="nf">readlines</span><span class="p">()</span>
+    
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Read </span><span class="si">{</span><span class="nf">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span><span class="si">}</span><span class="s"> lines from requirements.txt</span><span class="sh">"</span><span class="p">)</span>
+    <span class="n">pinned_lines</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+        <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="p">.</span><span class="nf">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span> <span class="ow">or</span> <span class="n">line</span><span class="p">.</span><span class="nf">startswith</span><span class="p">(</span><span class="sh">'</span><span class="s">#</span><span class="sh">'</span><span class="p">):</span>
+            <span class="n">pinned_lines</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+            <span class="k">continue</span>
+            
+        <span class="c1"># Extract package name and version from requirement
+</span>        <span class="n">package_name</span><span class="p">,</span> <span class="n">version</span> <span class="o">=</span> <span class="nf">extract_version_from_requirement</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">package_name</span> <span class="ow">and</span> <span class="n">version</span><span class="p">:</span>
+            <span class="n">pinned_lines</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">package_name</span><span class="si">}</span><span class="s">==</span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+            <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Pinned </span><span class="si">{</span><span class="n">package_name</span><span class="si">}</span><span class="s"> to minimum version </span><span class="si">{</span><span class="n">version</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Warning: Could not parse requirement </span><span class="sh">'</span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="sh">'</span><span class="s">, keeping original</span><span class="sh">"</span><span class="p">)</span>
+            <span class="n">pinned_lines</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+    
+    <span class="c1"># Write pinned requirements to temporary file
+</span>    <span class="k">with</span> <span class="nf">open</span><span class="p">(</span><span class="n">pinned_file</span><span class="p">,</span> <span class="sh">'</span><span class="s">w</span><span class="sh">'</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">pinned_lines</span><span class="p">:</span>
+            <span class="n">f</span><span class="p">.</span><span class="nf">write</span><span class="p">(</span><span class="n">line</span> <span class="o">+</span> <span class="sh">'</span><span class="se">\n</span><span class="sh">'</span><span class="p">)</span>
+    
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Created </span><span class="si">{</span><span class="n">pinned_file</span><span class="si">}</span><span class="s"> with pinned versions</span><span class="sh">"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="bp">True</span>
+
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="sh">'</span><span class="s">__main__</span><span class="sh">'</span><span class="p">:</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="p">.</span><span class="nc">ArgumentParser</span><span class="p">(</span>
+        <span class="n">description</span><span class="o">=</span><span class="sh">'</span><span class="s">Pin or unpin requirements file versions for security auditing</span><span class="sh">'</span><span class="p">,</span>
+        <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="p">.</span><span class="n">RawDescriptionHelpFormatter</span><span class="p">,</span>
+        <span class="n">epilog</span><span class="o">=</span><span class="sh">"""</span><span class="s">Examples:
+  python pin_requirements.py pin
+  python pin_requirements.py unpin
+  python pin_requirements.py pin requirements-dev.txt
+  python pin_requirements.py unpin my-requirements.txt</span><span class="sh">"""</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="p">.</span><span class="nf">add_argument</span><span class="p">(</span><span class="sh">'</span><span class="s">action</span><span class="sh">'</span><span class="p">,</span> <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="sh">'</span><span class="s">pin</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">unpin</span><span class="sh">'</span><span class="p">],</span> 
+                       <span class="nb">help</span><span class="o">=</span><span class="sh">'</span><span class="s">pin: convert &gt;= to == using minimum versions; unpin: convert == to &gt;=</span><span class="sh">'</span><span class="p">)</span>
+    <span class="n">parser</span><span class="p">.</span><span class="nf">add_argument</span><span class="p">(</span><span class="sh">'</span><span class="s">filename</span><span class="sh">'</span><span class="p">,</span> <span class="n">nargs</span><span class="o">=</span><span class="sh">'</span><span class="s">?</span><span class="sh">'</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="sh">'</span><span class="s">requirements.txt</span><span class="sh">'</span><span class="p">,</span>
+                       <span class="nb">help</span><span class="o">=</span><span class="sh">'</span><span class="s">requirements file to process (default: requirements.txt)</span><span class="sh">'</span><span class="p">)</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="p">.</span><span class="nf">parse_args</span><span class="p">()</span>
+    
+    <span class="k">if</span> <span class="n">args</span><span class="p">.</span><span class="n">action</span> <span class="o">==</span> <span class="sh">'</span><span class="s">pin</span><span class="sh">'</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nf">pin_requirements</span><span class="p">(</span><span class="n">args</span><span class="p">.</span><span class="n">filename</span><span class="p">):</span>
+            <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Requirements successfully pinned!</span><span class="sh">"</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Failed to pin requirements</span><span class="sh">"</span><span class="p">)</span>
+            <span class="nf">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">args</span><span class="p">.</span><span class="n">action</span> <span class="o">==</span> <span class="sh">'</span><span class="s">unpin</span><span class="sh">'</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nf">unpin_requirements</span><span class="p">(</span><span class="n">args</span><span class="p">.</span><span class="n">filename</span><span class="p">):</span>
+            <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Requirements successfully unpinned!</span><span class="sh">"</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Failed to unpin requirements</span><span class="sh">"</span><span class="p">)</span>
+            <span class="nf">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h2 id="how-it-works">How It Works</h2>
+
+<p>The workflow follows this process:</p>
+
+<ol>
+  <li><strong>Setup</strong>: Checks out code and sets up Python 3.13 environment</li>
+  <li><strong>Pin versions</strong>: Converts <code class="language-plaintext highlighter-rouge">package&gt;=1.2.3</code> to <code class="language-plaintext highlighter-rouge">package==1.2.3</code> for accurate vulnerability detection</li>
+  <li><strong>Audit</strong>: Runs pip-audit on pinned requirements to find and fix vulnerabilities</li>
+  <li><strong>Unpin</strong>: Converts fixed requirements back to flexible versioning (<code class="language-plaintext highlighter-rouge">package&gt;=1.4.0</code>)</li>
+  <li><strong>PR creation</strong>: If changes were made, creates a pull request with detailed audit results</li>
+</ol>
+
+<h2 id="why-not-just-use-dependabot">Why not just use Dependabot?</h2>
+
+<p>Dependabot is great for keeping things updated, but it’s not specifically focused on security vulnerabilities. This workflow uses PyPA’s official security database and only bothers you when there are actual security issues, not just because a new version exists. Plus it maintains my preferred <code class="language-plaintext highlighter-rouge">&gt;=</code> version constraints instead of pinning everything.</p>
+
+<h2 id="the-gotchas">The gotchas</h2>
+
+<p>Like any automated tool, this isn’t perfect:</p>
+
+<ul>
+  <li>You still need to review the PRs before merging (which is probably a good thing)</li>
+  <li>Sometimes it updates packages more than strictly than necessary for the security fix</li>
+  <li>It’s only as good as pip-audit’s vulnerability database</li>
+  <li>Python projects only - no help for your Node.js mess</li>
+  <li>Forces the use of the flexible version <code class="language-plaintext highlighter-rouge">&gt;=</code> for your file</li>
+</ul>
+
+<h2 id="setting-it-up">Setting it up</h2>
+
+<ol>
+  <li>Drop the workflow file into <code class="language-plaintext highlighter-rouge">.github/workflows/pip-audit-pr.yaml</code></li>
+  <li>Create the helper script at <code class="language-plaintext highlighter-rouge">scripts/pin_requirements.py</code></li>
+  <li>Make sure your requirements use <code class="language-plaintext highlighter-rouge">&gt;=</code> instead of <code class="language-plaintext highlighter-rouge">==</code> (if you’re already pinning everything, then this might not be for you)</li>
+  <li>Fix the GitHub permissions mentioned above</li>
+  <li>Test it manually first - trust me on this one</li>
+</ol>
+
+<h2 id="wrapping-up">Wrapping up</h2>
+
+<p>This setup has been working well for me across several projects. It catches security issues I would have missed and creates reasonable PRs without being too noisy. The weekly schedule means I don’t forget about it, and the manual trigger is handy when I’m actively working on dependency updates.</p>
+
+<p>The helper script could probably be smarter about version parsing, but it handles the common cases I run into. If you find bugs or have improvements, the code is straightforward enough to modify.</p>
+
+<p>I have not made this generic for non-flexible version checks. That is another enhancement worth thinking about.</p>
+
+<p>Not the most exciting automation, but it’s one less thing to worry about manually.</p>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/github-actions/">github-actions</a>, 
+        
+          <a href="/tags/python/">python</a>, 
+        
+          <a href="/tags/security/">security</a>, 
+        
+          <a href="/tags/automation/">automation</a>, 
+        
+          <a href="/tags/ci-cd/">ci-cd</a>, 
+        
+          <a href="/tags/pip/">pip</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/technical/">technical</a>, 
+        
+          <a href="/categories/security/">security</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

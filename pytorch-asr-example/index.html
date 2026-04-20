@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>ASR with PyTorch | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="ASR with PyTorch" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="ASR with PyTorch: Exploring Phoneme Representations I have a fascination with the sounds of languages (phonemes) and how they are processed. This came about from a project I did a few years ago in grad school. How ASR (automatic speech recognition) used to work did not include breaking down the sounds of the language and present them as pieces of the solution. You typically just got a final text representation. I’m interested in seeing if the phonetic or phoneme representations can be pulled from the modern machine learning ASR pipelines. This is just an interest of mine with no defined goals beyond learning." />
+<meta property="og:description" content="ASR with PyTorch: Exploring Phoneme Representations I have a fascination with the sounds of languages (phonemes) and how they are processed. This came about from a project I did a few years ago in grad school. How ASR (automatic speech recognition) used to work did not include breaking down the sounds of the language and present them as pieces of the solution. You typically just got a final text representation. I’m interested in seeing if the phonetic or phoneme representations can be pulled from the modern machine learning ASR pipelines. This is just an interest of mine with no defined goals beyond learning." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/pytorch-asr-example/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/pytorch-asr-example/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2025-05-29T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="ASR with PyTorch" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2025-09-13T00:00:00+00:00","datePublished":"2025-05-29T00:00:00+00:00","description":"ASR with PyTorch: Exploring Phoneme Representations I have a fascination with the sounds of languages (phonemes) and how they are processed. This came about from a project I did a few years ago in grad school. How ASR (automatic speech recognition) used to work did not include breaking down the sounds of the language and present them as pieces of the solution. You typically just got a final text representation. I’m interested in seeing if the phonetic or phoneme representations can be pulled from the modern machine learning ASR pipelines. This is just an interest of mine with no defined goals beyond learning.","headline":"ASR with PyTorch","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/pytorch-asr-example/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/pytorch-asr-example/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/pytorch-asr-example/">ASR with PyTorch</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2025-05-29T00:00:00+00:00">May 29, 2025</time><span class="reading-time">17 min read</span></header>
+
+  <h1 id="asr-with-pytorch-exploring-phoneme-representations">ASR with PyTorch: Exploring Phoneme Representations</h1>
+
+<p>I have a fascination with the sounds of languages (phonemes) and how they are processed. This came about from a project I did a few years ago in grad school. How ASR (automatic speech recognition) used to work did not include breaking down the sounds of the language and present them as pieces of the solution. You typically just got a final text representation.</p>
+
+<p>I’m interested in seeing if the phonetic or phoneme representations can be pulled from the modern machine learning ASR pipelines. This is just an interest of mine with no defined goals beyond learning.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="understanding-asr-and-phonemes">Understanding ASR and Phonemes</h2>
+
+<p>Automatic Speech Recognition (ASR) systems convert spoken language into text. Traditional ASR systems typically output only the final text, but modern deep learning approaches can provide intermediate representations, including phonemes.</p>
+
+<p><strong>Phonemes</strong> are the smallest units of sound that distinguish one word from another in a particular language. For example, the words “bat” and “pat” differ only in their initial phonemes /b/ and /p/.</p>
+
+<h2 id="understanding-wav2vec-20">Understanding Wav2Vec 2.0</h2>
+
+<p>Before diving into the code, it’s helpful to understand how Wav2Vec 2.0 works:</p>
+
+<p>Wav2Vec 2.0 is a self-supervised learning framework for speech recognition developed by Facebook AI. It works in two main stages:</p>
+
+<ol>
+  <li>
+    <p><strong>Pre-training</strong>: The model learns speech representations from unlabeled audio data by solving a contrastive task that requires identifying the true future audio sample from a set of distractors.</p>
+  </li>
+  <li>
+    <p><strong>Fine-tuning</strong>: The pre-trained model is then fine-tuned on labeled data using Connectionist Temporal Classification (CTC) loss for speech recognition tasks.</p>
+  </li>
+</ol>
+
+<p>The architecture consists of:</p>
+
+<ul>
+  <li>A CNN feature encoder that converts raw audio into latent speech representations</li>
+  <li>A Transformer network that builds contextual representations</li>
+  <li>A quantization module that discretizes the latent representations</li>
+</ul>
+
+<p>This design allows Wav2Vec 2.0 to capture both phonetic and linguistic information from speech, making it ideal for our phoneme extraction task.</p>
+
+<h2 id="why-pytorch-for-asr">Why PyTorch for ASR?</h2>
+
+<p>After reviewing various frameworks, I’ve decided to focus on PyTorch for this exploration:</p>
+
+<p>PyTorch is an open-source machine learning framework based on the Torch library, primarily used for applications such as computer vision and natural language processing. Developed by Meta AI and now part of the Linux Foundation, it’s known for its flexibility, ease of use, and dynamic computational graph. PyTorch facilitates the building and training of deep learning models, offering strong GPU acceleration and an imperative programming style favored by many Python developers.</p>
+
+<p>Key advantages for ASR work:</p>
+
+<ul>
+  <li><strong>Dynamic computational graph</strong>: Makes it easier to work with variable-length speech inputs</li>
+  <li><strong>Torchaudio</strong>: A dedicated library for audio processing built on PyTorch</li>
+  <li><strong>Rich ecosystem</strong>: Many pre-trained ASR models with phoneme-level outputs</li>
+  <li><strong>Research-friendly</strong>: Easier to modify models to extract intermediate representations</li>
+</ul>
+
+<h2 id="extracting-phonemes-with-pytorch-and-wav2vec-20">Extracting Phonemes with PyTorch and Wav2Vec 2.0</h2>
+
+<p>Let’s create a practical example using PyTorch and the Wav2Vec 2.0 model to extract phoneme representations from speech.</p>
+
+<h3 id="setup">Setup</h3>
+
+<p>First, we need to install the required libraries:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Install required packages
+</span><span class="n">pip</span> <span class="n">install</span> <span class="n">torch</span> <span class="n">torchaudio</span> <span class="n">transformers</span> <span class="n">matplotlib</span> <span class="n">numpy</span> <span class="n">soundfile</span> <span class="n">librosa</span>
+</code></pre></div></div>
+
+<h3 id="obtaining-sample-audio">Obtaining Sample Audio</h3>
+
+<p>For this example, we’ll download a sample audio file from LibriSpeech:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Download and extract a sample audio file from LibriSpeech
+</span><span class="kn">import</span> <span class="n">os</span>
+<span class="kn">import</span> <span class="n">tarfile</span>
+<span class="kn">import</span> <span class="n">tempfile</span>
+<span class="kn">from</span> <span class="n">urllib.request</span> <span class="kn">import</span> <span class="n">urlretrieve</span>
+<span class="kn">import</span> <span class="n">shutil</span>
+
+<span class="n">sample_dir</span> <span class="o">=</span> <span class="sh">"</span><span class="s">sample_data</span><span class="sh">"</span>
+<span class="n">os</span><span class="p">.</span><span class="nf">makedirs</span><span class="p">(</span><span class="n">sample_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="c1"># Target audio file paths - we'll create both FLAC and WAV versions
+</span><span class="n">flac_path</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">sample_dir</span><span class="p">,</span> <span class="sh">"</span><span class="s">sample_audio.flac</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">wav_path</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">sample_dir</span><span class="p">,</span> <span class="sh">"</span><span class="s">sample_audio.wav</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Check which files exist and set the audio path accordingly
+</span><span class="n">flac_exists</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">exists</span><span class="p">(</span><span class="n">flac_path</span><span class="p">)</span>
+<span class="n">wav_exists</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">exists</span><span class="p">(</span><span class="n">wav_path</span><span class="p">)</span>
+
+<span class="c1"># Prefer WAV if it exists, otherwise use FLAC if it exists
+</span><span class="k">if</span> <span class="n">wav_exists</span><span class="p">:</span>
+    <span class="n">audio_path</span> <span class="o">=</span> <span class="n">wav_path</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Using existing WAV file: </span><span class="si">{</span><span class="n">wav_path</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">elif</span> <span class="n">flac_exists</span><span class="p">:</span>
+    <span class="n">audio_path</span> <span class="o">=</span> <span class="n">flac_path</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Using existing FLAC file: </span><span class="si">{</span><span class="n">flac_path</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="c1"># Neither file exists, need to download
+</span>    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Sample audio not found. Downloading from LibriSpeech...</span><span class="sh">"</span><span class="p">)</span>
+    
+    <span class="c1"># Download a specific file from LibriSpeech
+</span>    <span class="n">audio_url</span> <span class="o">=</span> <span class="sh">"</span><span class="s">https://www.openslr.org/resources/12/dev-clean/84/121123/84-121123-0001.flac</span><span class="sh">"</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Downloading from </span><span class="si">{</span><span class="n">audio_url</span><span class="si">}</span><span class="s">...</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">urlretrieve</span><span class="p">(</span><span class="n">audio_url</span><span class="p">,</span> <span class="n">flac_path</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Sample audio downloaded to </span><span class="si">{</span><span class="n">flac_path</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+    <span class="n">audio_path</span> <span class="o">=</span> <span class="n">flac_path</span>
+    
+    <span class="c1"># Convert FLAC to WAV for better compatibility
+</span>    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span> <span class="n">librosa</span>
+        <span class="kn">import</span> <span class="n">soundfile</span> <span class="k">as</span> <span class="n">sf</span>
+        
+        <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Converting FLAC to WAV format...</span><span class="sh">"</span><span class="p">)</span>
+        <span class="n">audio_data</span><span class="p">,</span> <span class="n">sample_rate</span> <span class="o">=</span> <span class="n">librosa</span><span class="p">.</span><span class="nf">load</span><span class="p">(</span><span class="n">flac_path</span><span class="p">,</span> <span class="n">sr</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+        <span class="n">sf</span><span class="p">.</span><span class="nf">write</span><span class="p">(</span><span class="n">wav_path</span><span class="p">,</span> <span class="n">audio_data</span><span class="p">,</span> <span class="n">sample_rate</span><span class="p">)</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Converted audio saved to </span><span class="si">{</span><span class="n">wav_path</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+        <span class="n">audio_path</span> <span class="o">=</span> <span class="n">wav_path</span>  <span class="c1"># Use the WAV file
+</span>    <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Error converting audio: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Using original FLAC file instead.</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Using audio file: </span><span class="si">{</span><span class="n">audio_path</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="loading-and-processing-audio">Loading and Processing Audio</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">torch</span>
+<span class="kn">import</span> <span class="n">torchaudio</span>
+<span class="kn">from</span> <span class="n">transformers</span> <span class="kn">import</span> <span class="n">Wav2Vec2ForCTC</span><span class="p">,</span> <span class="n">Wav2Vec2Processor</span>
+<span class="kn">import</span> <span class="n">matplotlib.pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+<span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">import</span> <span class="n">os</span>
+<span class="kn">import</span> <span class="n">IPython.display</span> <span class="k">as</span> <span class="n">ipd</span>
+
+<span class="c1"># Check if CUDA is available
+</span><span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">device</span><span class="p">(</span><span class="sh">"</span><span class="s">cuda</span><span class="sh">"</span> <span class="k">if</span> <span class="n">torch</span><span class="p">.</span><span class="n">cuda</span><span class="p">.</span><span class="nf">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="sh">"</span><span class="s">cpu</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Using device: </span><span class="si">{</span><span class="n">device</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Function to load and process audio
+</span><span class="k">def</span> <span class="nf">process_audio</span><span class="p">(</span><span class="n">file_path</span><span class="p">):</span>
+    <span class="c1"># Load audio using alternative method if torchaudio fails
+</span>    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Try torchaudio first
+</span>        <span class="n">waveform</span><span class="p">,</span> <span class="n">sample_rate</span> <span class="o">=</span> <span class="n">torchaudio</span><span class="p">.</span><span class="nf">load</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+    <span class="k">except</span> <span class="nb">RuntimeError</span><span class="p">:</span>
+        <span class="c1"># Fall back to using librosa
+</span>        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">torchaudio failed to load </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s">, trying librosa instead...</span><span class="sh">"</span><span class="p">)</span>
+        <span class="kn">import</span> <span class="n">librosa</span>
+        <span class="kn">import</span> <span class="n">numpy</span> <span class="k">as</span> <span class="n">np</span>
+        
+        <span class="c1"># Load with librosa (automatically handles various formats including FLAC)
+</span>        <span class="n">audio_data</span><span class="p">,</span> <span class="n">sample_rate</span> <span class="o">=</span> <span class="n">librosa</span><span class="p">.</span><span class="nf">load</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">sr</span><span class="o">=</span><span class="bp">None</span><span class="p">)</span>
+        <span class="n">waveform</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">from_numpy</span><span class="p">(</span><span class="n">audio_data</span><span class="p">).</span><span class="nf">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">).</span><span class="nf">float</span><span class="p">()</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Successfully loaded audio with librosa</span><span class="sh">"</span><span class="p">)</span>
+    
+    <span class="c1"># Resample if needed
+</span>    <span class="k">if</span> <span class="n">sample_rate</span> <span class="o">!=</span> <span class="mi">16000</span><span class="p">:</span>
+        <span class="n">resampler</span> <span class="o">=</span> <span class="n">torchaudio</span><span class="p">.</span><span class="n">transforms</span><span class="p">.</span><span class="nc">Resample</span><span class="p">(</span><span class="n">sample_rate</span><span class="p">,</span> <span class="mi">16000</span><span class="p">)</span>
+        <span class="n">waveform</span> <span class="o">=</span> <span class="nf">resampler</span><span class="p">(</span><span class="n">waveform</span><span class="p">)</span>
+        <span class="n">sample_rate</span> <span class="o">=</span> <span class="mi">16000</span>
+    
+    <span class="c1"># Convert to mono if needed
+</span>    <span class="k">if</span> <span class="n">waveform</span><span class="p">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">waveform</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">mean</span><span class="p">(</span><span class="n">waveform</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">keepdim</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">waveform</span><span class="p">.</span><span class="nf">squeeze</span><span class="p">(),</span> <span class="n">sample_rate</span>
+
+<span class="c1"># Load and process the audio
+</span><span class="n">waveform</span><span class="p">,</span> <span class="n">sample_rate</span> <span class="o">=</span> <span class="nf">process_audio</span><span class="p">(</span><span class="n">audio_path</span><span class="p">)</span>
+
+<span class="c1"># Display audio information
+</span><span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Sample rate: </span><span class="si">{</span><span class="n">sample_rate</span><span class="si">}</span><span class="s"> Hz</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Waveform shape: </span><span class="si">{</span><span class="n">waveform</span><span class="p">.</span><span class="n">shape</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Audio duration: </span><span class="si">{</span><span class="n">waveform</span><span class="p">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">/</span><span class="n">sample_rate</span><span class="si">:</span><span class="p">.</span><span class="mi">2</span><span class="n">f</span><span class="si">}</span><span class="s"> seconds</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># In a Jupyter notebook, you can play the audio with:
+# ipd.Audio(waveform.numpy(), rate=sample_rate)
+</span></code></pre></div></div>
+
+<h3 id="extracting-phoneme-probabilities">Extracting Phoneme Probabilities</h3>
+
+<p>To extract phoneme-level information, we need to access the logits from the model before they’re converted to text:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Load pre-trained model and processor
+</span><span class="n">model_name</span> <span class="o">=</span> <span class="sh">"</span><span class="s">facebook/wav2vec2-base-960h</span><span class="sh">"</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Loading model: </span><span class="si">{</span><span class="n">model_name</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="n">processor</span> <span class="o">=</span> <span class="n">Wav2Vec2Processor</span><span class="p">.</span><span class="nf">from_pretrained</span><span class="p">(</span><span class="n">model_name</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">Wav2Vec2ForCTC</span><span class="p">.</span><span class="nf">from_pretrained</span><span class="p">(</span><span class="n">model_name</span><span class="p">).</span><span class="nf">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Model loaded successfully!</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">extract_phoneme_probs</span><span class="p">(</span><span class="n">waveform</span><span class="p">,</span> <span class="n">sample_rate</span><span class="o">=</span><span class="mi">16000</span><span class="p">):</span>
+    <span class="c1"># Process audio for model input
+</span>    <span class="n">input_values</span> <span class="o">=</span> <span class="nf">processor</span><span class="p">(</span><span class="n">waveform</span><span class="p">,</span> <span class="n">sampling_rate</span><span class="o">=</span><span class="n">sample_rate</span><span class="p">,</span> <span class="n">return_tensors</span><span class="o">=</span><span class="sh">"</span><span class="s">pt</span><span class="sh">"</span><span class="p">).</span><span class="n">input_values</span>
+    <span class="n">input_values</span> <span class="o">=</span> <span class="n">input_values</span><span class="p">.</span><span class="nf">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+    
+    <span class="c1"># Get model outputs (without gradient calculation)
+</span>    <span class="k">with</span> <span class="n">torch</span><span class="p">.</span><span class="nf">no_grad</span><span class="p">():</span>
+        <span class="n">outputs</span> <span class="o">=</span> <span class="nf">model</span><span class="p">(</span><span class="n">input_values</span><span class="p">)</span>
+        <span class="n">logits</span> <span class="o">=</span> <span class="n">outputs</span><span class="p">.</span><span class="n">logits</span>
+    
+    <span class="c1"># Convert logits to probabilities
+</span>    <span class="n">probs</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="n">nn</span><span class="p">.</span><span class="n">functional</span><span class="p">.</span><span class="nf">softmax</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">probs</span><span class="p">.</span><span class="nf">cpu</span><span class="p">().</span><span class="nf">squeeze</span><span class="p">(),</span> <span class="n">processor</span><span class="p">.</span><span class="n">tokenizer</span><span class="p">.</span><span class="n">decoder</span>
+
+<span class="c1"># Get phoneme probabilities
+</span><span class="n">phoneme_probs</span><span class="p">,</span> <span class="n">decoder</span> <span class="o">=</span> <span class="nf">extract_phoneme_probs</span><span class="p">(</span><span class="n">waveform</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Shape of phoneme probabilities: </span><span class="si">{</span><span class="n">phoneme_probs</span><span class="p">.</span><span class="n">shape</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Number of time steps: </span><span class="si">{</span><span class="n">phoneme_probs</span><span class="p">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Number of phoneme classes: </span><span class="si">{</span><span class="n">phoneme_probs</span><span class="p">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="visualizing-phoneme-activations">Visualizing Phoneme Activations</h3>
+
+<p>We can visualize the phoneme activations over time:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">plot_phoneme_activations</span><span class="p">(</span><span class="n">probs</span><span class="p">,</span> <span class="n">decoder</span><span class="p">,</span> <span class="n">top_k</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
+    <span class="c1"># Get top-k phonemes at each time step
+</span>    <span class="n">top_probs</span><span class="p">,</span> <span class="n">top_indices</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">topk</span><span class="p">(</span><span class="n">probs</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="n">top_k</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="c1"># Convert to numpy for plotting
+</span>    <span class="n">top_probs</span> <span class="o">=</span> <span class="n">top_probs</span><span class="p">.</span><span class="nf">numpy</span><span class="p">()</span>
+    <span class="n">top_indices</span> <span class="o">=</span> <span class="n">top_indices</span><span class="p">.</span><span class="nf">numpy</span><span class="p">()</span>
+    
+    <span class="c1"># Get phoneme labels
+</span>    <span class="n">phoneme_map</span> <span class="o">=</span> <span class="p">{</span><span class="n">v</span><span class="p">:</span> <span class="n">k</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">decoder</span><span class="p">.</span><span class="nf">items</span><span class="p">()}</span>
+    
+    <span class="c1"># Create a time axis (assuming 50 frames per second for Wav2Vec 2.0)
+</span>    <span class="n">time_steps</span> <span class="o">=</span> <span class="n">np</span><span class="p">.</span><span class="nf">arange</span><span class="p">(</span><span class="n">top_probs</span><span class="p">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">/</span> <span class="mi">50</span>
+    
+    <span class="c1"># Plot
+</span>    <span class="n">plt</span><span class="p">.</span><span class="nf">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">15</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+    
+    <span class="c1"># Plot for a subset of time steps for clarity
+</span>    <span class="n">start_idx</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">end_idx</span> <span class="o">=</span> <span class="nf">min</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="nf">len</span><span class="p">(</span><span class="n">time_steps</span><span class="p">))</span>  <span class="c1"># Show first 4 seconds or less
+</span>    
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="n">top_k</span><span class="p">):</span>
+        <span class="n">plt</span><span class="p">.</span><span class="nf">plot</span><span class="p">(</span><span class="n">time_steps</span><span class="p">[</span><span class="n">start_idx</span><span class="p">:</span><span class="n">end_idx</span><span class="p">],</span> 
+                 <span class="n">top_probs</span><span class="p">[</span><span class="n">start_idx</span><span class="p">:</span><span class="n">end_idx</span><span class="p">,</span> <span class="n">i</span><span class="p">],</span> 
+                 <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="sh">"</span><span class="s">Class </span><span class="si">{</span><span class="n">top_indices</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s"> (</span><span class="si">{</span><span class="n">phoneme_map</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="n">top_indices</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">],</span> <span class="sh">''</span><span class="p">)</span><span class="si">}</span><span class="s">)</span><span class="sh">"</span><span class="p">)</span>
+    
+    <span class="n">plt</span><span class="p">.</span><span class="nf">xlabel</span><span class="p">(</span><span class="sh">"</span><span class="s">Time (seconds)</span><span class="sh">"</span><span class="p">)</span>
+    <span class="n">plt</span><span class="p">.</span><span class="nf">ylabel</span><span class="p">(</span><span class="sh">"</span><span class="s">Probability</span><span class="sh">"</span><span class="p">)</span>
+    <span class="n">plt</span><span class="p">.</span><span class="nf">title</span><span class="p">(</span><span class="sh">"</span><span class="s">Top Phoneme Activations Over Time</span><span class="sh">"</span><span class="p">)</span>
+    <span class="n">plt</span><span class="p">.</span><span class="nf">legend</span><span class="p">()</span>
+    <span class="n">plt</span><span class="p">.</span><span class="nf">grid</span><span class="p">(</span><span class="bp">True</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+    <span class="n">plt</span><span class="p">.</span><span class="nf">tight_layout</span><span class="p">()</span>
+    
+    <span class="c1"># For a blog post, save the figure instead of displaying it
+</span>    <span class="n">plt</span><span class="p">.</span><span class="nf">savefig</span><span class="p">(</span><span class="sh">'</span><span class="s">phoneme_activations.png</span><span class="sh">'</span><span class="p">)</span>
+    <span class="c1"># plt.show()  # This works in interactive environments like Jupyter
+</span></code></pre></div></div>
+
+<h3 id="decoding-to-phonemes-and-text">Decoding to Phonemes and Text</h3>
+
+<p>We can decode the model outputs to both phonemes and text:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">decode_outputs</span><span class="p">(</span><span class="n">probs</span><span class="p">,</span> <span class="n">decoder</span><span class="p">):</span>
+    <span class="c1"># Get the most likely phoneme at each time step
+</span>    <span class="n">pred_ids</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">argmax</span><span class="p">(</span><span class="n">probs</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="c1"># Decode to phonemes (keeping all predictions)
+</span>    <span class="n">phoneme_sequence</span> <span class="o">=</span> <span class="p">[</span><span class="n">decoder</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="nb">id</span><span class="p">.</span><span class="nf">item</span><span class="p">(),</span> <span class="sa">f</span><span class="sh">"</span><span class="s">[</span><span class="si">{</span><span class="nb">id</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span><span class="si">}</span><span class="s">]</span><span class="sh">"</span><span class="p">)</span> <span class="k">for</span> <span class="nb">id</span> <span class="ow">in</span> <span class="n">pred_ids</span><span class="p">]</span>
+    
+    <span class="c1"># Apply CTC decoding logic (collapse repeated tokens and remove blanks)
+</span>    <span class="n">collapsed_phonemes</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">prev_id</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+    <span class="k">for</span> <span class="nb">id</span> <span class="ow">in</span> <span class="n">pred_ids</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">id</span> <span class="o">!=</span> <span class="n">prev_id</span> <span class="ow">and</span> <span class="nb">id</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># 0 is usually the blank token in CTC
+</span>            <span class="n">collapsed_phonemes</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">decoder</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="nb">id</span><span class="p">.</span><span class="nf">item</span><span class="p">(),</span> <span class="sa">f</span><span class="sh">"</span><span class="s">[</span><span class="si">{</span><span class="nb">id</span><span class="p">.</span><span class="nf">item</span><span class="p">()</span><span class="si">}</span><span class="s">]</span><span class="sh">"</span><span class="p">))</span>
+        <span class="n">prev_id</span> <span class="o">=</span> <span class="nb">id</span>
+    
+    <span class="c1"># Join phonemes to get the text
+</span>    <span class="n">text</span> <span class="o">=</span> <span class="sh">''</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">collapsed_phonemes</span><span class="p">).</span><span class="nf">replace</span><span class="p">(</span><span class="sh">'</span><span class="s">|</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s"> </span><span class="sh">'</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">phoneme_sequence</span><span class="p">,</span> <span class="n">collapsed_phonemes</span><span class="p">,</span> <span class="n">text</span>
+
+<span class="c1"># Decode outputs
+</span><span class="n">phoneme_sequence</span><span class="p">,</span> <span class="n">collapsed_phonemes</span><span class="p">,</span> <span class="n">text</span> <span class="o">=</span> <span class="nf">decode_outputs</span><span class="p">(</span><span class="n">phoneme_probs</span><span class="p">,</span> <span class="n">decoder</span><span class="p">)</span>
+
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Full phoneme sequence (first 50 frames):</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">phoneme_sequence</span><span class="p">[:</span><span class="mi">50</span><span class="p">])</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">Collapsed phoneme sequence:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">collapsed_phonemes</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">Decoded text:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h2 id="exploring-phoneme-based-asr-with-wav2vec-ctc">Exploring Phoneme-Based ASR with Wav2Vec-CTC</h2>
+
+<p>For a more direct approach to phoneme recognition, we can use a model specifically fine-tuned for phoneme recognition:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Load a model fine-tuned for phoneme recognition
+</span><span class="n">phoneme_model_name</span> <span class="o">=</span> <span class="sh">"</span><span class="s">facebook/wav2vec2-lv-60-espeak-cv-ft</span><span class="sh">"</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Loading phoneme model: </span><span class="si">{</span><span class="n">phoneme_model_name</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="c1"># Import specific processor class for this model
+</span>    <span class="kn">from</span> <span class="n">transformers</span> <span class="kn">import</span> <span class="n">Wav2Vec2ProcessorWithLM</span><span class="p">,</span> <span class="n">Wav2Vec2CTCTokenizer</span><span class="p">,</span> <span class="n">Wav2Vec2FeatureExtractor</span>
+    
+    <span class="c1"># Load the model components separately
+</span>    <span class="n">feature_extractor</span> <span class="o">=</span> <span class="n">Wav2Vec2FeatureExtractor</span><span class="p">.</span><span class="nf">from_pretrained</span><span class="p">(</span><span class="n">phoneme_model_name</span><span class="p">)</span>
+    <span class="n">tokenizer</span> <span class="o">=</span> <span class="n">Wav2Vec2CTCTokenizer</span><span class="p">.</span><span class="nf">from_pretrained</span><span class="p">(</span><span class="n">phoneme_model_name</span><span class="p">)</span>
+    <span class="n">phoneme_processor</span> <span class="o">=</span> <span class="nc">Wav2Vec2Processor</span><span class="p">(</span><span class="n">feature_extractor</span><span class="o">=</span><span class="n">feature_extractor</span><span class="p">,</span> <span class="n">tokenizer</span><span class="o">=</span><span class="n">tokenizer</span><span class="p">)</span>
+    <span class="n">phoneme_model</span> <span class="o">=</span> <span class="n">Wav2Vec2ForCTC</span><span class="p">.</span><span class="nf">from_pretrained</span><span class="p">(</span><span class="n">phoneme_model_name</span><span class="p">).</span><span class="nf">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Phoneme model loaded successfully!</span><span class="sh">"</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">transcribe_to_phonemes</span><span class="p">(</span><span class="n">waveform</span><span class="p">,</span> <span class="n">sample_rate</span><span class="o">=</span><span class="mi">16000</span><span class="p">):</span>
+        <span class="c1"># Process audio for model input
+</span>        <span class="n">input_values</span> <span class="o">=</span> <span class="nf">phoneme_processor</span><span class="p">(</span><span class="n">waveform</span><span class="p">,</span> <span class="n">sampling_rate</span><span class="o">=</span><span class="n">sample_rate</span><span class="p">,</span> <span class="n">return_tensors</span><span class="o">=</span><span class="sh">"</span><span class="s">pt</span><span class="sh">"</span><span class="p">).</span><span class="n">input_values</span>
+        <span class="n">input_values</span> <span class="o">=</span> <span class="n">input_values</span><span class="p">.</span><span class="nf">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+        
+        <span class="c1"># Get model predictions
+</span>        <span class="k">with</span> <span class="n">torch</span><span class="p">.</span><span class="nf">no_grad</span><span class="p">():</span>
+            <span class="n">logits</span> <span class="o">=</span> <span class="nf">phoneme_model</span><span class="p">(</span><span class="n">input_values</span><span class="p">).</span><span class="n">logits</span>
+        
+        <span class="c1"># Decode phonemes
+</span>        <span class="n">predicted_ids</span> <span class="o">=</span> <span class="n">torch</span><span class="p">.</span><span class="nf">argmax</span><span class="p">(</span><span class="n">logits</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">phoneme_string</span> <span class="o">=</span> <span class="n">phoneme_processor</span><span class="p">.</span><span class="nf">batch_decode</span><span class="p">(</span><span class="n">predicted_ids</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        
+        <span class="k">return</span> <span class="n">phoneme_string</span>
+
+    <span class="c1"># Get phoneme transcription
+</span>    <span class="n">phoneme_transcription</span> <span class="o">=</span> <span class="nf">transcribe_to_phonemes</span><span class="p">(</span><span class="n">waveform</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">Phoneme transcription:</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="n">phoneme_transcription</span><span class="p">)</span>
+    
+<span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Error loading phoneme model: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Skipping phoneme-specific model demonstration.</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h2 id="analyzing-phoneme-distributions">Analyzing Phoneme Distributions</h2>
+
+<p>We can analyze the distribution of phonemes in our sample:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Count phoneme occurrences
+</span><span class="kn">from</span> <span class="n">collections</span> <span class="kn">import</span> <span class="n">Counter</span>
+
+<span class="c1"># Count non-blank phonemes
+</span><span class="n">phoneme_counts</span> <span class="o">=</span> <span class="nc">Counter</span><span class="p">([</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">collapsed_phonemes</span> <span class="k">if</span> <span class="n">p</span> <span class="o">!=</span> <span class="sh">''</span><span class="p">])</span>
+
+<span class="c1"># Plot top 15 phonemes
+</span><span class="n">top_phonemes</span> <span class="o">=</span> <span class="n">phoneme_counts</span><span class="p">.</span><span class="nf">most_common</span><span class="p">(</span><span class="mi">15</span><span class="p">)</span>
+<span class="n">phonemes</span><span class="p">,</span> <span class="n">counts</span> <span class="o">=</span> <span class="nf">zip</span><span class="p">(</span><span class="o">*</span><span class="n">top_phonemes</span><span class="p">)</span>
+
+<span class="c1"># For visualization in a blog post
+</span><span class="n">plt</span><span class="p">.</span><span class="nf">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">bar</span><span class="p">(</span><span class="n">phonemes</span><span class="p">,</span> <span class="n">counts</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">title</span><span class="p">(</span><span class="sh">'</span><span class="s">Top 15 Phonemes in Sample</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">xlabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Phoneme</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">ylabel</span><span class="p">(</span><span class="sh">'</span><span class="s">Count</span><span class="sh">'</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">xticks</span><span class="p">(</span><span class="n">rotation</span><span class="o">=</span><span class="mi">45</span><span class="p">)</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="p">.</span><span class="nf">savefig</span><span class="p">(</span><span class="sh">'</span><span class="s">phoneme_distribution.png</span><span class="sh">'</span><span class="p">)</span>
+<span class="c1"># plt.show()  # For interactive environments
+</span>
+<span class="c1"># For text-based output:
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">Top 15 phonemes and their counts:</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">phoneme</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">top_phonemes</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="si">{</span><span class="n">phoneme</span><span class="si">}</span><span class="s">: </span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h2 id="comparing-phoneme-transcriptions">Comparing Phoneme Transcriptions</h2>
+
+<p>Let’s compare the different phoneme transcriptions side by side:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Create a comparison of the different phoneme transcriptions
+</span><span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="se">\n</span><span class="s">Phoneme Transcription Comparison:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">-</span><span class="sh">"</span> <span class="o">*</span> <span class="mi">50</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Wav2Vec2 Base with CTC Decoding:</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="n">text</span><span class="p">[:</span><span class="mi">100</span><span class="p">]</span> <span class="o">+</span> <span class="sh">"</span><span class="s">...</span><span class="sh">"</span> <span class="k">if</span> <span class="nf">len</span><span class="p">(</span><span class="n">text</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">100</span> <span class="k">else</span> <span class="n">text</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">-</span><span class="sh">"</span> <span class="o">*</span> <span class="mi">50</span><span class="p">)</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Specialized Phoneme Model:</span><span class="sh">"</span><span class="p">)</span>
+    <span class="nf">print</span><span class="p">(</span><span class="n">phoneme_transcription</span><span class="p">[:</span><span class="mi">100</span><span class="p">]</span> <span class="o">+</span> <span class="sh">"</span><span class="s">...</span><span class="sh">"</span> <span class="k">if</span> <span class="nf">len</span><span class="p">(</span><span class="n">phoneme_transcription</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">100</span> <span class="k">else</span> <span class="n">phoneme_transcription</span><span class="p">)</span>
+<span class="k">except</span> <span class="nb">NameError</span><span class="p">:</span>
+    <span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">Specialized model transcription not available</span><span class="sh">"</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sh">"</span><span class="s">-</span><span class="sh">"</span> <span class="o">*</span> <span class="mi">50</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h2 id="saving-and-loading-models">Saving and Loading Models</h2>
+
+<p>For practical use, you might want to save and reuse models:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Save the model and processor for later use
+</span><span class="n">output_dir</span> <span class="o">=</span> <span class="sh">"</span><span class="s">saved_model</span><span class="sh">"</span>
+<span class="n">os</span><span class="p">.</span><span class="nf">makedirs</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="c1"># Save the model
+</span><span class="n">model</span><span class="p">.</span><span class="nf">save_pretrained</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+<span class="n">processor</span><span class="p">.</span><span class="nf">save_pretrained</span><span class="p">(</span><span class="n">output_dir</span><span class="p">)</span>
+<span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Model and processor saved to </span><span class="si">{</span><span class="n">output_dir</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="c1"># Later, you can load them back:
+# loaded_processor = Wav2Vec2Processor.from_pretrained(output_dir)
+# loaded_model = Wav2Vec2ForCTC.from_pretrained(output_dir)
+</span></code></pre></div></div>
+
+<h2 id="comparing-different-asr-models-for-phoneme-extraction">Comparing Different ASR Models for Phoneme Extraction</h2>
+
+<p>Different ASR models have different approaches to handling phonemes:</p>
+
+<ol>
+  <li><strong>Wav2Vec 2.0</strong>: Provides frame-level features that can be mapped to phonemes</li>
+  <li><strong>DeepSpeech</strong>: Uses CTC loss and can be modified to output phonemes</li>
+  <li><strong>Whisper</strong>: More focused on end-to-end transcription but internal representations contain phonetic information</li>
+  <li><strong>Conformer</strong>: Combines convolutional and transformer architectures for better phoneme recognition</li>
+</ol>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>Modern ASR systems built with PyTorch can indeed provide access to phoneme-level representations, not just final text output. This opens up interesting possibilities for:</p>
+
+<ul>
+  <li>Studying pronunciation patterns</li>
+  <li>Developing language learning tools</li>
+  <li>Creating more interpretable ASR systems</li>
+  <li>Analyzing speech disorders</li>
+</ul>
+
+<p>By leveraging PyTorch’s flexibility and the rich ecosystem of pre-trained models, we can extract and visualize phoneme representations from speech signals. This allows for a deeper understanding of how ASR systems process the sounds of language.</p>
+
+<h2 id="code-with-outputs">Code with Outputs</h2>
+
+<p>You can review the complete code for the Jupyter Notebook used for this post <a href="https://github.com/mcgarrah/pytorch-asr-phonemes" target="_blank">PyTorch ASR Example</a> on Github. You can also see an example of a successful execution with the <strong>Notebook Outputs</strong> here at <a href="/assets/pdfs/pytorch_asr_phonemes.html" target="_blank">PyTorch Notebook Code &amp; Outputs</a>. That will let you see the results with the graphics.</p>
+
+<h2 id="resources">Resources</h2>
+
+<p>For further exploration:</p>
+
+<ul>
+  <li><a href="https://pytorch.org/audio/stable/tutorials/speech_recognition_pipeline_tutorial.html">PyTorch Audio Documentation</a></li>
+  <li><a href="https://arxiv.org/abs/2006.11477">Wav2Vec 2.0 Paper</a></li>
+  <li><a href="https://pytorch.org/audio/main/tutorials/asr_inference_with_ctc_decoder_tutorial.html">ASR with CTC Decoder Tutorial</a></li>
+  <li><a href="https://pytorch.org/audio/main/tutorials/online_asr_tutorial.html">Online ASR Tutorial</a></li>
+  <li><a href="https://github.com/alifarrokh/asr-from-scratch">ASR from Scratch Implementation</a></li>
+  <li><a href="https://www.kdnuggets.com/building-an-automatic-speech-recognition-system-with-pytorch-hugging-face">Building an ASR System with PyTorch &amp; Hugging Face</a></li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/pytorch/">pytorch</a>, 
+        
+          <a href="/tags/asr/">asr</a>, 
+        
+          <a href="/tags/machine-learning/">machine-learning</a>, 
+        
+          <a href="/tags/python/">python</a>, 
+        
+          <a href="/tags/speech-recognition/">speech-recognition</a>, 
+        
+          <a href="/tags/ai/">ai</a>, 
+        
+          <a href="/tags/deep-learning/">deep-learning</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/development/">development</a>, 
+        
+          <a href="/categories/machine-learning/">machine-learning</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

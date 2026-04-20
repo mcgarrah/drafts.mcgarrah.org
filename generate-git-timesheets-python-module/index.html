@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Generate Git Timesheet from Commit Logs | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Generate Git Timesheet from Commit Logs" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="I hate time tracking. Seriously. Most time tracking tools require you to remember to start timers, categorize work, and generally interrupt your flow to feed some system that’s probably going to be wrong anyway. But when you’re freelancing or need to report hours on projects, you’re stuck with it. So I built a Python tool that generates timesheets from git commit history - because your commits are already there, they’re timestamped, and they actually reflect when you were working on stuff." />
+<meta property="og:description" content="I hate time tracking. Seriously. Most time tracking tools require you to remember to start timers, categorize work, and generally interrupt your flow to feed some system that’s probably going to be wrong anyway. But when you’re freelancing or need to report hours on projects, you’re stuck with it. So I built a Python tool that generates timesheets from git commit history - because your commits are already there, they’re timestamped, and they actually reflect when you were working on stuff." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/generate-git-timesheets-python-module/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/generate-git-timesheets-python-module/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2025-11-02T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Generate Git Timesheet from Commit Logs" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-04-14T00:00:00+00:00","datePublished":"2025-11-02T00:00:00+00:00","description":"I hate time tracking. Seriously. Most time tracking tools require you to remember to start timers, categorize work, and generally interrupt your flow to feed some system that’s probably going to be wrong anyway. But when you’re freelancing or need to report hours on projects, you’re stuck with it. So I built a Python tool that generates timesheets from git commit history - because your commits are already there, they’re timestamped, and they actually reflect when you were working on stuff.","headline":"Generate Git Timesheet from Commit Logs","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/generate-git-timesheets-python-module/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/generate-git-timesheets-python-module/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/generate-git-timesheets-python-module/">Generate Git Timesheet from Commit Logs</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2025-11-02T00:00:00+00:00">November 02, 2025</time><span class="reading-time">10 min read</span></header>
+
+  <p>I hate time tracking. Seriously. Most time tracking tools require you to remember to start timers, categorize work, and generally interrupt your flow to feed some system that’s probably going to be wrong anyway. But when you’re freelancing or need to report hours on projects, you’re stuck with it.</p>
+
+<p>So I built a Python tool that generates timesheets from git commit history - because your commits are already there, they’re timestamped, and they actually reflect when you were working on stuff.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="the-problem-i-had">The Problem I Had</h2>
+
+<p>I was working on a multi-month project spread across several repositories - API backend, client dashboard, admin portal, the usual mess. Work happened in irregular spurts, sometimes late nights, sometimes weekend debugging sessions. When it came time to report my hours, I had no idea how much time I’d actually spent.</p>
+
+<p>Manual time tracking? I’d forget to start the timer half the time. Guessing from memory? That’s how you end up either shortchanging yourself or looking like you’re padding hours.</p>
+
+<p>But I had git commits. Lots of them. With timestamps. That’s when I realized I could reverse-engineer my work patterns from commit history.</p>
+
+<h2 id="how-to-use-it">How to Use It</h2>
+
+<p>The tool has a simple command-line interface. Here’s how I typically use it:</p>
+
+<h3 id="basic-usage">Basic Usage</h3>
+
+<p>Generate a timesheet for the last two weeks:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Install the package</span>
+pip <span class="nb">install </span>git-timesheet
+
+<span class="c"># Generate timesheet for the last 2 weeks</span>
+ggts <span class="nt">--since</span><span class="o">=</span><span class="s2">"2 weeks ago"</span>
+</code></pre></div></div>
+
+<h3 id="filtering-by-repository">Filtering by Repository</h3>
+
+<p>If you’re working across multiple repositories like I was, you can specify which ones to include:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Generate timesheet for specific repositories</span>
+ggts <span class="nt">--repos</span> project-api client-dashboard admin-portal <span class="nt">--since</span><span class="o">=</span><span class="s2">"1 month ago"</span>
+</code></pre></div></div>
+
+<h3 id="different-output-formats">Different Output Formats</h3>
+
+<p>Need to share your timesheet with others? Export it in different formats:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Generate CSV for spreadsheet import</span>
+ggts <span class="nt">--since</span><span class="o">=</span><span class="s2">"1 month ago"</span> <span class="nt">--output</span><span class="o">=</span>csv <span class="nt">--output-file</span><span class="o">=</span>timesheet.csv
+
+<span class="c"># Generate markdown for documentation</span>
+ggts <span class="nt">--since</span><span class="o">=</span><span class="s2">"1 month ago"</span> <span class="nt">--output</span><span class="o">=</span>markdown <span class="nt">--output-file</span><span class="o">=</span>timesheet.md
+</code></pre></div></div>
+
+<h3 id="sample-output-markdown-format">Sample Output (Markdown Format)</h3>
+
+<p>Here’s what the output might look like in markdown format:</p>
+
+<div class="language-markdown highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gh"># Git Activity Timesheet</span>
+
+<span class="gu">## Week of 2025-06-01</span>
+
+| Day | Date | Time | TZ | Repository | Hours | Description |
+|-----|------|------|-------|------------|-------|-------------|
+| Monday | 2025-06-02 | 09:15 | EDT | client-dashboard | 1.25 | Implement user profile page... (3 commits) |
+| | | 11:30 | EDT | project-api | 0.75 | Fix authentication bug... (2 commits) |
+| | | 14:45 | EDT | admin-portal | 2.00 | Add reporting features... (4 commits) |
+| <span class="gs">**Total**</span> | | | | | <span class="gs">**4.00**</span> | |
+| | | | | | | |
+</code></pre></div></div>
+
+<h1 id="git-activity-timesheet">Git Activity Timesheet</h1>
+
+<h2 id="week-of-2025-06-01">Week of 2025-06-01</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Day</th>
+      <th>Date</th>
+      <th>Time</th>
+      <th>TZ</th>
+      <th>Repository</th>
+      <th>Hours</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Monday</td>
+      <td>2025-06-02</td>
+      <td>09:15</td>
+      <td>EDT</td>
+      <td>client-dashboard</td>
+      <td>1.25</td>
+      <td>Implement user profile page… (3 commits)</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td> </td>
+      <td>11:30</td>
+      <td>EDT</td>
+      <td>project-api</td>
+      <td>0.75</td>
+      <td>Fix authentication bug… (2 commits)</td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td> </td>
+      <td>14:45</td>
+      <td>EDT</td>
+      <td>admin-portal</td>
+      <td>2.00</td>
+      <td>Add reporting features… (4 commits)</td>
+    </tr>
+    <tr>
+      <td><strong>Total</strong></td>
+      <td> </td>
+      <td> </td>
+      <td> </td>
+      <td> </td>
+      <td><strong>4.00</strong></td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td> </td>
+      <td> </td>
+      <td> </td>
+      <td> </td>
+      <td> </td>
+      <td> </td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="how-it-works-under-the-hood">How It Works Under the Hood</h2>
+
+<p>The tool does a few things that turned out to be trickier than I initially thought:</p>
+
+<ol>
+  <li><strong>Finds your repos</strong>: Recursively hunts down git repositories in your project directories</li>
+  <li><strong>Extracts commit data</strong>: Pulls timestamps, authors, and commit messages from git logs</li>
+  <li><strong>Estimates time spent</strong>: This is the interesting part - uses heuristics to guess how long you worked</li>
+  <li><strong>Handles timezones</strong>: Because I work across time zones and git commits can be confusing</li>
+  <li><strong>Formats output</strong>: Generates reports in text, CSV, or markdown</li>
+</ol>
+
+<h2 id="core-functionality">Core Functionality</h2>
+
+<h3 id="finding-your-repositories">Finding Your Repositories</h3>
+
+<p>First challenge: finding all the git repos in your project structure. This turned out to be straightforward:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">get_git_repos</span><span class="p">(</span><span class="n">base_dir</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Find git repositories in the specified directory.</span><span class="sh">"""</span>
+    <span class="n">repos</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="c1"># First check if the base_dir itself is a git repository
+</span>    <span class="k">if</span> <span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">exists</span><span class="p">(</span><span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">base_dir</span><span class="p">,</span> <span class="sh">'</span><span class="s">.git</span><span class="sh">'</span><span class="p">)):</span>
+        <span class="n">repos</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">base_dir</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">repos</span>
+    
+    <span class="c1"># If not, look for git repositories in subdirectories
+</span>    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">os</span><span class="p">.</span><span class="nf">listdir</span><span class="p">(</span><span class="n">base_dir</span><span class="p">):</span>
+        <span class="n">full_path</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">base_dir</span><span class="p">,</span> <span class="n">item</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">isdir</span><span class="p">(</span><span class="n">full_path</span><span class="p">)</span> <span class="ow">and</span> <span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">exists</span><span class="p">(</span><span class="n">os</span><span class="p">.</span><span class="n">path</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">full_path</span><span class="p">,</span> <span class="sh">'</span><span class="s">.git</span><span class="sh">'</span><span class="p">)):</span>
+            <span class="n">repos</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="n">full_path</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">repos</span>
+</code></pre></div></div>
+
+<h3 id="getting-commit-data">Getting Commit Data</h3>
+
+<p>Next, I needed to extract commit information in a consistent format. Git’s pretty-format option is your friend here:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">get_git_log</span><span class="p">(</span><span class="n">repo_path</span><span class="p">,</span> <span class="n">since</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">until</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">author</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Get git log for a repository with author date and commit message.</span><span class="sh">"""</span>
+    <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span><span class="sh">'</span><span class="s">git</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">log</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">--pretty=format:%ad|%an|%ae|%s|%h</span><span class="sh">'</span><span class="p">,</span> <span class="sh">'</span><span class="s">--date=iso</span><span class="sh">'</span><span class="p">]</span>
+    
+    <span class="k">if</span> <span class="n">since</span><span class="p">:</span>
+        <span class="n">cmd</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="sa">f</span><span class="sh">'</span><span class="s">--since=</span><span class="si">{</span><span class="n">since</span><span class="si">}</span><span class="sh">'</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">until</span><span class="p">:</span>
+        <span class="n">cmd</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="sa">f</span><span class="sh">'</span><span class="s">--until=</span><span class="si">{</span><span class="n">until</span><span class="si">}</span><span class="sh">'</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">author</span><span class="p">:</span>
+        <span class="n">cmd</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="sa">f</span><span class="sh">'</span><span class="s">--author=</span><span class="si">{</span><span class="n">author</span><span class="si">}</span><span class="sh">'</span><span class="p">)</span>
+    
+    <span class="c1"># Execute git command and process output
+</span>    <span class="n">result</span> <span class="o">=</span> <span class="n">subprocess</span><span class="p">.</span><span class="nf">run</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">cwd</span><span class="o">=</span><span class="n">repo_path</span><span class="p">,</span> <span class="n">capture_output</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">result</span><span class="p">.</span><span class="n">returncode</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">result</span><span class="p">.</span><span class="n">stdout</span><span class="p">.</span><span class="nf">strip</span><span class="p">().</span><span class="nf">split</span><span class="p">(</span><span class="sh">'</span><span class="se">\n</span><span class="sh">'</span><span class="p">)</span> <span class="k">if</span> <span class="n">result</span><span class="p">.</span><span class="n">stdout</span><span class="p">.</span><span class="nf">strip</span><span class="p">()</span> <span class="k">else</span> <span class="p">[]</span>
+    <span class="k">return</span> <span class="p">[]</span>
+</code></pre></div></div>
+
+<h3 id="the-time-estimation-magic">The Time Estimation Magic</h3>
+
+<p>This is where it gets interesting. How do you estimate time from commits? I tried a few approaches:</p>
+
+<ol>
+  <li><strong>Base time</strong>: Every commit gets 15 minutes minimum (because even small commits take time)</li>
+  <li><strong>Keyword analysis</strong>: Certain commit messages suggest more work:
+    <ul>
+      <li>Bug fixes: +15 minutes (debugging is time-consuming)</li>
+      <li>New features: +30 minutes (implementation takes longer)</li>
+      <li>Refactoring: +15 minutes (thinking time)</li>
+    </ul>
+  </li>
+  <li><strong>Session detection</strong>: Commits close together (within 60 minutes) are probably the same work session</li>
+</ol>
+
+<p>The algorithm isn’t perfect, but it’s surprisingly accurate for my work patterns:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Adjust based on commit message
+</span><span class="k">if</span> <span class="n">re</span><span class="p">.</span><span class="nf">search</span><span class="p">(</span><span class="sa">r</span><span class="sh">'</span><span class="s">fix|bug|issue</span><span class="sh">'</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">re</span><span class="p">.</span><span class="n">I</span><span class="p">):</span>
+    <span class="n">time_spent</span> <span class="o">+=</span> <span class="mi">15</span>
+<span class="k">if</span> <span class="n">re</span><span class="p">.</span><span class="nf">search</span><span class="p">(</span><span class="sa">r</span><span class="sh">'</span><span class="s">feature|implement|add</span><span class="sh">'</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">re</span><span class="p">.</span><span class="n">I</span><span class="p">):</span>
+    <span class="n">time_spent</span> <span class="o">+=</span> <span class="mi">30</span>
+<span class="k">if</span> <span class="n">re</span><span class="p">.</span><span class="nf">search</span><span class="p">(</span><span class="sa">r</span><span class="sh">'</span><span class="s">refactor|clean|improve</span><span class="sh">'</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">re</span><span class="p">.</span><span class="n">I</span><span class="p">):</span>
+    <span class="n">time_spent</span> <span class="o">+=</span> <span class="mi">15</span>
+
+<span class="c1"># Check time gap to next commit
+</span><span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nf">len</span><span class="p">(</span><span class="n">parsed_commits</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+    <span class="n">next_date</span> <span class="o">=</span> <span class="n">parsed_commits</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">time_gap</span> <span class="o">=</span> <span class="p">(</span><span class="n">next_date</span> <span class="o">-</span> <span class="n">date</span><span class="p">).</span><span class="nf">total_seconds</span><span class="p">()</span> <span class="o">/</span> <span class="mi">60</span>
+    
+    <span class="c1"># If commits are close together, they're likely part of the same work session
+</span>    <span class="k">if</span> <span class="n">time_gap</span> <span class="o">&lt;</span> <span class="n">session_timeout_minutes</span><span class="p">:</span>
+        <span class="n">time_spent</span> <span class="o">=</span> <span class="nf">min</span><span class="p">(</span><span class="n">time_spent</span><span class="p">,</span> <span class="n">time_gap</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="timezone-headaches">Timezone Headaches</h3>
+
+<p>Git commits can have weird timezone info, especially if you work across different machines or travel. I added timezone conversion because I got tired of trying to figure out when I actually worked:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">convert_to_timezone</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">timezone_str</span><span class="o">=</span><span class="sh">'</span><span class="s">UTC</span><span class="sh">'</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Convert datetime to specified timezone.</span><span class="sh">"""</span>
+    <span class="k">if</span> <span class="n">date</span><span class="p">.</span><span class="n">tzinfo</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="n">date</span> <span class="o">=</span> <span class="n">date</span><span class="p">.</span><span class="nf">replace</span><span class="p">(</span><span class="n">tzinfo</span><span class="o">=</span><span class="n">pytz</span><span class="p">.</span><span class="n">UTC</span><span class="p">)</span>
+    
+    <span class="c1"># Handle common timezone aliases
+</span>    <span class="n">timezone_aliases</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="sh">'</span><span class="s">US/Eastern</span><span class="sh">'</span><span class="p">:</span> <span class="sh">'</span><span class="s">America/New_York</span><span class="sh">'</span><span class="p">,</span>
+        <span class="sh">'</span><span class="s">US/Central</span><span class="sh">'</span><span class="p">:</span> <span class="sh">'</span><span class="s">America/Chicago</span><span class="sh">'</span><span class="p">,</span>
+        <span class="c1"># Additional mappings...
+</span>    <span class="p">}</span>
+    
+    <span class="c1"># Use the alias if available
+</span>    <span class="n">tz_name</span> <span class="o">=</span> <span class="n">timezone_aliases</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="n">timezone_str</span><span class="p">,</span> <span class="n">timezone_str</span><span class="p">)</span>
+    
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">target_tz</span> <span class="o">=</span> <span class="n">pytz</span><span class="p">.</span><span class="nf">timezone</span><span class="p">(</span><span class="n">tz_name</span><span class="p">)</span>
+    <span class="k">except</span> <span class="n">pytz</span><span class="p">.</span><span class="n">exceptions</span><span class="p">.</span><span class="n">UnknownTimeZoneError</span><span class="p">:</span>
+        <span class="n">target_tz</span> <span class="o">=</span> <span class="n">pytz</span><span class="p">.</span><span class="n">UTC</span>
+        
+    <span class="k">return</span> <span class="n">date</span><span class="p">.</span><span class="nf">astimezone</span><span class="p">(</span><span class="n">target_tz</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h2 id="configuration">Configuration</h2>
+
+<p>The tool looks for config files in the usual places - current directory, home directory, <code class="language-plaintext highlighter-rouge">.config</code> folder. I tried to follow standard conventions so it doesn’t surprise anyone:</p>
+
+<ol>
+  <li><code class="language-plaintext highlighter-rouge">.ggtsrc</code> in your current directory</li>
+  <li><code class="language-plaintext highlighter-rouge">ggts.ini</code> in your current directory</li>
+  <li><code class="language-plaintext highlighter-rouge">.ggtsrc</code> in your home directory</li>
+  <li><code class="language-plaintext highlighter-rouge">ggts.ini</code> in your <code class="language-plaintext highlighter-rouge">.config</code> directory</li>
+</ol>
+
+<p>Basically, it checks local first, then falls back to global settings.</p>
+
+<h2 id="output-options">Output Options</h2>
+
+<p>I needed different formats depending on who was asking for the timesheet:</p>
+
+<ol>
+  <li><strong>Text</strong>: For quick terminal viewing</li>
+  <li><strong>CSV</strong>: For importing into Excel or Google Sheets (because managers love spreadsheets)</li>
+  <li><strong>Markdown</strong>: For documentation or GitHub issues</li>
+</ol>
+
+<h2 id="command-line-interface">Command-Line Interface</h2>
+
+<p>The package provides a comprehensive CLI built with Click:</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ggts <span class="o">[</span>options]
+</code></pre></div></div>
+
+<p>Key options include:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">--base-dir PATH</code>: Base directory containing git repositories</li>
+  <li><code class="language-plaintext highlighter-rouge">--since DATE</code>: Show commits more recent than a specific date</li>
+  <li><code class="language-plaintext highlighter-rouge">--until DATE</code>: Show commits older than a specific date</li>
+  <li><code class="language-plaintext highlighter-rouge">--repos REPO [REPO ...]</code>: Specific repository names to include</li>
+  <li><code class="language-plaintext highlighter-rouge">--output FORMAT</code>: Output format (text, csv, markdown)</li>
+  <li><code class="language-plaintext highlighter-rouge">--author PATTERN</code>: Filter commits by author</li>
+  <li><code class="language-plaintext highlighter-rouge">--timezone TIMEZONE</code>: Timezone for dates</li>
+  <li><code class="language-plaintext highlighter-rouge">--session-timeout MINUTES</code>: Minutes between commits to consider them part of the same work session</li>
+</ul>
+
+<h2 id="the-technical-stuff">The Technical Stuff</h2>
+
+<h3 id="performance">Performance</h3>
+
+<p>I learned the hard way that scanning large repositories can be slow. A few optimizations that helped:</p>
+
+<ol>
+  <li><strong>Smart repo discovery</strong>: If the base directory is already a git repo, don’t scan subdirectories</li>
+  <li><strong>Single git calls</strong>: One command per repo instead of multiple queries</li>
+  <li><strong>Stream processing</strong>: Don’t load everything into memory at once</li>
+</ol>
+
+<h3 id="error-handling">Error Handling</h3>
+
+<p>Because things always go wrong:</p>
+
+<ol>
+  <li><strong>Permission issues</strong>: Some repos you can’t read (gracefully skip them)</li>
+  <li><strong>Git command failures</strong>: Subprocess calls can fail (capture and continue)</li>
+  <li><strong>Timezone weirdness</strong>: When timezone conversion fails, fall back to UTC</li>
+</ol>
+
+<h2 id="who-this-helps">Who This Helps</h2>
+
+<p>I built this for myself, but it turns out other people have similar problems:</p>
+
+<ol>
+  <li><strong>Freelancers</strong>: Need accurate billing without the overhead of manual tracking</li>
+  <li><strong>Project managers</strong>: Want to understand where time actually goes</li>
+  <li><strong>Open source contributors</strong>: Curious about time investment in volunteer projects</li>
+  <li><strong>Teams</strong>: Need activity reports for stakeholders who don’t understand git</li>
+</ol>
+
+<h2 id="whats-next">What’s Next</h2>
+
+<p>I’ve got a few ideas for improvements, though I’m not sure when I’ll get to them:</p>
+
+<ol>
+  <li><strong>Smarter time estimation</strong>: Maybe use machine learning on historical patterns</li>
+  <li><strong>Web interface</strong>: Command line is fine for me, but others might want a GUI</li>
+  <li><strong>Issue tracker integration</strong>: Connect commits to Jira tickets or GitHub issues</li>
+  <li><strong>Team reports</strong>: Aggregate data across multiple developers</li>
+</ol>
+
+<h2 id="wrapping-up">Wrapping Up</h2>
+
+<p>This tool solved my specific problem: reconstructing work hours from git history without disrupting my workflow. The time estimates aren’t perfect, but they’re close enough for billing and project planning.</p>
+
+<p>If you’re tired of manual time tracking but need to report hours, give it a try. The worst case is you get a different perspective on your work patterns. Best case, you save yourself the hassle of remembering to start and stop timers.</p>
+
+<p>It’s not revolutionary, but it’s useful. Sometimes that’s enough.</p>
+
+<p><a href="https://github.com/mcgarrah/git_timesheet_python">GitHub Repository</a> is available and it is a <code class="language-plaintext highlighter-rouge">pip</code> installable tool.</p>
+
+<h2 id="related-posts">Related Posts</h2>
+
+<ul>
+  <li><a href="/ruby-gem-release-automation/">Ruby Gem Release Automation</a> — Another CLI tool with automated release pipeline</li>
+  <li><a href="/essential-cli-tools-linux/">Essential CLI Tools for Linux System Management</a> — More useful command-line tools</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/python/">python</a>, 
+        
+          <a href="/tags/git/">git</a>, 
+        
+          <a href="/tags/timetracking/">timetracking</a>, 
+        
+          <a href="/tags/automation/">automation</a>, 
+        
+          <a href="/tags/cli/">cli</a>, 
+        
+          <a href="/tags/development/">development</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/technical/">technical</a>, 
+        
+          <a href="/categories/development/">development</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

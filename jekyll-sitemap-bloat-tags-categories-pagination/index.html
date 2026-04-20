@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Your Jekyll Sitemap Is 60% Garbage | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Your Jekyll Sitemap Is 60% Garbage" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="How to audit and fix Jekyll sitemap bloat from auto-generated tag pages, category pages, and pagination. Includes Ruby plugin fixes, noindex patterns, and a CI/CD gotcha with static file timestamps." />
+<meta property="og:description" content="How to audit and fix Jekyll sitemap bloat from auto-generated tag pages, category pages, and pagination. Includes Ruby plugin fixes, noindex patterns, and a CI/CD gotcha with static file timestamps." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/jekyll-sitemap-bloat-tags-categories-pagination/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/jekyll-sitemap-bloat-tags-categories-pagination/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-04-07T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Your Jekyll Sitemap Is 60% Garbage" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-04-07T00:00:00+00:00","datePublished":"2026-04-07T00:00:00+00:00","description":"How to audit and fix Jekyll sitemap bloat from auto-generated tag pages, category pages, and pagination. Includes Ruby plugin fixes, noindex patterns, and a CI/CD gotcha with static file timestamps.","headline":"Your Jekyll Sitemap Is 60% Garbage","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/jekyll-sitemap-bloat-tags-categories-pagination/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/jekyll-sitemap-bloat-tags-categories-pagination/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/jekyll-sitemap-bloat-tags-categories-pagination/">Your Jekyll Sitemap Is 60% Garbage</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-04-07T00:00:00+00:00">April 07, 2026</time><span class="reading-time">11 min read</span></header>
+
+  <p>My Jekyll blog had 434 URLs in its sitemap. Sounds like a well-established site with lots of content, right? Here’s the breakdown:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>URL Type</th>
+      <th>Count</th>
+      <th>% of Sitemap</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Blog posts</td>
+      <td>125</td>
+      <td>29%</td>
+    </tr>
+    <tr>
+      <td>Static pages (about, contact, etc.)</td>
+      <td>8</td>
+      <td>2%</td>
+    </tr>
+    <tr>
+      <td>Tag pages</td>
+      <td>209</td>
+      <td>48%</td>
+    </tr>
+    <tr>
+      <td>Category pages</td>
+      <td>56</td>
+      <td>13%</td>
+    </tr>
+    <tr>
+      <td>Pagination pages</td>
+      <td>31</td>
+      <td>7%</td>
+    </tr>
+    <tr>
+      <td>Static files (PDFs)</td>
+      <td>7</td>
+      <td>2%</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>60% of my sitemap was auto-generated taxonomy and pagination pages.</strong> Most tag pages had a single post. Some category pages had one or two. Every pagination page was just a different slice of the same post list. And the PDFs were switch manuals from 2007 that didn’t need indexing.</p>
+
+<p>Google was seeing a site that was mostly machine-generated index pages with little unique content. Not a great signal when you’re trying to get AdSense approved.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="the-audit">The Audit</h2>
+
+<p>If you’re running Jekyll with <code class="language-plaintext highlighter-rouge">jekyll-sitemap</code>, a tag/category generator plugin, and <code class="language-plaintext highlighter-rouge">jekyll-paginate</code>, you probably have the same problem. Here’s how to check:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Build your site</span>
+bundle <span class="nb">exec </span>jekyll build
+
+<span class="c"># Total URLs</span>
+<span class="nb">grep</span> <span class="nt">-c</span> <span class="s2">"&lt;loc&gt;"</span> _site/sitemap.xml
+
+<span class="c"># Breakdown</span>
+<span class="nb">echo</span> <span class="s2">"Tags:       </span><span class="si">$(</span><span class="nb">grep</span> <span class="nt">-c</span> <span class="s1">'/tags/'</span> _site/sitemap.xml<span class="si">)</span><span class="s2">"</span>
+<span class="nb">echo</span> <span class="s2">"Categories: </span><span class="si">$(</span><span class="nb">grep</span> <span class="nt">-c</span> <span class="s1">'/categories/'</span> _site/sitemap.xml<span class="si">)</span><span class="s2">"</span>
+<span class="nb">echo</span> <span class="s2">"Pagination: </span><span class="si">$(</span><span class="nb">grep</span> <span class="s1">'/page[0-9]'</span> _site/sitemap.xml | <span class="nb">wc</span> <span class="nt">-l</span><span class="si">)</span><span class="s2">"</span>
+<span class="nb">echo</span> <span class="s2">"PDFs:       </span><span class="si">$(</span><span class="nb">grep</span> <span class="nt">-c</span> <span class="s1">'assets/pdfs'</span> _site/sitemap.xml<span class="si">)</span><span class="s2">"</span>
+
+<span class="c"># Check for duplicates while you're at it</span>
+<span class="nb">grep</span> <span class="nt">-oP</span> <span class="s1">'(?&lt;=&lt;loc&gt;)[^&lt;]+'</span> _site/sitemap.xml | <span class="nb">sort</span> | <span class="nb">uniq</span> <span class="nt">-c</span> | <span class="nb">sort</span> <span class="nt">-rn</span> | <span class="nb">awk</span> <span class="s1">'$1 &gt; 1'</span>
+</code></pre></div></div>
+
+<p>If your tag and category counts are higher than your post count, you have a problem.</p>
+
+<h2 id="why-this-matters">Why This Matters</h2>
+
+<p>Google’s crawl budget is finite. When Googlebot visits your site, it decides how many pages to crawl based on signals about your site’s quality and size. If 60% of the URLs in your sitemap lead to pages with a single post listing, Google learns that most of your site isn’t worth crawling deeply.</p>
+
+<p>For AdSense specifically, reviewers (human or automated) look at the ratio of substantive content to thin/auto-generated pages. A sitemap dominated by taxonomy pages looks like a site that’s padding its page count.</p>
+
+<h2 id="fix-1-exclude-tag-and-category-pages-from-sitemap">Fix 1: Exclude Tag and Category Pages from Sitemap</h2>
+
+<p>If you’re using a custom tag/category generator plugin (most Jekyll sites with tag pages are), add <code class="language-plaintext highlighter-rouge">sitemap: false</code> in the page initialization:</p>
+
+<div class="language-ruby highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">TagPage</span> <span class="o">&lt;</span> <span class="no">Page</span>
+  <span class="k">def</span> <span class="nf">initialize</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="n">base</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="n">posts</span><span class="p">)</span>
+    <span class="vi">@site</span> <span class="o">=</span> <span class="n">site</span>
+    <span class="vi">@base</span> <span class="o">=</span> <span class="n">base</span>
+    <span class="vi">@dir</span> <span class="o">=</span> <span class="no">File</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="s1">'tags'</span><span class="p">,</span> <span class="n">tag</span><span class="p">.</span><span class="nf">downcase</span><span class="p">.</span><span class="nf">gsub</span><span class="p">(</span><span class="s1">' '</span><span class="p">,</span> <span class="s1">'-'</span><span class="p">))</span>
+    <span class="vi">@name</span> <span class="o">=</span> <span class="s1">'index.html'</span>
+
+    <span class="nb">self</span><span class="p">.</span><span class="nf">process</span><span class="p">(</span><span class="vi">@name</span><span class="p">)</span>
+    <span class="nb">self</span><span class="p">.</span><span class="nf">read_yaml</span><span class="p">(</span><span class="no">File</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="s1">'_layouts'</span><span class="p">),</span> <span class="s1">'tag_page.html'</span><span class="p">)</span>
+    <span class="nb">self</span><span class="p">.</span><span class="nf">data</span><span class="p">[</span><span class="s1">'tag'</span><span class="p">]</span> <span class="o">=</span> <span class="n">tag</span>
+    <span class="nb">self</span><span class="p">.</span><span class="nf">data</span><span class="p">[</span><span class="s1">'posts'</span><span class="p">]</span> <span class="o">=</span> <span class="n">posts</span>
+    <span class="nb">self</span><span class="p">.</span><span class="nf">data</span><span class="p">[</span><span class="s1">'title'</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"Posts tagged with </span><span class="se">\"</span><span class="si">#{</span><span class="n">tag</span><span class="si">}</span><span class="se">\"</span><span class="s2">"</span>
+    <span class="nb">self</span><span class="p">.</span><span class="nf">data</span><span class="p">[</span><span class="s1">'sitemap'</span><span class="p">]</span> <span class="o">=</span> <span class="kp">false</span>  <span class="c1"># &lt;-- add this</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<p>Do the same for your <code class="language-plaintext highlighter-rouge">CategoryPage</code> class. The <code class="language-plaintext highlighter-rouge">jekyll-sitemap</code> plugin checks <code class="language-plaintext highlighter-rouge">page.sitemap != false</code> when building the sitemap, so this cleanly excludes them.</p>
+
+<p>The pages still render and are accessible via your <code class="language-plaintext highlighter-rouge">/tags/</code> and <code class="language-plaintext highlighter-rouge">/categories/</code> index pages. They’re just not advertised to crawlers individually.</p>
+
+<h2 id="fix-2-noindex-on-thin-taxonomy-pages">Fix 2: noindex on Thin Taxonomy Pages</h2>
+
+<p>Excluding pages from the sitemap tells Google “don’t prioritize crawling this.” But if Google discovers the page through internal links (which it will — your tag cloud links to every tag page), it may still index it.</p>
+
+<p>For tag and category pages with fewer than 3 posts, add a <code class="language-plaintext highlighter-rouge">noindex</code> flag:</p>
+
+<div class="language-ruby highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">self</span><span class="p">.</span><span class="nf">data</span><span class="p">[</span><span class="s1">'sitemap'</span><span class="p">]</span> <span class="o">=</span> <span class="kp">false</span>
+<span class="nb">self</span><span class="p">.</span><span class="nf">data</span><span class="p">[</span><span class="s1">'noindex'</span><span class="p">]</span> <span class="o">=</span> <span class="kp">true</span> <span class="k">if</span> <span class="n">posts</span><span class="p">.</span><span class="nf">size</span> <span class="o">&lt;</span> <span class="mi">3</span>
+</code></pre></div></div>
+
+<p>Then in your <code class="language-plaintext highlighter-rouge">_layouts/default.html</code>, inside <code class="language-plaintext highlighter-rouge">&lt;head&gt;</code>:</p>
+
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code>{% if page.noindex %}
+<span class="nt">&lt;meta</span> <span class="na">name=</span><span class="s">"robots"</span> <span class="na">content=</span><span class="s">"noindex, follow"</span><span class="nt">&gt;</span>
+{% endif %}
+</code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">follow</code> part is important — it tells Google “don’t index this page, but do follow the links on it.” This way Google still discovers your actual posts through tag pages, it just doesn’t waste an index slot on a page that lists a single post.</p>
+
+<p><strong>My results:</strong> 161 tag pages and 34 category pages got <code class="language-plaintext highlighter-rouge">noindex</code>. The remaining 48 tag pages and 21 category pages with 3+ posts stay indexable — those are genuinely useful navigation pages.</p>
+
+<h2 id="fix-3-exclude-pagination-pages">Fix 3: Exclude Pagination Pages</h2>
+
+<p>Pagination pages (<code class="language-plaintext highlighter-rouge">/page2/</code>, <code class="language-plaintext highlighter-rouge">/page3/</code>, etc.) are the same content in different slices. They don’t need to be in the sitemap.</p>
+
+<p>This one is trickier because <code class="language-plaintext highlighter-rouge">jekyll-paginate</code> creates pagination pages internally — you don’t control their initialization. My first attempt used a Jekyll hook:</p>
+
+<div class="language-ruby highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># DON'T DO THIS — it breaks pagination</span>
+<span class="no">Jekyll</span><span class="o">::</span><span class="no">Hooks</span><span class="p">.</span><span class="nf">register</span> <span class="ss">:pages</span><span class="p">,</span> <span class="ss">:post_init</span> <span class="k">do</span> <span class="o">|</span><span class="n">page</span><span class="o">|</span>
+  <span class="k">if</span> <span class="n">page</span><span class="p">.</span><span class="nf">url</span> <span class="o">=~</span> <span class="sr">%r{^/page</span><span class="se">\d</span><span class="sr">+/}</span>
+    <span class="n">page</span><span class="p">.</span><span class="nf">data</span><span class="p">[</span><span class="s1">'sitemap'</span><span class="p">]</span> <span class="o">=</span> <span class="kp">false</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<p><strong>This broke my entire site.</strong> The <code class="language-plaintext highlighter-rouge">:post_init</code> hook fires during page initialization, before <code class="language-plaintext highlighter-rouge">jekyll-paginate</code> has created the pagination pages. It interfered with the paginator’s template detection, causing the homepage to display as page 32 of 32 (oldest posts first) and preventing pagination directories from being created at all.</p>
+
+<p>The fix is to use a Generator with <code class="language-plaintext highlighter-rouge">priority :lowest</code>, which runs <em>after</em> <code class="language-plaintext highlighter-rouge">jekyll-paginate</code> has finished:</p>
+
+<div class="language-ruby highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">PaginationSitemapExcluder</span> <span class="o">&lt;</span> <span class="no">Generator</span>
+  <span class="n">safe</span> <span class="kp">true</span>
+  <span class="n">priority</span> <span class="ss">:lowest</span>
+
+  <span class="k">def</span> <span class="nf">generate</span><span class="p">(</span><span class="n">site</span><span class="p">)</span>
+    <span class="n">site</span><span class="p">.</span><span class="nf">pages</span><span class="p">.</span><span class="nf">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">page</span><span class="o">|</span>
+      <span class="k">if</span> <span class="n">page</span><span class="p">.</span><span class="nf">dir</span> <span class="o">=~</span> <span class="sr">%r{^/page</span><span class="se">\d</span><span class="sr">+}</span>
+        <span class="n">page</span><span class="p">.</span><span class="nf">data</span><span class="p">[</span><span class="s1">'sitemap'</span><span class="p">]</span> <span class="o">=</span> <span class="kp">false</span>
+      <span class="k">end</span>
+    <span class="k">end</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<p>This iterates the final page list after all generators (including the paginator) have run, and sets <code class="language-plaintext highlighter-rouge">sitemap: false</code> on any page in a <code class="language-plaintext highlighter-rouge">/page\d+/</code> directory.</p>
+
+<h2 id="fix-4-exclude-static-files-with-stale-timestamps">Fix 4: Exclude Static Files with Stale Timestamps</h2>
+
+<p>If you have PDFs or other static files in your site, <code class="language-plaintext highlighter-rouge">jekyll-sitemap</code> includes them with their filesystem <code class="language-plaintext highlighter-rouge">modified_time</code> as the <code class="language-plaintext highlighter-rouge">lastmod</code>. The problem: when GitHub Actions checks out your repo, <code class="language-plaintext highlighter-rouge">git checkout</code> sets every file’s modification time to the checkout timestamp — not the original commit date.</p>
+
+<p>This means every deploy, your 2007 PDF manuals show up in the sitemap as “modified today.” Google sees constant churn on files that haven’t actually changed.</p>
+
+<p>Fix this with <code class="language-plaintext highlighter-rouge">_config.yml</code> defaults:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">defaults</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">scope</span><span class="pi">:</span>
+      <span class="na">path</span><span class="pi">:</span> <span class="s2">"</span><span class="s">assets/pdfs"</span>
+    <span class="na">values</span><span class="pi">:</span>
+      <span class="na">sitemap</span><span class="pi">:</span> <span class="kc">false</span>
+</code></pre></div></div>
+
+<p>The files are still served normally — they’re just not in the sitemap.</p>
+
+<h2 id="the-complete-plugin">The Complete Plugin</h2>
+
+<p>Here’s the full generator plugin with all fixes in one file:</p>
+
+<div class="language-ruby highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">module</span> <span class="nn">Jekyll</span>
+  <span class="k">class</span> <span class="nc">TagPageGenerator</span> <span class="o">&lt;</span> <span class="no">Generator</span>
+    <span class="n">safe</span> <span class="kp">true</span>
+
+    <span class="k">def</span> <span class="nf">generate</span><span class="p">(</span><span class="n">site</span><span class="p">)</span>
+      <span class="n">site</span><span class="p">.</span><span class="nf">tags</span><span class="p">.</span><span class="nf">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">tag</span><span class="p">,</span> <span class="n">posts</span><span class="o">|</span>
+        <span class="n">site</span><span class="p">.</span><span class="nf">pages</span> <span class="o">&lt;&lt;</span> <span class="no">TagPage</span><span class="p">.</span><span class="nf">new</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="n">site</span><span class="p">.</span><span class="nf">source</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="n">posts</span><span class="p">)</span>
+      <span class="k">end</span>
+    <span class="k">end</span>
+  <span class="k">end</span>
+
+  <span class="k">class</span> <span class="nc">CategoryPageGenerator</span> <span class="o">&lt;</span> <span class="no">Generator</span>
+    <span class="n">safe</span> <span class="kp">true</span>
+
+    <span class="k">def</span> <span class="nf">generate</span><span class="p">(</span><span class="n">site</span><span class="p">)</span>
+      <span class="n">site</span><span class="p">.</span><span class="nf">categories</span><span class="p">.</span><span class="nf">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">category</span><span class="p">,</span> <span class="n">posts</span><span class="o">|</span>
+        <span class="n">site</span><span class="p">.</span><span class="nf">pages</span> <span class="o">&lt;&lt;</span> <span class="no">CategoryPage</span><span class="p">.</span><span class="nf">new</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="n">site</span><span class="p">.</span><span class="nf">source</span><span class="p">,</span> <span class="n">category</span><span class="p">,</span> <span class="n">posts</span><span class="p">)</span>
+      <span class="k">end</span>
+    <span class="k">end</span>
+  <span class="k">end</span>
+
+  <span class="k">class</span> <span class="nc">TagPage</span> <span class="o">&lt;</span> <span class="no">Page</span>
+    <span class="k">def</span> <span class="nf">initialize</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="n">base</span><span class="p">,</span> <span class="n">tag</span><span class="p">,</span> <span class="n">posts</span><span class="p">)</span>
+      <span class="vi">@site</span> <span class="o">=</span> <span class="n">site</span>
+      <span class="vi">@base</span> <span class="o">=</span> <span class="n">base</span>
+      <span class="vi">@dir</span> <span class="o">=</span> <span class="no">File</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="s1">'tags'</span><span class="p">,</span> <span class="n">tag</span><span class="p">.</span><span class="nf">downcase</span><span class="p">.</span><span class="nf">gsub</span><span class="p">(</span><span class="s1">' '</span><span class="p">,</span> <span class="s1">'-'</span><span class="p">))</span>
+      <span class="vi">@name</span> <span class="o">=</span> <span class="s1">'index.html'</span>
+
+      <span class="nb">self</span><span class="p">.</span><span class="nf">process</span><span class="p">(</span><span class="vi">@name</span><span class="p">)</span>
+      <span class="nb">self</span><span class="p">.</span><span class="nf">read_yaml</span><span class="p">(</span><span class="no">File</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="s1">'_layouts'</span><span class="p">),</span> <span class="s1">'tag_page.html'</span><span class="p">)</span>
+      <span class="nb">self</span><span class="p">.</span><span class="nf">data</span><span class="p">[</span><span class="s1">'tag'</span><span class="p">]</span> <span class="o">=</span> <span class="n">tag</span>
+      <span class="nb">self</span><span class="p">.</span><span class="nf">data</span><span class="p">[</span><span class="s1">'posts'</span><span class="p">]</span> <span class="o">=</span> <span class="n">posts</span>
+      <span class="nb">self</span><span class="p">.</span><span class="nf">data</span><span class="p">[</span><span class="s1">'title'</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"Posts tagged with </span><span class="se">\"</span><span class="si">#{</span><span class="n">tag</span><span class="si">}</span><span class="se">\"</span><span class="s2">"</span>
+      <span class="nb">self</span><span class="p">.</span><span class="nf">data</span><span class="p">[</span><span class="s1">'sitemap'</span><span class="p">]</span> <span class="o">=</span> <span class="kp">false</span>
+      <span class="nb">self</span><span class="p">.</span><span class="nf">data</span><span class="p">[</span><span class="s1">'noindex'</span><span class="p">]</span> <span class="o">=</span> <span class="kp">true</span> <span class="k">if</span> <span class="n">posts</span><span class="p">.</span><span class="nf">size</span> <span class="o">&lt;</span> <span class="mi">3</span>
+    <span class="k">end</span>
+  <span class="k">end</span>
+
+  <span class="k">class</span> <span class="nc">CategoryPage</span> <span class="o">&lt;</span> <span class="no">Page</span>
+    <span class="k">def</span> <span class="nf">initialize</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="n">base</span><span class="p">,</span> <span class="n">category</span><span class="p">,</span> <span class="n">posts</span><span class="p">)</span>
+      <span class="vi">@site</span> <span class="o">=</span> <span class="n">site</span>
+      <span class="vi">@base</span> <span class="o">=</span> <span class="n">base</span>
+      <span class="vi">@dir</span> <span class="o">=</span> <span class="no">File</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="s1">'categories'</span><span class="p">,</span> <span class="n">category</span><span class="p">.</span><span class="nf">downcase</span><span class="p">.</span><span class="nf">gsub</span><span class="p">(</span><span class="s1">' '</span><span class="p">,</span> <span class="s1">'-'</span><span class="p">).</span><span class="nf">gsub</span><span class="p">(</span><span class="s1">'_'</span><span class="p">,</span> <span class="s1">'-'</span><span class="p">))</span>
+      <span class="vi">@name</span> <span class="o">=</span> <span class="s1">'index.html'</span>
+
+      <span class="nb">self</span><span class="p">.</span><span class="nf">process</span><span class="p">(</span><span class="vi">@name</span><span class="p">)</span>
+      <span class="nb">self</span><span class="p">.</span><span class="nf">read_yaml</span><span class="p">(</span><span class="no">File</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="s1">'_layouts'</span><span class="p">),</span> <span class="s1">'category_page.html'</span><span class="p">)</span>
+      <span class="nb">self</span><span class="p">.</span><span class="nf">data</span><span class="p">[</span><span class="s1">'category'</span><span class="p">]</span> <span class="o">=</span> <span class="n">category</span>
+      <span class="nb">self</span><span class="p">.</span><span class="nf">data</span><span class="p">[</span><span class="s1">'posts'</span><span class="p">]</span> <span class="o">=</span> <span class="n">posts</span>
+      <span class="nb">self</span><span class="p">.</span><span class="nf">data</span><span class="p">[</span><span class="s1">'title'</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"Posts in category </span><span class="se">\"</span><span class="si">#{</span><span class="n">category</span><span class="si">}</span><span class="se">\"</span><span class="s2">"</span>
+      <span class="nb">self</span><span class="p">.</span><span class="nf">data</span><span class="p">[</span><span class="s1">'sitemap'</span><span class="p">]</span> <span class="o">=</span> <span class="kp">false</span>
+      <span class="nb">self</span><span class="p">.</span><span class="nf">data</span><span class="p">[</span><span class="s1">'noindex'</span><span class="p">]</span> <span class="o">=</span> <span class="kp">true</span> <span class="k">if</span> <span class="n">posts</span><span class="p">.</span><span class="nf">size</span> <span class="o">&lt;</span> <span class="mi">3</span>
+    <span class="k">end</span>
+  <span class="k">end</span>
+
+  <span class="c1"># Must run AFTER jekyll-paginate creates pagination pages</span>
+  <span class="k">class</span> <span class="nc">PaginationSitemapExcluder</span> <span class="o">&lt;</span> <span class="no">Generator</span>
+    <span class="n">safe</span> <span class="kp">true</span>
+    <span class="n">priority</span> <span class="ss">:lowest</span>
+
+    <span class="k">def</span> <span class="nf">generate</span><span class="p">(</span><span class="n">site</span><span class="p">)</span>
+      <span class="n">site</span><span class="p">.</span><span class="nf">pages</span><span class="p">.</span><span class="nf">each</span> <span class="k">do</span> <span class="o">|</span><span class="n">page</span><span class="o">|</span>
+        <span class="k">if</span> <span class="n">page</span><span class="p">.</span><span class="nf">dir</span> <span class="o">=~</span> <span class="sr">%r{^/page</span><span class="se">\d</span><span class="sr">+}</span>
+          <span class="n">page</span><span class="p">.</span><span class="nf">data</span><span class="p">[</span><span class="s1">'sitemap'</span><span class="p">]</span> <span class="o">=</span> <span class="kp">false</span>
+        <span class="k">end</span>
+      <span class="k">end</span>
+    <span class="k">end</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<h2 id="bonus-ci-check-for-sitemap-health">Bonus: CI Check for Sitemap Health</h2>
+
+<p>I added a step to my GitHub Actions workflow that fails the build if <code class="language-plaintext highlighter-rouge">localhost</code> URLs leak into the sitemap (which happens if you accidentally deploy from a local build):</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Validate sitemap URLs</span>
+  <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+    <span class="s">if grep -q 'localhost' ./_site/sitemap.xml; then</span>
+      <span class="s">echo "::error::sitemap.xml contains localhost URLs"</span>
+      <span class="s">grep 'localhost' ./_site/sitemap.xml | head -5</span>
+      <span class="s">exit 1</span>
+    <span class="s">fi</span>
+    <span class="s">echo "Sitemap OK: all URLs use production domain"</span>
+</code></pre></div></div>
+
+<p>You could extend this to check for duplicates too:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Validate sitemap URLs</span>
+  <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+    <span class="s">if grep -q 'localhost' ./_site/sitemap.xml; then</span>
+      <span class="s">echo "::error::sitemap.xml contains localhost URLs"</span>
+      <span class="s">exit 1</span>
+    <span class="s">fi</span>
+    <span class="s">DUPES=$(grep -oP '(?&lt;=&lt;loc&gt;)[^&lt;]+' ./_site/sitemap.xml | sort | uniq -d)</span>
+    <span class="s">if [ -n "$DUPES" ]; then</span>
+      <span class="s">echo "::error::sitemap.xml contains duplicate URLs:"</span>
+      <span class="s">echo "$DUPES"</span>
+      <span class="s">exit 1</span>
+    <span class="s">fi</span>
+    <span class="s">echo "Sitemap OK"</span>
+</code></pre></div></div>
+
+<h2 id="results">Results</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Metric</th>
+      <th>Before</th>
+      <th>After</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Total sitemap URLs</td>
+      <td>434</td>
+      <td>133</td>
+    </tr>
+    <tr>
+      <td>Tag pages in sitemap</td>
+      <td>209</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>Category pages in sitemap</td>
+      <td>56</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>Pagination pages in sitemap</td>
+      <td>31</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>Static files in sitemap</td>
+      <td>7</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>Actual content URLs</td>
+      <td>131</td>
+      <td>133</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">noindex</code> tag pages</td>
+      <td>0</td>
+      <td>161</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">noindex</code> category pages</td>
+      <td>0</td>
+      <td>34</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The sitemap went from 434 URLs to 133 — a 69% reduction — while the actual content count stayed the same. Every URL in the sitemap now points to a page with substantive, unique content.</p>
+
+<p>The tag and category pages still exist, still render, and still provide navigation for readers. They’re just not cluttering the sitemap or competing for index slots with real content.</p>
+
+<h2 id="the-lesson">The Lesson</h2>
+
+<p><code class="language-plaintext highlighter-rouge">jekyll-sitemap</code> does exactly what it says — it generates a sitemap of every page on your site. The problem is that “every page” includes a lot of pages that shouldn’t be in a sitemap. The plugin has no opinion about content quality; that’s your job.</p>
+
+<p>If you’re running a Jekyll blog with tags, categories, and pagination, audit your sitemap. You might be surprised how much of it is garbage.</p>
+
+<h2 id="related-articles">Related Articles</h2>
+
+<ul>
+  <li><a href="/jekyll-theme-missing-head-body-tags/">Your Jekyll Theme Is Probably Missing head and body Tags</a> — The companion article on HTML structure</li>
+  <li><a href="/adsense-approval-failure-remediation/">Google AdSense Approval Failure: Debugging the ‘Site Isn’t Ready’ Rejection</a> — Where I discovered the sitemap bloat</li>
+  <li><a href="/jekyll-seo-sitemap-canonical-url-fixes/">Jekyll SEO, Sitemap, and Canonical URL Fixes</a> — Earlier SEO work</li>
+  <li><a href="/jekyll-seo-health-checks/">Jekyll SEO Health Checks</a> — Automated SEO validation</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/jekyll/">jekyll</a>, 
+        
+          <a href="/tags/sitemap/">sitemap</a>, 
+        
+          <a href="/tags/seo/">seo</a>, 
+        
+          <a href="/tags/tags/">tags</a>, 
+        
+          <a href="/tags/categories/">categories</a>, 
+        
+          <a href="/tags/pagination/">pagination</a>, 
+        
+          <a href="/tags/github-pages/">github-pages</a>, 
+        
+          <a href="/tags/ruby/">ruby</a>, 
+        
+          <a href="/tags/plugins/">plugins</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/web-development/">web-development</a>, 
+        
+          <a href="/categories/technical/">technical</a>, 
+        
+          <a href="/categories/jekyll/">jekyll</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

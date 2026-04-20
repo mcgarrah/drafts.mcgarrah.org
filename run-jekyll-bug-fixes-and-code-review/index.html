@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Run Jekyll: Bug Fixes and Code Review | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Run Jekyll: Bug Fixes and Code Review" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="Comprehensive code review of the Jekyll Run VS Code extension. Documents 18 issues across the codebase: 3 bugs fixed in v1.7.1 (getConfiguration scoping, null error rejection, lsof parsing), plus 15 additional issues found in a deep review including double rejections, Buffer/string confusion, missing error context, and a boolean config default that’s actually a truthy string." />
+<meta property="og:description" content="Comprehensive code review of the Jekyll Run VS Code extension. Documents 18 issues across the codebase: 3 bugs fixed in v1.7.1 (getConfiguration scoping, null error rejection, lsof parsing), plus 15 additional issues found in a deep review including double rejections, Buffer/string confusion, missing error context, and a boolean config default that’s actually a truthy string." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/run-jekyll-bug-fixes-and-code-review/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/run-jekyll-bug-fixes-and-code-review/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-05-29T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Run Jekyll: Bug Fixes and Code Review" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-05-29T00:00:00+00:00","datePublished":"2026-05-29T00:00:00+00:00","description":"Comprehensive code review of the Jekyll Run VS Code extension. Documents 18 issues across the codebase: 3 bugs fixed in v1.7.1 (getConfiguration scoping, null error rejection, lsof parsing), plus 15 additional issues found in a deep review including double rejections, Buffer/string confusion, missing error context, and a boolean config default that’s actually a truthy string.","headline":"Run Jekyll: Bug Fixes and Code Review","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/run-jekyll-bug-fixes-and-code-review/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/run-jekyll-bug-fixes-and-code-review/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/run-jekyll-bug-fixes-and-code-review/">Run Jekyll: Bug Fixes and Code Review</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-05-29T00:00:00+00:00">May 29, 2026</time><span class="reading-time">9 min read</span></header>
+
+  <p>The <a href="https://github.com/Kanna727/jekyll-run">Jekyll Run VS Code extension</a> has been abandoned for five years. In the <a href="/forking-jekyll-run-to-run-jekyll/">previous post</a>, I covered forking the repository and modernizing the CI/CD infrastructure. This post covers the actual bugs — three fixed in v1.7.1, plus fifteen more found in a deep code review.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="bugs-fixed-in-v171">Bugs Fixed in v1.7.1</h2>
+
+<p>These three bugs were the ones I hit personally. They’re fixed in the <a href="https://github.com/mcgarrah/jekyll-run/releases/tag/v1.7.1">v1.7.1 release</a>.</p>
+
+<h3 id="bug-1-unscoped-getconfiguration-call">Bug 1: Unscoped getConfiguration() Call</h3>
+
+<p><strong>File:</strong> <code class="language-plaintext highlighter-rouge">src/config/config.ts</code>
+<strong>Symptom:</strong> <code class="language-plaintext highlighter-rouge">TypeError: Cannot read properties of null</code> in multi-root workspaces</p>
+
+<div class="language-typescript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// BEFORE (broken)</span>
+<span class="k">return</span> <span class="nx">vscode</span><span class="p">.</span><span class="nx">workspace</span><span class="p">.</span><span class="nf">getConfiguration</span><span class="p">().</span><span class="nf">get</span><span class="p">(</span><span class="nx">extension</span><span class="p">)</span> <span class="kd">as </span><span class="kr">any</span><span class="p">;</span>
+
+<span class="c1">// AFTER (fixed)</span>
+<span class="k">return</span> <span class="nx">vscode</span><span class="p">.</span><span class="nx">workspace</span><span class="p">.</span><span class="nf">getConfiguration</span><span class="p">(</span><span class="nx">extension</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">getConfiguration().get('jekyll-run')</code> fetches the root config and extracts a key. In multi-root workspaces, this returns <code class="language-plaintext highlighter-rouge">null</code> — bypassing all settings and defaults. The scoped <code class="language-plaintext highlighter-rouge">getConfiguration('jekyll-run')</code> properly resolves everything.</p>
+
+<p>Also added a defensive null guard in <code class="language-plaintext highlighter-rouge">extension.ts</code>:</p>
+
+<div class="language-typescript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">const</span> <span class="nx">args</span> <span class="o">=</span> <span class="p">(</span><span class="nx">config</span><span class="p">.</span><span class="nx">commandLineArguments</span> <span class="o">||</span> <span class="dl">''</span><span class="p">).</span><span class="nf">toString</span><span class="p">();</span>
+</code></pre></div></div>
+
+<h3 id="bug-2-null-rejection-in-error-handler">Bug 2: Null Rejection in Error Handler</h3>
+
+<p><strong>File:</strong> <code class="language-plaintext highlighter-rouge">src/cmds/run.ts</code>
+<strong>Symptom:</strong> TypeError instead of the actual Ruby error message</p>
+
+<div class="language-typescript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// BEFORE (rejects with null when Errno not found)</span>
+<span class="nf">reject</span><span class="p">(</span><span class="nx">error</span><span class="p">.</span><span class="nf">match</span><span class="p">(</span><span class="sr">/</span><span class="se">\B(</span><span class="sr">.+</span><span class="se">)</span><span class="sr">Errno</span><span class="se">(</span><span class="sr">.+</span><span class="se">)</span><span class="sr">/m</span><span class="p">));</span>
+
+<span class="c1">// AFTER (falls back to full error string)</span>
+<span class="nf">reject</span><span class="p">(</span><span class="nx">error</span><span class="p">.</span><span class="nf">match</span><span class="p">(</span><span class="sr">/</span><span class="se">\B(</span><span class="sr">.+</span><span class="se">)</span><span class="sr">Errno</span><span class="se">(</span><span class="sr">.+</span><span class="se">)</span><span class="sr">/m</span><span class="p">)</span> <span class="o">||</span> <span class="nx">error</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>Most Ruby errors don’t contain “Errno” — bundler version mismatches, gem not found, syntax errors. The regex returns <code class="language-plaintext highlighter-rouge">null</code>, the caller does <code class="language-plaintext highlighter-rouge">null.toString()</code>, crash. The user never sees the real error.</p>
+
+<h3 id="bug-3-port-detection-fails-on-macos">Bug 3: Port Detection Fails on macOS</h3>
+
+<p><strong>File:</strong> <code class="language-plaintext highlighter-rouge">src/utils/process-on-port.ts</code>
+<strong>Symptom:</strong> Plugin doesn’t detect existing Jekyll server, launches a second one that crashes</p>
+
+<div class="language-typescript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// BEFORE (fails on macOS variable-width lsof columns)</span>
+<span class="kd">var</span> <span class="nx">splittedOutput</span> <span class="o">=</span> <span class="nx">output</span><span class="p">.</span><span class="nf">split</span><span class="p">(</span><span class="dl">'</span><span class="se">\n</span><span class="dl">'</span><span class="p">)[</span><span class="mi">1</span><span class="p">].</span><span class="nf">split</span><span class="p">(</span><span class="dl">'</span><span class="s1"> </span><span class="dl">'</span><span class="p">);</span>
+
+<span class="c1">// AFTER (handles any whitespace)</span>
+<span class="kd">var</span> <span class="nx">splittedOutput</span> <span class="o">=</span> <span class="nx">output</span><span class="p">.</span><span class="nf">split</span><span class="p">(</span><span class="dl">'</span><span class="se">\n</span><span class="dl">'</span><span class="p">)[</span><span class="mi">1</span><span class="p">].</span><span class="nf">split</span><span class="p">(</span><span class="sr">/</span><span class="se">\s</span><span class="sr">+/</span><span class="p">).</span><span class="nf">filter</span><span class="p">(</span><span class="nb">Boolean</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>macOS <code class="language-plaintext highlighter-rouge">lsof</code> uses multiple spaces between columns. Splitting on single space produces empty strings, so the PID always parses as <code class="language-plaintext highlighter-rouge">0</code>.</p>
+
+<h2 id="deep-code-review-15-additional-issues">Deep Code Review: 15 Additional Issues</h2>
+
+<p>Beyond the three bugs I hit, a systematic review of the entire codebase found fifteen more issues.</p>
+
+<h3 id="high-priority--crashes-or-silent-failures">High Priority — Crashes or Silent Failures</h3>
+
+<h4 id="1-double-rejection-in-stderr-handler">1. Double rejection in stderr handler</h4>
+
+<p><strong>File:</strong> <code class="language-plaintext highlighter-rouge">src/cmds/run.ts</code> lines 65-74</p>
+
+<p>Both <code class="language-plaintext highlighter-rouge">if(error.includes('Error'))</code> and <code class="language-plaintext highlighter-rouge">if(error.includes('ruby'))</code> can match the same stderr data (e.g., “Error loading ruby”). Both call <code class="language-plaintext highlighter-rouge">reject()</code>, but a Promise can only be rejected once — the second is silently swallowed.</p>
+
+<div class="language-typescript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// BEFORE: two separate if blocks, both can fire</span>
+<span class="k">if </span><span class="p">(</span><span class="nx">error</span><span class="p">.</span><span class="nf">includes</span><span class="p">(</span><span class="dl">'</span><span class="s1">Error</span><span class="dl">'</span><span class="p">)</span> <span class="o">||</span> <span class="nx">error</span><span class="p">.</span><span class="nf">includes</span><span class="p">(</span><span class="dl">'</span><span class="s1">argument</span><span class="dl">'</span><span class="p">))</span> <span class="p">{</span>
+    <span class="nf">reject</span><span class="p">(</span><span class="nx">data</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="k">if </span><span class="p">(</span><span class="nx">error</span><span class="p">.</span><span class="nf">includes</span><span class="p">(</span><span class="dl">'</span><span class="s1">ruby</span><span class="dl">'</span><span class="p">))</span> <span class="p">{</span>
+    <span class="nf">reject</span><span class="p">(</span><span class="nx">error</span><span class="p">.</span><span class="nf">match</span><span class="p">(</span><span class="sr">/</span><span class="se">\B(</span><span class="sr">.+</span><span class="se">)</span><span class="sr">Errno</span><span class="se">(</span><span class="sr">.+</span><span class="se">)</span><span class="sr">/m</span><span class="p">)</span> <span class="o">||</span> <span class="nx">error</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// FIX: use else if</span>
+<span class="k">if </span><span class="p">(</span><span class="nx">error</span><span class="p">.</span><span class="nf">includes</span><span class="p">(</span><span class="dl">'</span><span class="s1">ruby</span><span class="dl">'</span><span class="p">))</span> <span class="p">{</span>
+    <span class="nf">reject</span><span class="p">(</span><span class="nx">error</span><span class="p">.</span><span class="nf">match</span><span class="p">(</span><span class="sr">/</span><span class="se">\B(</span><span class="sr">.+</span><span class="se">)</span><span class="sr">Errno</span><span class="se">(</span><span class="sr">.+</span><span class="se">)</span><span class="sr">/m</span><span class="p">)</span> <span class="o">||</span> <span class="nx">error</span><span class="p">);</span>
+<span class="p">}</span> <span class="k">else</span> <span class="k">if </span><span class="p">(</span><span class="nx">error</span><span class="p">.</span><span class="nf">includes</span><span class="p">(</span><span class="dl">'</span><span class="s1">Error</span><span class="dl">'</span><span class="p">)</span> <span class="o">||</span> <span class="nx">error</span><span class="p">.</span><span class="nf">includes</span><span class="p">(</span><span class="dl">'</span><span class="s1">argument</span><span class="dl">'</span><span class="p">))</span> <span class="p">{</span>
+    <span class="nf">reject</span><span class="p">(</span><span class="nx">error</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h4 id="2-raw-buffer-passed-to-reject">2. Raw Buffer passed to reject</h4>
+
+<p><strong>Files:</strong> <code class="language-plaintext highlighter-rouge">src/cmds/run.ts</code> line 68, <code class="language-plaintext highlighter-rouge">src/cmds/build.ts</code> line 37</p>
+
+<p>The <code class="language-plaintext highlighter-rouge">Error</code>/<code class="language-plaintext highlighter-rouge">argument</code> branch does <code class="language-plaintext highlighter-rouge">reject(data)</code> where <code class="language-plaintext highlighter-rouge">data</code> is a raw Buffer from the stream. The caller does <code class="language-plaintext highlighter-rouge">error.toString()</code> which works on Buffers but produces <code class="language-plaintext highlighter-rouge">[object Object]</code> on other types.</p>
+
+<p><strong>Fix:</strong> <code class="language-plaintext highlighter-rouge">reject(error)</code> — use the already-converted string.</p>
+
+<h4 id="3-lsof-crash-on-header-only-output">3. lsof crash on header-only output</h4>
+
+<p><strong>File:</strong> <code class="language-plaintext highlighter-rouge">src/utils/process-on-port.ts</code> line 22</p>
+
+<p>If <code class="language-plaintext highlighter-rouge">lsof</code> returns output but only the header row (no process line), <code class="language-plaintext highlighter-rouge">output.split('\n')[1]</code> is <code class="language-plaintext highlighter-rouge">undefined</code>, and <code class="language-plaintext highlighter-rouge">.split(/\s+/)</code> on <code class="language-plaintext highlighter-rouge">undefined</code> throws TypeError.</p>
+
+<p><strong>Fix:</strong> Check the second line exists before parsing:</p>
+
+<div class="language-typescript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">const</span> <span class="nx">lines</span> <span class="o">=</span> <span class="nx">output</span><span class="p">.</span><span class="nf">split</span><span class="p">(</span><span class="dl">'</span><span class="se">\n</span><span class="dl">'</span><span class="p">);</span>
+<span class="k">if </span><span class="p">(</span><span class="nx">lines</span><span class="p">.</span><span class="nx">length</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="o">&amp;&amp;</span> <span class="nx">lines</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">trim</span><span class="p">())</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">splittedOutput</span> <span class="o">=</span> <span class="nx">lines</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="nf">split</span><span class="p">(</span><span class="sr">/</span><span class="se">\s</span><span class="sr">+/</span><span class="p">).</span><span class="nf">filter</span><span class="p">(</span><span class="nb">Boolean</span><span class="p">);</span>
+    <span class="c1">// ...</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h4 id="4-installts-rejects-with-no-error-information">4. install.ts rejects with no error information</h4>
+
+<p><strong>File:</strong> <code class="language-plaintext highlighter-rouge">src/cmds/install.ts</code> line 31</p>
+
+<div class="language-typescript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nx">child</span><span class="p">.</span><span class="nx">stderr</span><span class="p">.</span><span class="nf">on</span><span class="p">(</span><span class="dl">'</span><span class="s1">data</span><span class="dl">'</span><span class="p">,</span> <span class="p">(</span><span class="nx">data</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+    <span class="nx">console</span><span class="p">.</span><span class="nf">log</span><span class="p">(</span><span class="dl">'</span><span class="s1">stderr: </span><span class="dl">'</span> <span class="o">+</span> <span class="nx">data</span><span class="p">);</span>
+    <span class="nf">reject</span><span class="p">();</span>  <span class="c1">// no error passed — caller gets undefined</span>
+<span class="p">});</span>
+</code></pre></div></div>
+
+<p>The caller does <code class="language-plaintext highlighter-rouge">error.toString()</code> on <code class="language-plaintext highlighter-rouge">undefined</code> — crash. <strong>Fix:</strong> <code class="language-plaintext highlighter-rouge">reject(new Error(data.toString()))</code>.</p>
+
+<h4 id="5-runbundleinstall-not-async-aware">5. runBundleInstall not async-aware</h4>
+
+<p><strong>File:</strong> <code class="language-plaintext highlighter-rouge">src/extension.ts</code> lines 175-188</p>
+
+<div class="language-typescript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">function</span> <span class="nf">runBundleInstall</span><span class="p">(</span><span class="nx">currWorkspace</span><span class="p">:</span> <span class="nx">WorkspaceFolder</span><span class="p">)</span> <span class="p">{</span>
+    <span class="nx">runButton</span><span class="p">?.</span><span class="nf">hide</span><span class="p">();</span>
+    <span class="nx">commands</span><span class="p">.</span><span class="nf">executeCommand</span><span class="p">(</span><span class="dl">'</span><span class="s1">setContext</span><span class="dl">'</span><span class="p">,</span> <span class="dl">'</span><span class="s1">isBuilding</span><span class="dl">'</span><span class="p">,</span> <span class="kc">true</span><span class="p">);</span>
+    <span class="kd">const</span> <span class="nx">install</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Install</span><span class="p">();</span>
+    <span class="nx">install</span><span class="p">.</span><span class="nc">Install</span><span class="p">(</span><span class="nx">currWorkspace</span><span class="p">.</span><span class="nx">uri</span><span class="p">.</span><span class="nx">fsPath</span><span class="p">,</span> <span class="nx">outputChannel</span><span class="p">).</span><span class="nf">then</span><span class="p">(</span><span class="cm">/* ... */</span><span class="p">);</span>
+    <span class="nx">runButton</span><span class="p">?.</span><span class="nf">show</span><span class="p">();</span>  <span class="c1">// runs immediately, not after install completes</span>
+    <span class="nx">commands</span><span class="p">.</span><span class="nf">executeCommand</span><span class="p">(</span><span class="dl">'</span><span class="s1">setContext</span><span class="dl">'</span><span class="p">,</span> <span class="dl">'</span><span class="s1">isBuilding</span><span class="dl">'</span><span class="p">,</span> <span class="kc">false</span><span class="p">);</span>  <span class="c1">// same</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>The button state flickers because cleanup runs before the async operation completes. <strong>Fix:</strong> Move cleanup into <code class="language-plaintext highlighter-rouge">.finally()</code>.</p>
+
+<h4 id="6-deactivate-has-no-error-handling">6. deactivate() has no error handling</h4>
+
+<p><strong>File:</strong> <code class="language-plaintext highlighter-rouge">src/extension.ts</code> line 290</p>
+
+<div class="language-typescript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">export</span> <span class="kd">function</span> <span class="nf">deactivate</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kd">const</span> <span class="nx">config</span> <span class="o">=</span> <span class="nx">Config</span><span class="p">.</span><span class="nf">get</span><span class="p">();</span>  <span class="c1">// may fail during teardown</span>
+    <span class="k">if </span><span class="p">(</span><span class="nx">config</span><span class="p">.</span><span class="nx">stopServerOnExit</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">commands</span><span class="p">.</span><span class="nf">executeCommand</span><span class="p">(</span><span class="dl">'</span><span class="s1">jekyll-run.Stop</span><span class="dl">'</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>During VS Code shutdown, the workspace may already be torn down. <strong>Fix:</strong> Wrap in try-catch.</p>
+
+<h3 id="medium-priority--robustness">Medium Priority — Robustness</h3>
+
+<h4 id="7-exec-cmdts-swallows-all-errors">7. exec-cmd.ts swallows all errors</h4>
+
+<p><strong>File:</strong> <code class="language-plaintext highlighter-rouge">src/utils/exec-cmd.ts</code> line 6</p>
+
+<p>Every command failure returns the string <code class="language-plaintext highlighter-rouge">'error'</code> with no context. Callers can’t distinguish “command not found” from “permission denied” from “timeout”.</p>
+
+<p><strong>Fix:</strong> Return the actual error message: <code class="language-plaintext highlighter-rouge">resolve('error: ' + err.message)</code> or use a structured result.</p>
+
+<h4 id="8-get-numbers-in-stringts-splits-on-single-space">8. get-numbers-in-string.ts splits on single space</h4>
+
+<p><strong>File:</strong> <code class="language-plaintext highlighter-rouge">src/utils/get-numbers-in-string.ts</code> line 3</p>
+
+<p>Same pattern as the lsof bug. Used by <code class="language-plaintext highlighter-rouge">kill-process-children.ts</code> to parse <code class="language-plaintext highlighter-rouge">ps</code> output, which also uses variable-width columns.</p>
+
+<p><strong>Fix:</strong> <code class="language-plaintext highlighter-rouge">.split(/\s+/)</code> instead of <code class="language-plaintext highlighter-rouge">.split(' ')</code>.</p>
+
+<h4 id="9-kill-process-childrents-doesnt-await-the-kill">9. kill-process-children.ts doesn’t await the kill</h4>
+
+<p><strong>File:</strong> <code class="language-plaintext highlighter-rouge">src/utils/kill-process-children.ts</code> line 22</p>
+
+<div class="language-typescript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">var</span> <span class="nx">strPidToBeKilled</span> <span class="o">=</span> <span class="nx">pidToBeKilled</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="dl">'</span><span class="s1"> </span><span class="dl">'</span><span class="p">);</span>
+<span class="nf">executeCMD</span><span class="p">(</span><span class="dl">'</span><span class="s1">kill -9 </span><span class="dl">'</span> <span class="o">+</span> <span class="nx">strPidToBeKilled</span><span class="p">);</span>  <span class="c1">// no await</span>
+</code></pre></div></div>
+
+<p>The function returns before the kill completes. The caller’s <code class="language-plaintext highlighter-rouge">.finally()</code> may run before processes are dead.</p>
+
+<p><strong>Fix:</strong> <code class="language-plaintext highlighter-rouge">await executeCMD(...)</code>.</p>
+
+<h4 id="10-dead-code-vs-code--131-version-check">10. Dead code: VS Code &lt; 1.31 version check</h4>
+
+<p><strong>File:</strong> <code class="language-plaintext highlighter-rouge">src/utils/open-in-browser.ts</code> line 4</p>
+
+<div class="language-typescript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">if </span><span class="p">(</span><span class="nx">compareVersions</span><span class="p">.</span><span class="nf">compare</span><span class="p">(</span><span class="nx">version</span><span class="p">,</span> <span class="dl">'</span><span class="s1">1.31</span><span class="dl">'</span><span class="p">,</span> <span class="dl">'</span><span class="s1">&lt;</span><span class="dl">'</span><span class="p">))</span> <span class="p">{</span>
+    <span class="nx">commands</span><span class="p">.</span><span class="nf">executeCommand</span><span class="p">(</span><span class="dl">'</span><span class="s1">vscode.open</span><span class="dl">'</span><span class="p">,</span> <span class="nx">Uri</span><span class="p">.</span><span class="nf">parse</span><span class="p">(</span><span class="nx">url</span><span class="p">));</span>
+<span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+    <span class="nx">env</span><span class="p">.</span><span class="nf">openExternal</span><span class="p">(</span><span class="nx">Uri</span><span class="p">.</span><span class="nf">parse</span><span class="p">(</span><span class="nx">url</span><span class="p">));</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>VS Code 1.31 was released in 2019. The extension requires &gt;= 1.18. Any VS Code that can run this extension is past 1.31. The <code class="language-plaintext highlighter-rouge">compare-versions</code> dependency exists solely for this dead check.</p>
+
+<p><strong>Fix:</strong> Remove the check and the dependency. Just use <code class="language-plaintext highlighter-rouge">env.openExternal()</code>.</p>
+
+<h4 id="11-pid-on-portts-undefined-array-access">11. pid-on-port.ts undefined array access</h4>
+
+<p><strong>File:</strong> <code class="language-plaintext highlighter-rouge">src/utils/pid-on-port.ts</code> line 8</p>
+
+<div class="language-typescript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nf">resolve</span><span class="p">(</span><span class="nf">getNumbersInString</span><span class="p">(</span><span class="nx">output</span><span class="p">)[</span><span class="mi">0</span><span class="p">]);</span>  <span class="c1">// can be undefined</span>
+</code></pre></div></div>
+
+<p>If <code class="language-plaintext highlighter-rouge">netstat</code> returns output but no numbers are found, <code class="language-plaintext highlighter-rouge">[0]</code> is <code class="language-plaintext highlighter-rouge">undefined</code>.</p>
+
+<p><strong>Fix:</strong> <code class="language-plaintext highlighter-rouge">resolve(getNumbersInString(output)[0] || 0)</code>.</p>
+
+<h3 id="low-priority--code-quality">Low Priority — Code Quality</h3>
+
+<h4 id="12-stopserveronexit-default-is-wrong-type">12. stopServerOnExit default is wrong type</h4>
+
+<p><strong>File:</strong> <code class="language-plaintext highlighter-rouge">package.json</code></p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nl">"jekyll-run.stopServerOnExit"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"boolean"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"default"</span><span class="p">:</span><span class="w"> </span><span class="s2">"false"</span><span class="w">  </span><span class="err">//</span><span class="w"> </span><span class="err">string</span><span class="p">,</span><span class="w"> </span><span class="err">not</span><span class="w"> </span><span class="err">boolean!</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>The string <code class="language-plaintext highlighter-rouge">"false"</code> is truthy in JavaScript. The server <strong>always</strong> stops on exit regardless of the user’s setting. <strong>Fix:</strong> <code class="language-plaintext highlighter-rouge">"default": false</code>.</p>
+
+<h4 id="13-inline-require">13. Inline require</h4>
+
+<p><strong>File:</strong> <code class="language-plaintext highlighter-rouge">src/extension.ts</code> line 62</p>
+
+<div class="language-typescript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">var</span> <span class="nx">read</span> <span class="o">=</span> <span class="nf">require</span><span class="p">(</span><span class="dl">'</span><span class="s1">read-yaml</span><span class="dl">'</span><span class="p">);</span>
+</code></pre></div></div>
+
+<p>Should be a top-level import for consistency and tree-shaking.</p>
+
+<h4 id="14-duplicate-error-handlers">14. Duplicate error handlers</h4>
+
+<p><strong>File:</strong> <code class="language-plaintext highlighter-rouge">src/extension.ts</code></p>
+
+<p>The <code class="language-plaintext highlighter-rouge">.then(rejection)</code> and <code class="language-plaintext highlighter-rouge">.catch()</code> handlers in the Run and Restart commands are identical copy-paste blocks (~15 lines each, repeated 4 times). <strong>Fix:</strong> Extract to a shared function.</p>
+
+<h4 id="15-commented-out-code">15. Commented-out code</h4>
+
+<p><strong>Files:</strong> <code class="language-plaintext highlighter-rouge">src/utils/process-on-port.ts</code>, <code class="language-plaintext highlighter-rouge">src/utils/open-in-browser.ts</code></p>
+
+<p>Dead commented-out code from previous implementations. Should be removed — it’s in git history if needed.</p>
+
+<h2 id="summary">Summary</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Severity</th>
+      <th>Fixed in v1.7.1</th>
+      <th>Remaining</th>
+      <th>Total</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Critical (crashes)</td>
+      <td>3</td>
+      <td>6</td>
+      <td>9</td>
+    </tr>
+    <tr>
+      <td>Medium (robustness)</td>
+      <td>0</td>
+      <td>5</td>
+      <td>5</td>
+    </tr>
+    <tr>
+      <td>Low (code quality)</td>
+      <td>0</td>
+      <td>4</td>
+      <td>4</td>
+    </tr>
+    <tr>
+      <td><strong>Total</strong></td>
+      <td><strong>3</strong></td>
+      <td><strong>15</strong></td>
+      <td><strong>18</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The <code class="language-plaintext highlighter-rouge">stopServerOnExit</code> bug (#12) is particularly sneaky — it’s been silently broken since the extension was first published. Every user who set it to <code class="language-plaintext highlighter-rouge">false</code> has been ignored.</p>
+
+<h2 id="related-posts">Related Posts</h2>
+
+<ul>
+  <li><a href="/jekyll-run-vscode-plugin-local-development/">Jekyll Run Plugin: Local Development Settings That Actually Work</a> — Configuration guide</li>
+  <li><a href="/jekyll-run-plugin-multiroot-workspace-bug/">Jekyll Run Plugin: Fixing the Multi-Root Workspace Crash</a> — macOS debugging story</li>
+  <li><a href="/forking-jekyll-run-to-run-jekyll/">Forking Jekyll Run: From Abandoned Plugin to Run Jekyll</a> — CI/CD and publishing</li>
+  <li><a href="/vscode-extension-testing-jekyll-run/">Testing a VS Code Extension</a> — Test harness and CI</li>
+</ul>
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://github.com/mcgarrah/jekyll-run">Run Jekyll Fork</a> — Maintained fork</li>
+  <li><a href="https://github.com/mcgarrah/jekyll-run/releases/tag/v1.7.1">v1.7.1 Release</a> — Bug fix release with VSIX download</li>
+  <li><a href="https://github.com/Kanna727/jekyll-run">Jekyll Run Source Code</a> — Original repository</li>
+  <li><a href="https://code.visualstudio.com/api/references/vscode-api#workspace.getConfiguration">VS Code getConfiguration API</a> — API documentation</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/jekyll/">jekyll</a>, 
+        
+          <a href="/tags/vscode/">vscode</a>, 
+        
+          <a href="/tags/vscode-extension/">vscode-extension</a>, 
+        
+          <a href="/tags/typescript/">typescript</a>, 
+        
+          <a href="/tags/bug-fix/">bug-fix</a>, 
+        
+          <a href="/tags/code-review/">code-review</a>, 
+        
+          <a href="/tags/security/">security</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/web-development/">web-development</a>, 
+        
+          <a href="/categories/technical/">technical</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

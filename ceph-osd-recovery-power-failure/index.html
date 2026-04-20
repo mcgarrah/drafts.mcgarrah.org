@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Ceph OSD Recovery After Power Failure: SAN Switch Was Dead the Whole Time | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Ceph OSD Recovery After Power Failure: SAN Switch Was Dead the Whole Time" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="Recovering a Proxmox Ceph cluster after power failure. Covers OSD failure cascades, ceph.conf network misconfiguration (host IP vs network CIDR), dead SAN switch diagnosis via NO-CARRIER, staged flag removal, and heartbeat timeout tuning for homelab clusters." />
+<meta property="og:description" content="Recovering a Proxmox Ceph cluster after power failure. Covers OSD failure cascades, ceph.conf network misconfiguration (host IP vs network CIDR), dead SAN switch diagnosis via NO-CARRIER, staged flag removal, and heartbeat timeout tuning for homelab clusters." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/ceph-osd-recovery-power-failure/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/ceph-osd-recovery-power-failure/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-04-14T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Ceph OSD Recovery After Power Failure: SAN Switch Was Dead the Whole Time" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-04-14T00:00:00+00:00","datePublished":"2026-04-14T00:00:00+00:00","description":"Recovering a Proxmox Ceph cluster after power failure. Covers OSD failure cascades, ceph.conf network misconfiguration (host IP vs network CIDR), dead SAN switch diagnosis via NO-CARRIER, staged flag removal, and heartbeat timeout tuning for homelab clusters.","headline":"Ceph OSD Recovery After Power Failure: SAN Switch Was Dead the Whole Time","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/ceph-osd-recovery-power-failure/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/ceph-osd-recovery-power-failure/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/ceph-osd-recovery-power-failure/">Ceph OSD Recovery After Power Failure: SAN Switch Was Dead the Whole Time</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-04-14T00:00:00+00:00">April 14, 2026</time><span class="reading-time">11 min read</span></header>
+
+  <p>Multiple hard power hits at my house took down the entire AlteredCarbon Proxmox cluster. My UPS wasn’t configured for graceful shutdowns — entirely my fault. Like backups, power protection is something you relearn when you have an event.</p>
+
+<p>What followed was a multi-day debugging session that peeled back layer after layer of problems: OSD failures, a configuration error that had been silently lurking, heartbeat cascades that crashed OSDs faster than I could restart them, and ultimately a dead SAN switch that was the root cause of everything.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="the-initial-damage">The Initial Damage</h2>
+
+<p>After the hard reboot, most of the cluster came back. But three OSDs refused to start — osd.5 and osd.8 on kovacs, and osd.6 on harlan.</p>
+
+<p>My first move was to set all the Ceph maintenance flags to prevent the cluster from trying to heal itself while unstable:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph osd <span class="nb">set </span>noup,nodown,noout,noin,nobackfill,norebalance,norecover,noscrub,nodeep-scrub
+</code></pre></div></div>
+
+<p>This is the Ceph equivalent of “stop everything and let me think.” With 12 of 15 OSDs up and 3x replication, the data was safe but degraded.</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@kovacs:~#</span><span class="w"> </span>ceph osd tree
+<span class="go">ID   CLASS  WEIGHT    TYPE NAME        STATUS  REWEIGHT  PRI-AFF
+ -1         68.22578  root default
+ -3         13.64516      host harlan
+  0    hdd   4.54839          osd.0        up   1.00000  1.00000
+  3    hdd   4.54839          osd.3        up   1.00000  1.00000
+  6    hdd   4.54839          osd.6      down   1.00000  1.00000
+ -7         13.64516      host kovacs
+  2    hdd   4.54839          osd.2        up   1.00000  1.00000
+  5    hdd   4.54839          osd.5      down   1.00000  1.00000
+  8    hdd   4.54839          osd.8      down   1.00000  1.00000
+</span></code></pre></div></div>
+
+<h2 id="first-recovery-attempt">First Recovery Attempt</h2>
+
+<p>On harlan, <code class="language-plaintext highlighter-rouge">ceph-volume lvm activate --all</code> brought osd.6 back. The drive activated cleanly, but this was a Seagate BUP Portable that had already been through a hard power cut — a warning sign I should have taken more seriously. It would <a href="/zfs-ceph-overlapping-failures/">fail completely four months later</a>. But for now, it was working. Kovacs was a different story. The <code class="language-plaintext highlighter-rouge">lsblk</code> output told the story — osd.5 and osd.8’s backing USB drives weren’t even visible. The drives had disconnected during the power event and didn’t re-enumerate on boot.</p>
+
+<p>After physically reseating the USB cables and rebooting kovacs, only one of the two drives came back. osd.5 and osd.8 were permanently gone — the USB-to-SATA bridges in those Seagate enclosures had died.</p>
+
+<p>I removed the dead OSDs from the cluster:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph osd out osd.5 osd.8
+ceph osd down osd.5 osd.8
+ceph osd crush <span class="nb">rm </span>osd.5
+ceph osd crush <span class="nb">rm </span>osd.8
+ceph auth del osd.5
+ceph auth del osd.8
+ceph osd <span class="nb">rm </span>osd.5 osd.8
+</code></pre></div></div>
+
+<p>Down to 13 OSDs across 5 hosts. Still functional with 3x replication, but I needed to start removing the maintenance flags to let Ceph heal.</p>
+
+<h2 id="the-cluster-regression">The Cluster Regression</h2>
+
+<p>This is where things went sideways. I started removing flags in stages — <code class="language-plaintext highlighter-rouge">noin</code> first, then <code class="language-plaintext highlighter-rouge">noup</code> and <code class="language-plaintext highlighter-rouge">nodown</code>. When I got to removing <code class="language-plaintext highlighter-rouge">noout</code> and <code class="language-plaintext highlighter-rouge">norecover</code>, the cluster collapsed. OSDs started reporting each other as failed in a cascade:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="go">osd.1 reported failed by osd.13
+osd.2 reported failed by osd.13
+osd.3 reported failed by osd.13
+osd.1 reported failed by osd.6
+osd.2 reported failed by osd.9
+</span></code></pre></div></div>
+
+<p>Within minutes, I went from 13 OSDs up to <strong>4</strong>. Only osd.1, osd.4, osd.7 (all on poe) and osd.10 (quell) survived. Three entire hosts — harlan, edgar, and kovacs — had all their OSDs down.</p>
+
+<p>I immediately re-enabled the safety flags and started investigating.</p>
+
+<h2 id="the-configuration-error">The Configuration Error</h2>
+
+<p>Digging into the OSD logs revealed heartbeat failures everywhere. OSDs couldn’t communicate with each other reliably. I checked the Ceph configuration:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@harlan:~#</span><span class="w"> </span><span class="nb">cat</span> /etc/pve/ceph.conf | <span class="nb">grep </span>network
+<span class="go">cluster_network = 10.10.10.11/23
+public_network = 192.168.86.11/23
+</span></code></pre></div></div>
+
+<p><strong>Those are host IPs, not network addresses.</strong> The correct configuration should be:</p>
+
+<div class="language-ini highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="py">cluster_network</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">10.10.10.0/23</span>
+<span class="py">public_network</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s">192.168.86.0/23</span>
+</code></pre></div></div>
+
+<p>This had been wrong since the cluster was set up, but it worked by accident — Ceph is somewhat forgiving about network definitions as long as the host IP falls within the specified CIDR range. Under normal conditions, the OSDs could still find each other. But under the stress of a recovery with 13 OSDs trying to peer simultaneously, the slightly wrong network definitions contributed to the instability.</p>
+
+<p>I fixed the configuration in <code class="language-plaintext highlighter-rouge">/etc/pve/ceph.conf</code> (which is shared across all nodes via pmxcfs) and restarted Ceph services cluster-wide using a custom cssh script:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>./cssh <span class="s2">"systemctl restart ceph.target"</span>
+</code></pre></div></div>
+
+<p>This brought us back to 13 OSDs. But two on poe (osd.1 and osd.4) kept going down. The heartbeat cascade was still happening.</p>
+
+<h2 id="heartbeat-tuning">Heartbeat Tuning</h2>
+
+<p>The default Ceph heartbeat timeouts are aggressive for a homelab running on 2011-era Dell OptiPlex 990s with USB storage. During recovery, the I/O load from backfilling was causing OSDs to miss heartbeat deadlines, which triggered false failure reports, which caused more OSDs to go down, which increased load on the survivors.</p>
+
+<p>I increased the timeouts significantly:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph config <span class="nb">set </span>osd osd_heartbeat_grace 120
+ceph config <span class="nb">set </span>osd osd_heartbeat_interval 30
+</code></pre></div></div>
+
+<p>And throttled recovery to reduce I/O pressure:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph config <span class="nb">set </span>osd osd_recovery_max_active 1
+ceph config <span class="nb">set </span>osd osd_max_backfills 1
+</code></pre></div></div>
+
+<p>I also temporarily disabled CephFS to remove the MDS metadata load:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph fs <span class="nb">set </span>cephfs down <span class="nb">true</span>
+./cssh <span class="s2">"systemctl stop ceph-mds.target"</span>
+</code></pre></div></div>
+
+<p>Then restarted OSDs sequentially by host with 60-second delays between each, starting with the most stable nodes (quell, then edgar, then harlan, then poe, then kovacs).</p>
+
+<p>This helped — but OSDs were still intermittently dropping. Something else was wrong.</p>
+
+<h2 id="root-cause-the-san-switch-was-dead">Root Cause: The SAN Switch Was Dead</h2>
+
+<p>I finally checked the SAN network directly:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@kovacs:~#</span><span class="w"> </span>ping <span class="nt">-c</span> 3 10.10.10.11
+<span class="go">PING 10.10.10.11 (10.10.10.11) 56(84) bytes of data.
+From 10.10.10.12 icmp_seq=1 Destination Host Unreachable
+From 10.10.10.12 icmp_seq=2 Destination Host Unreachable
+</span></code></pre></div></div>
+
+<p>The entire 10.10.10.0/23 cluster network was unreachable. Checking the interfaces on every node:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@kovacs:~#</span><span class="w"> </span>./cssh <span class="s2">"hostname &amp;&amp; ip route | grep 10.10.10"</span>
+<span class="go">poe       10.10.10.0/23 dev vmbr1 proto kernel scope link src 10.10.10.13 linkdown
+kovacs    10.10.10.0/23 dev vmbr1 proto kernel scope link src 10.10.10.12 linkdown
+harlan    10.10.10.0/23 dev vmbr1 proto kernel scope link src 10.10.10.11 linkdown
+quell     10.10.10.0/23 dev vmbr1 proto kernel scope link src 10.10.10.16 linkdown
+edgar     10.10.10.0/23 dev vmbr1 proto kernel scope link src 10.10.10.14 linkdown
+</span></code></pre></div></div>
+
+<p><strong>Every single node showed <code class="language-plaintext highlighter-rouge">linkdown</code> on vmbr1.</strong> The physical interfaces confirmed it:</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">root@harlan:~#</span><span class="w"> </span>ip <span class="nb">link </span>show enp6s4
+<span class="gp">2: enp6s4: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt;</span><span class="w"> </span>mtu 1500 qdisc pfifo_fast
+<span class="go">   master vmbr1 state DOWN
+</span></code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">NO-CARRIER</code> means no physical link — the cable is unplugged, the switch port is dead, or the switch itself is dead. Since <strong>all five nodes</strong> showed NO-CARRIER simultaneously, the Netgear 8-port consumer switch that served as the SAN backbone had died during the power outage.</p>
+
+<p>Each node had a different physical interface for the SAN bridge, which I had to map out:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Node</th>
+      <th>SAN Interface</th>
+      <th>Bridge</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>harlan</td>
+      <td>enp6s4</td>
+      <td>vmbr1</td>
+    </tr>
+    <tr>
+      <td>kovacs</td>
+      <td>enp6s4</td>
+      <td>vmbr1</td>
+    </tr>
+    <tr>
+      <td>poe</td>
+      <td>enp6s4</td>
+      <td>vmbr1</td>
+    </tr>
+    <tr>
+      <td>edgar</td>
+      <td>enp5s2f0</td>
+      <td>vmbr1</td>
+    </tr>
+    <tr>
+      <td>quell</td>
+      <td>enp5s2f1</td>
+      <td>vmbr1</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>The Netgear switch was the root cause of everything.</strong> Without the cluster network, Ceph was trying to do all OSD replication over the public network (192.168.86.0/23), which shares bandwidth with management traffic, VM traffic, and CephFS client I/O. Under recovery load, this saturated the single 1GbE links and caused the heartbeat cascades.</p>
+
+<h2 id="the-fix">The Fix</h2>
+
+<p>I power-cycled the Netgear switch. After it came back, the links came up on all nodes:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Bring up physical interfaces</span>
+ssh 192.168.86.12 <span class="s2">"ip link set enp6s4 up"</span>      <span class="c"># kovacs</span>
+ssh 192.168.86.14 <span class="s2">"ip link set enp5s2f0 up"</span>    <span class="c"># edgar</span>
+ssh 192.168.86.11 <span class="s2">"ip link set enp6s4 up"</span>      <span class="c"># harlan</span>
+ssh 192.168.86.13 <span class="s2">"ip link set enp6s4 up"</span>      <span class="c"># poe</span>
+ssh 192.168.86.16 <span class="s2">"ip link set enp5s2f1 up"</span>    <span class="c"># quell</span>
+
+<span class="c"># Bring up bridges</span>
+./cssh <span class="s2">"ip link set vmbr1 up"</span>
+
+<span class="c"># Verify SAN connectivity</span>
+./cssh <span class="s2">"ping -c 3 10.10.10.11"</span>
+</code></pre></div></div>
+
+<p>With the SAN network restored, I restarted Ceph services and re-enabled CephFS:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>./cssh <span class="s2">"systemctl restart ceph.target"</span>
+ceph fs <span class="nb">set </span>cephfs down <span class="nb">false</span>
+./cssh <span class="s2">"systemctl enable ceph-mds.target"</span>
+./cssh <span class="s2">"systemctl start ceph-mds.target"</span>
+</code></pre></div></div>
+
+<h2 id="staged-flag-removal">Staged Flag Removal</h2>
+
+<p>With the SAN network back and all 13 OSDs stable, I removed the maintenance flags in stages. This is the procedure I’d recommend for any Ceph cluster recovering from a major incident:</p>
+
+<h3 id="stage-1-basic-operations-low-risk">Stage 1: Basic Operations (Low Risk)</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph osd <span class="nb">unset </span>noin
+<span class="c"># Wait 5-10 minutes, verify stability</span>
+</code></pre></div></div>
+
+<h3 id="stage-2-osd-state-changes-medium-risk">Stage 2: OSD State Changes (Medium Risk)</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph osd <span class="nb">unset </span>noup
+ceph osd <span class="nb">unset </span>nodown
+<span class="c"># Wait 10-15 minutes</span>
+</code></pre></div></div>
+
+<h3 id="stage-3-data-movement-high-risk">Stage 3: Data Movement (High Risk)</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph osd <span class="nb">unset </span>noout
+<span class="c"># Wait 15-20 minutes, watch for OSD crashes</span>
+</code></pre></div></div>
+
+<h3 id="stage-4-recovery-operations-highest-risk">Stage 4: Recovery Operations (Highest Risk)</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph osd <span class="nb">unset </span>norecover
+<span class="c"># Wait 20-30 minutes</span>
+
+ceph osd <span class="nb">unset </span>nobackfill
+<span class="c"># Wait 20-30 minutes</span>
+
+ceph osd <span class="nb">unset </span>norebalance
+<span class="c"># Wait 20-30 minutes</span>
+</code></pre></div></div>
+
+<h3 id="stage-5-maintenance-operations">Stage 5: Maintenance Operations</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph osd <span class="nb">unset </span>noscrub
+ceph osd <span class="nb">unset </span>nodeep-scrub
+</code></pre></div></div>
+
+<h3 id="emergency-rollback">Emergency Rollback</h3>
+
+<p>If OSDs start cascading at any stage:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph osd <span class="nb">set </span>noout
+ceph osd <span class="nb">set </span>norecover
+ceph osd <span class="nb">set </span>nobackfill
+ceph osd <span class="nb">set </span>norebalance
+</code></pre></div></div>
+
+<p>After completing all stages, I reset the heartbeat timeouts to defaults:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph config <span class="nb">rm </span>osd osd_heartbeat_grace
+ceph config <span class="nb">rm </span>osd osd_heartbeat_interval
+</code></pre></div></div>
+
+<p>The cluster stabilized at 13 OSDs with the two dead kovacs drives removed. Recovery completed over the next several hours as Ceph re-replicated data across the remaining OSDs.</p>
+
+<h2 id="aftermath">Aftermath</h2>
+
+<p>The <code class="language-plaintext highlighter-rouge">noout,norebalance</code> flags I set during this incident stayed set for weeks afterward — I left them as a safety net while monitoring stability. This turned out to be a mistake: when <a href="/zfs-ceph-overlapping-failures/">another OSD failure hit harlan months later</a>, those forgotten flags masked the problem and prevented Ceph from self-healing.</p>
+
+<p>The Netgear switch that caused this entire incident is an unmanaged consumer switch that hangs every 4-6 months and requires a power cycle. As an immediate fix, I replaced the intermittently working 5-port Netgear (along with a label on it about failures) with a more reliable 8-port Netgear I had on hand — this also opened up SAN ports on all Proxmox nodes instead of just the original five. The long-term fix is an HP ProCurve 2810 (managed, LACP-capable) that’s ready to deploy as part of the <a href="/proxmox-ceph-guide/">pre-Kubernetes infrastructure work</a>.</p>
+
+<h2 id="lessons-learned">Lessons Learned</h2>
+
+<ol>
+  <li>
+    <p><strong>Check the physical network first.</strong> I spent hours debugging Ceph configuration and heartbeat tuning when the actual problem was a dead switch. A simple <code class="language-plaintext highlighter-rouge">ip route | grep linkdown</code> would have found it immediately.</p>
+  </li>
+  <li>
+    <p><strong><code class="language-plaintext highlighter-rouge">NO-CARRIER</code> on all nodes = switch is dead.</strong> If every node shows NO-CARRIER on the same bridge, the common element is the switch, not the individual NICs or cables.</p>
+  </li>
+  <li>
+    <p><strong>Ceph.conf network entries should be network addresses, not host IPs.</strong> Use <code class="language-plaintext highlighter-rouge">192.168.86.0/23</code> not <code class="language-plaintext highlighter-rouge">192.168.86.11/23</code>. Ceph tolerates the wrong format under normal conditions but it contributes to instability under load.</p>
+  </li>
+  <li>
+    <p><strong>Staged flag removal prevents cascades.</strong> Removing all maintenance flags at once can overwhelm a recovering cluster. The staged approach with monitoring between each step is essential.</p>
+  </li>
+  <li>
+    <p><strong>Increase heartbeat timeouts on homelab hardware.</strong> The defaults assume enterprise SSDs and 10GbE networking. USB HDDs on 1GbE with a consumer switch need more generous timeouts during recovery.</p>
+  </li>
+  <li>
+    <p><strong>Disable CephFS during OSD recovery.</strong> MDS metadata operations add load that can tip an unstable cluster over the edge. Bring it back after OSDs are stable.</p>
+  </li>
+  <li>
+    <p><strong>Don’t forget to remove maintenance flags.</strong> Set a calendar reminder. Forgotten <code class="language-plaintext highlighter-rouge">noout,norebalance</code> flags prevent Ceph from self-healing when the next failure hits.</p>
+  </li>
+  <li>
+    <p><strong>Replace consumer network hardware.</strong> Unmanaged switches with no monitoring, no LACP, and a tendency to hang are a liability for storage networks. This was the most expensive lesson — not in dollars, but in debugging hours.</p>
+  </li>
+</ol>
+
+<h2 id="related-posts">Related Posts</h2>
+
+<ul>
+  <li><a href="/zfs-ceph-overlapping-failures/">When ZFS and Ceph Problems Collide</a> — The sequel: forgotten maintenance flags from this incident masked a new OSD failure months later</li>
+  <li><a href="/proxmox-zfs-boot-mirror-smart-analysis/">Monitoring ZFS Boot Mirror Health in Proxmox 8 Clusters</a> — SMART monitoring across the cluster</li>
+  <li><a href="/proxmox-ceph-nearfull/">Managing Ceph Nearfull Warnings in Proxmox Homelab</a> — Capacity management when running degraded</li>
+  <li><a href="/proxmox-ceph-performance/">Optimizing Ceph Performance in Proxmox Homelab</a> — mClock tuning and USB 3.0 storage realities on the same hardware</li>
+  <li><a href="/usb-drive-smart/">Enabling SMART Monitoring on Seagate USB Drives</a> — Monitoring the exact USB drives that failed in this incident</li>
+  <li><a href="/lag-lacp-and-other-network-terms/">Aggregated Network Connections with LAG/LACP</a> — The LACP bonding planned for the ProCurve 2810 SAN switch replacement</li>
+  <li><a href="/proxmox-8-lessons-learned/">Proxmox 8 Lessons Learned</a> — Broader lessons from running this cluster</li>
+  <li><a href="/proxmox-ceph-guide/">Proxmox &amp; Ceph Homelab Guide</a> — All Proxmox and Ceph articles</li>
+</ul>
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://docs.ceph.com/en/reef/rados/troubleshooting/troubleshooting-osd/#stopping-w-out-rebalancing">Ceph OSD Maintenance Flags</a></li>
+  <li><a href="https://docs.ceph.com/en/reef/rados/configuration/network-config-ref/">Ceph Network Configuration</a></li>
+  <li><a href="https://docs.ceph.com/en/reef/rados/configuration/bluestore-config-ref/">Ceph BlueStore Configuration</a></li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/proxmox/">proxmox</a>, 
+        
+          <a href="/tags/ceph/">ceph</a>, 
+        
+          <a href="/tags/osd/">osd</a>, 
+        
+          <a href="/tags/debugging/">debugging</a>, 
+        
+          <a href="/tags/homelab/">homelab</a>, 
+        
+          <a href="/tags/storage/">storage</a>, 
+        
+          <a href="/tags/networking/">networking</a>, 
+        
+          <a href="/tags/bluestore/">bluestore</a>, 
+        
+          <a href="/tags/power-failure/">power-failure</a>, 
+        
+          <a href="/tags/dell-optiplex-990/">dell-optiplex-990</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/proxmox/">proxmox</a>, 
+        
+          <a href="/categories/ceph/">ceph</a>, 
+        
+          <a href="/categories/homelab/">homelab</a>, 
+        
+          <a href="/categories/networking/">networking</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

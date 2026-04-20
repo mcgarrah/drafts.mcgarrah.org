@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Ceph Cluster rebalance issue | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Ceph Cluster rebalance issue" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="This is rough draft that I’m just pushing out as it might be useful to someone not stay in my drafts folder forever… Good enough beats Perfect that never ships every time. I think I have mentioned my ProxMox/Ceph combo cluster in an earlier post. A quick summary is it consists of a five (5) node cluster for ProxMox HA and three of those nodes have Ceph with three (3) OSDs each for a total of nine (9) 5Tb OSDs. They are in a 3/2 ceph configuration with three copies of each piece of data allowing for running if two nodes are active. Those OSD / hard drives have been added in batches of three (3) with one added on each node as I could get drives cleaned and available. So I added them piece meal in a sets of three OSDs, then three more and finally the last batch of three. I’m also committing the sin of not using 10Gbps SAN networking for the Ceph cluster and using 1Gbps so performance is impacted. Adding them in pieces as I also loaded up the CephFS with media content is what is hurting me now. My first three OSDs that are spread across the three nodes are pretty full at 75-85% and as I added the next batches, the cluster has never fully caught up and rebalanced the initial contents. This impacts the results of my ‘ceph osd df tree’ results showing I have less space then I actually have available. Something that I’m navigating is Ceph will go into read-only mode when you approach the fill limits which is typically 95% of space available. It starts alerting like crazy at 85% filled with warning of dire things coming. Notice in my OSD status below that I have massive imbalances between the initial OSDs 0,1,2 versus 3,4,5 and 6,7,8." />
+<meta property="og:description" content="This is rough draft that I’m just pushing out as it might be useful to someone not stay in my drafts folder forever… Good enough beats Perfect that never ships every time. I think I have mentioned my ProxMox/Ceph combo cluster in an earlier post. A quick summary is it consists of a five (5) node cluster for ProxMox HA and three of those nodes have Ceph with three (3) OSDs each for a total of nine (9) 5Tb OSDs. They are in a 3/2 ceph configuration with three copies of each piece of data allowing for running if two nodes are active. Those OSD / hard drives have been added in batches of three (3) with one added on each node as I could get drives cleaned and available. So I added them piece meal in a sets of three OSDs, then three more and finally the last batch of three. I’m also committing the sin of not using 10Gbps SAN networking for the Ceph cluster and using 1Gbps so performance is impacted. Adding them in pieces as I also loaded up the CephFS with media content is what is hurting me now. My first three OSDs that are spread across the three nodes are pretty full at 75-85% and as I added the next batches, the cluster has never fully caught up and rebalanced the initial contents. This impacts the results of my ‘ceph osd df tree’ results showing I have less space then I actually have available. Something that I’m navigating is Ceph will go into read-only mode when you approach the fill limits which is typically 95% of space available. It starts alerting like crazy at 85% filled with warning of dire things coming. Notice in my OSD status below that I have massive imbalances between the initial OSDs 0,1,2 versus 3,4,5 and 6,7,8." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/ceph-rebalance/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/ceph-rebalance/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2024-03-04T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Ceph Cluster rebalance issue" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-04-05T00:00:00+00:00","datePublished":"2024-03-04T00:00:00+00:00","description":"This is rough draft that I’m just pushing out as it might be useful to someone not stay in my drafts folder forever… Good enough beats Perfect that never ships every time. I think I have mentioned my ProxMox/Ceph combo cluster in an earlier post. A quick summary is it consists of a five (5) node cluster for ProxMox HA and three of those nodes have Ceph with three (3) OSDs each for a total of nine (9) 5Tb OSDs. They are in a 3/2 ceph configuration with three copies of each piece of data allowing for running if two nodes are active. Those OSD / hard drives have been added in batches of three (3) with one added on each node as I could get drives cleaned and available. So I added them piece meal in a sets of three OSDs, then three more and finally the last batch of three. I’m also committing the sin of not using 10Gbps SAN networking for the Ceph cluster and using 1Gbps so performance is impacted. Adding them in pieces as I also loaded up the CephFS with media content is what is hurting me now. My first three OSDs that are spread across the three nodes are pretty full at 75-85% and as I added the next batches, the cluster has never fully caught up and rebalanced the initial contents. This impacts the results of my ‘ceph osd df tree’ results showing I have less space then I actually have available. Something that I’m navigating is Ceph will go into read-only mode when you approach the fill limits which is typically 95% of space available. It starts alerting like crazy at 85% filled with warning of dire things coming. Notice in my OSD status below that I have massive imbalances between the initial OSDs 0,1,2 versus 3,4,5 and 6,7,8.","headline":"Ceph Cluster rebalance issue","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/ceph-rebalance/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/ceph-rebalance/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/ceph-rebalance/">Ceph Cluster rebalance issue</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2024-03-04T00:00:00+00:00">March 04, 2024</time><span class="reading-time">5 min read</span></header>
+
+  <p>This is rough draft that I’m just pushing out as it might be useful to someone not stay in my drafts folder forever…  Good enough beats Perfect that never ships every time.</p>
+
+<p>I think I have mentioned my ProxMox/Ceph combo cluster in an earlier post. A quick summary is it consists of a five (5) node cluster for ProxMox HA and three of those nodes have Ceph with three (3) OSDs each for a total of nine (9) 5Tb OSDs. They are in a 3/2 ceph configuration with three copies of each piece of data allowing for running if two nodes are active. Those OSD / hard drives have been added in batches of three (3) with one added on each node as I could get drives cleaned and available. So I added them piece meal in a sets of three OSDs, then three more and finally the last batch of three. I’m also committing the sin of not using 10Gbps SAN networking for the Ceph cluster and using 1Gbps so performance is impacted.</p>
+
+<p>Adding them in pieces as I also loaded up the CephFS with media content is what is hurting me now. My first three OSDs that are spread across the three nodes are pretty full at 75-85% and as I added the next batches, the cluster has never fully caught up and rebalanced the initial contents. This impacts the results of my ‘ceph osd df tree’ results showing I have less space then I actually have available.</p>
+
+<p>Something that I’m navigating is Ceph will go into read-only mode when you approach the fill limits which is typically 95% of space available. It starts alerting like crazy at 85% filled with warning of dire things coming. Notice in my OSD status below that I have massive imbalances between the initial OSDs 0,1,2 versus 3,4,5 and 6,7,8.</p>
+
+<p><a href="/assets/images/ProxMox-Ceph-OSD-usage.png" target="_blank"><img src="/assets/images/ProxMox-Ceph-OSD-usage.png" alt="Ceph OSD Status" width="50%" height="50%" style="display:block; margin-left:auto; margin-right:auto" /></a></p>
+
+<!-- excerpt-end -->
+
+<p>ProxMox 8.1 with Ceph Reef by default has the Balancer feature enabled. It is also setup to protect the accessibility of the cluster contents against overuse from rebalancing and recovery activities. In my case, I want the cluster to be less responsive so I can get this rebalanced faster. Often rebalancing and recovery go hand-in-hand but my case only has rebalancing.</p>
+
+<p>How to get default values for Recovery Settings</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># ceph-conf --show-config | egrep "osd_recovery_max_active|osd_recovery_op_priority"</span>
+osd_recovery_max_active <span class="o">=</span> 0
+osd_recovery_max_active_hdd <span class="o">=</span> 3
+osd_recovery_max_active_ssd <span class="o">=</span> 10
+osd_recovery_op_priority <span class="o">=</span> 3
+</code></pre></div></div>
+
+<p>How to get default values for Backfill Settings</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># ceph-conf --show-config | egrep "osd_max_backfills"</span>
+osd_max_backfills <span class="o">=</span> 1
+</code></pre></div></div>
+
+<p>Moving those above values up too high can cause OSDs to become overburdened and they could just restart to protect the cluster so you should take it in steps when changing these to higher values.  Restart of an OSD from overburden activities may actually cause the recovery or rebalance to take longer so monitor for issues when making these changes.</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># ceph tell 'osd.*' injectargs --osd-max-backfills=3</span>
+osd.0: <span class="o">{}</span>
+osd.0: osd_max_backfills <span class="o">=</span> <span class="s1">'3'</span> 
+osd.1: <span class="o">{}</span>
+osd.1: osd_max_backfills <span class="o">=</span> <span class="s1">'3'</span> 
+osd.2: <span class="o">{}</span>
+osd.2: osd_max_backfills <span class="o">=</span> <span class="s1">'3'</span> 
+...
+</code></pre></div></div>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># ceph daemon osd.2 config get osd_max_backfills</span>
+<span class="o">{</span>
+    <span class="s2">"osd_max_backfills"</span>: <span class="s2">"3"</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>root@kovacs:~# ceph tell <span class="s1">'osd.*'</span> injectargs <span class="nt">--osd-max-backfills</span><span class="o">=</span>5
+osd.0: <span class="o">{}</span>
+osd.0: osd_max_backfills <span class="o">=</span> <span class="s1">'5'</span> 
+osd.1: <span class="o">{}</span>
+osd.1: osd_max_backfills <span class="o">=</span> <span class="s1">'5'</span> 
+osd.2: <span class="o">{}</span>
+osd.2: osd_max_backfills <span class="o">=</span> <span class="s1">'5'</span> 
+...
+</code></pre></div></div>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>root@kovacs:~# ceph tell <span class="s1">'osd.*'</span> injectargs <span class="nt">--osd-max-backfills</span><span class="o">=</span>7
+osd.0: <span class="o">{}</span>
+osd.0: osd_max_backfills <span class="o">=</span> <span class="s1">'7'</span> 
+osd.1: <span class="o">{}</span>
+osd.1: osd_max_backfills <span class="o">=</span> <span class="s1">'7'</span> 
+osd.2: <span class="o">{}</span>
+osd.2: osd_max_backfills <span class="o">=</span> <span class="s1">'7'</span> 
+...
+</code></pre></div></div>
+
+<p>Bumped up the Recovery Max for both HDD and SSD</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>root@kovacs:~# ceph tell <span class="s1">'osd.*'</span> injectargs <span class="nt">--osd-max-backfills</span><span class="o">=</span>7 <span class="nt">--osd_recovery_max_active</span><span class="o">=</span>10
+osd.0: <span class="o">{}</span>
+osd.0: osd_recovery_max_active <span class="o">=</span> <span class="s1">'10'</span> 
+osd.1: <span class="o">{}</span>
+osd.1: osd_recovery_max_active <span class="o">=</span> <span class="s1">'10'</span> 
+osd.2: <span class="o">{}</span>
+osd.2: osd_recovery_max_active <span class="o">=</span> <span class="s1">'10'</span> 
+...
+</code></pre></div></div>
+
+<p>I considered turning off the Ceph Balancer and manually setting an OSD remapping script. This is my setup for doing that operation but I ended up not using it. I may revisit this once my cluster is balanced to double check if it is as good as it can be.</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>root@harlan:~/rebalance# ceph balancer status
+<span class="o">{</span>
+    <span class="s2">"active"</span>: <span class="nb">true</span>,
+    <span class="s2">"last_optimize_duration"</span>: <span class="s2">"0:00:00.000192"</span>,
+    <span class="s2">"last_optimize_started"</span>: <span class="s2">"Mon Feb 12 16:27:16 2024"</span>,
+    <span class="s2">"mode"</span>: <span class="s2">"upmap"</span>,
+    <span class="s2">"no_optimization_needed"</span>: <span class="nb">false</span>,
+    <span class="s2">"optimize_result"</span>: <span class="s2">"Too many objects (0.184387 &gt; 0.050000) are misplaced; try again later"</span>,
+    <span class="s2">"plans"</span>: <span class="o">[]</span>
+<span class="o">}</span>
+root@harlan:~/rebalance# ceph balancer off
+<span class="o">[</span>did not execute above line]
+root@harlan:~/rebalance# ceph osd getmap <span class="nt">-o</span> om
+got osdmap epoch 11734
+root@harlan:~/rebalance# osdmaptool om <span class="nt">--upmap</span> ./upmap.sh <span class="nt">--upmap-pool</span> cephfs_data <span class="nt">--upmap-deviation</span> 1 <span class="nt">--upmap-max</span> 20
+osdmaptool: osdmap file <span class="s1">'om'</span>
+writing upmap <span class="nb">command </span>output to: ./upmap.sh
+checking <span class="k">for </span>upmap cleanups
+upmap, max-count 20, max deviation 1
+ limiting to pools cephfs_data <span class="o">([</span>2]<span class="o">)</span>
+pools cephfs_data 
+prepared 10/20 changes
+root@harlan:~/rebalance# bash ./upmap.sh
+<span class="o">[</span>did not execute above line]
+</code></pre></div></div>
+
+<p>When we are done I need to change back to the defaults in each OSD</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph tell <span class="s1">'osd.*'</span> injectargs <span class="nt">--osd-max-backfills</span><span class="o">=</span>1 <span class="nt">--osd_recovery_max_active</span><span class="o">=</span>0
+</code></pre></div></div>
+
+<p>Turn back on the Balancer (if I turn it off which I did not)</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>root@harlan:~/rebalance# ceph balancer on
+</code></pre></div></div>
+
+<p>Turn back on scrubbing and deep-scrubbing</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph osd <span class="nb">unset </span>noscrub
+ceph osd <span class="nb">unset </span>nodeep-scrub
+</code></pre></div></div>
+
+<p>This appears to have accelerated my recovery time and the above mess of commands and attempts may help someone someday.</p>
+
+<h2 id="references">References</h2>
+
+<p>Here is a reference of things I read or found that seemed to be useful.</p>
+
+<p><a href="https://docs.ceph.com/en/latest/rados/operations/monitoring-osd-pg/#back-filling">Ceph Back Filling</a></p>
+
+<h3 id="getting-config-values-from-osd">Getting config values from OSD</h3>
+
+<p>These can only happen on the node that has the OSD.</p>
+
+<p><a href="https://www.suse.com/support/kb/doc/?id=000019693">SUSE Linux Support</a></p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ceph daemon osd.&lt;insert_id&gt; config get osd_max_backfills
+</code></pre></div></div>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>root@kovacs:~# ceph daemon osd.2 config get osd_max_backfills
+<span class="o">{</span>
+    <span class="s2">"osd_max_backfills"</span>: <span class="s2">"5"</span>
+<span class="o">}</span>
+</code></pre></div></div>
+
+<h3 id="turned-off-scrubbing-and-deep-scrubbing-on-the-cluster">Turned off Scrubbing and Deep Scrubbing on the Cluster</h3>
+
+<p>You can disable deep and regular scrubbing but it will cost you later in catchup after the balancing is finished.</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>__noscrub,nodeep-scrub flag<span class="o">(</span>s<span class="o">)</span> set__
+</code></pre></div></div>
+
+<p>This might help with the utilization of the disk bandwidth and I did it out of desperation.</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># ceph osd set noscrub</span>
+<span class="c"># ceph osd set nodeep-scrub</span>
+</code></pre></div></div>
+
+<h3 id="well-worth-reading-and-referencing">Well worth reading and referencing</h3>
+
+<p>Copied from TheJJ… and worth a read for anybody digging into Ceph. My fork of TheJMM <a href="https://github.com/mcgarrah/ceph-cheatsheet">Ceph Cheatsheet</a> which you can also go to the original at <a href="https://github.com/TheJJ/ceph-cheatsheet">Ceph Cheatsheet</a>.</p>
+
+<p>This article <a href="https://sysdig.com/blog/monitor-ceph-top-5-metrics-watch/">How to monitor Ceph: the top 5 metrics to watch</a> was one of the better ones on figuring out what was happening in my ceph cluster.</p>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/ceph/">ceph</a>, 
+        
+          <a href="/tags/proxmox/">proxmox</a>, 
+        
+          <a href="/tags/storage/">storage</a>, 
+        
+          <a href="/tags/clustering/">clustering</a>, 
+        
+          <a href="/tags/rebalance/">rebalance</a>, 
+        
+          <a href="/tags/troubleshooting/">troubleshooting</a>, 
+        
+          <a href="/tags/homelab/">homelab</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/technical/">technical</a>, 
+        
+          <a href="/categories/homelab/">homelab</a>, 
+        
+          <a href="/categories/troubleshooting/">troubleshooting</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

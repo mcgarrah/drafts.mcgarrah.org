@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Adding Comments to a Static Site: Why I Chose Giscus for Jekyll | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Adding Comments to a Static Site: Why I Chose Giscus for Jekyll" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="How to add a comment system to a Jekyll blog on GitHub Pages using Giscus and GitHub Discussions. Covers the evaluation of Disqus, Isso, Utterances, GitHub Issues API, Staticman, and Giscus, with implementation details, GDPR considerations, and the advantages of keeping everything in the GitHub ecosystem." />
+<meta property="og:description" content="How to add a comment system to a Jekyll blog on GitHub Pages using Giscus and GitHub Discussions. Covers the evaluation of Disqus, Isso, Utterances, GitHub Issues API, Staticman, and Giscus, with implementation details, GDPR considerations, and the advantages of keeping everything in the GitHub ecosystem." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/jekyll-giscus-comments-implementation/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/jekyll-giscus-comments-implementation/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-05-06T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Adding Comments to a Static Site: Why I Chose Giscus for Jekyll" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-05-06T00:00:00+00:00","datePublished":"2026-05-06T00:00:00+00:00","description":"How to add a comment system to a Jekyll blog on GitHub Pages using Giscus and GitHub Discussions. Covers the evaluation of Disqus, Isso, Utterances, GitHub Issues API, Staticman, and Giscus, with implementation details, GDPR considerations, and the advantages of keeping everything in the GitHub ecosystem.","headline":"Adding Comments to a Static Site: Why I Chose Giscus for Jekyll","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/jekyll-giscus-comments-implementation/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/jekyll-giscus-comments-implementation/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/jekyll-giscus-comments-implementation/">Adding Comments to a Static Site: Why I Chose Giscus for Jekyll</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-05-06T00:00:00+00:00">May 06, 2026</time><span class="reading-time">12 min read</span></header>
+
+  <p>Jekyll is a static site generator. There’s no server, no database, no backend. When someone visits a page, they get pre-built HTML files served from a CDN. That’s the whole point — it’s fast, cheap, and secure.</p>
+
+<p>But comments need state. Someone writes a comment, it has to be stored somewhere, and the next visitor needs to see it. This is the fundamental tension of adding comments to a static site: you need a data store, but you chose a platform specifically because it doesn’t have one.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="the-problem">The Problem</h2>
+
+<p>I wanted comments on this blog for a simple reason: readers ask good questions. When someone finds a gap in a Proxmox walkthrough or catches an error in a Ceph command, that feedback is valuable — not just to me, but to the next person reading the same post. Email works for one-to-one, but comments are one-to-many.</p>
+
+<p>The requirements:</p>
+
+<ol>
+  <li><strong>No self-hosted infrastructure</strong> — I’m not running a database for blog comments</li>
+  <li><strong>Free or very cheap</strong> — This is a hobby blog</li>
+  <li><strong>GitHub-friendly</strong> — My readers are technical; most have GitHub accounts</li>
+  <li><strong>GDPR-compatible</strong> — No third-party tracking cookies</li>
+  <li><strong>Persistent</strong> — Comments survive site rebuilds and theme changes</li>
+  <li><strong>Searchable</strong> — Ideally indexed and findable</li>
+  <li><strong>Low maintenance</strong> — No moderation queue to babysit</li>
+</ol>
+
+<h2 id="the-alternatives-i-evaluated">The Alternatives I Evaluated</h2>
+
+<h3 id="disqus--the-default-choice-rejected">Disqus — The Default Choice (Rejected)</h3>
+
+<p><a href="https://disqus.com/">Disqus</a> is the most common comment system for static sites. It’s easy to embed and has a large user base.</p>
+
+<p>Why I rejected it:</p>
+
+<ul>
+  <li><strong>Ads on the free tier</strong> — Disqus injects ads into your comment section unless you pay</li>
+  <li><strong>Tracking and privacy</strong> — Disqus loads significant third-party JavaScript and tracks users across sites. This is a GDPR nightmare for a blog that already went through <a href="/implementing-gdpr-compliance-jekyll-adsense/">extensive GDPR compliance work</a></li>
+  <li><strong>Data ownership</strong> — Comments live on Disqus’s servers. If they shut down or change terms, your comments are gone</li>
+  <li><strong>Heavy JavaScript</strong> — The embed script is large and slows page load</li>
+</ul>
+
+<p>The original Jekyll theme I forked (Contrast) actually had Disqus support built in. The dead code is still in my <code class="language-plaintext highlighter-rouge">post.html</code> layout — a <code class="language-plaintext highlighter-rouge">disqus_thread</code> div that never renders because <code class="language-plaintext highlighter-rouge">site.comments.disqus_shortname</code> is never set.</p>
+
+<h3 id="isso--self-hosted-alternative-rejected">Isso — Self-Hosted Alternative (Rejected)</h3>
+
+<p><a href="https://isso-comments.de/">Isso</a> is a self-hosted, lightweight commenting server. It stores comments in a SQLite database and has a clean, minimal interface.</p>
+
+<p>Why I rejected it:</p>
+
+<ul>
+  <li><strong>Requires a server</strong> — You need to run the Isso daemon somewhere. That’s infrastructure I don’t want to maintain for blog comments</li>
+  <li><strong>SQLite on a server</strong> — Backups, uptime, security patches — all for a comment system</li>
+</ul>
+
+<p>The theme also had Isso support built in. Same dead code situation — <code class="language-plaintext highlighter-rouge">isso_domain</code> is never configured.</p>
+
+<h3 id="github-issues-api--custom-lambda-evaluated-deeply">GitHub Issues API — Custom Lambda (Evaluated Deeply)</h3>
+
+<p>This approach uses GitHub Issues as the comment store. Each blog post maps to a GitHub Issue. Comments on the Issue appear as comments on the post. <a href="https://www.aleksandrhovhannisyan.com/blog/jekyll-comment-system-github-issues/">Aleksandr Hovhannisyan’s implementation</a> is the best-known version.</p>
+
+<p>I went deep on this one — deep enough to have <a href="https://chatgpt.com/c/67804dbd-2d38-8010-8074-f43b50bee567">ChatGPT convert the original Netlify serverless function to a Python Lambda</a>. The full prototype:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">get_comments_for_post</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">
+    Lambda function to fetch comments for a GitHub issue dynamically.
+    </span><span class="sh">"""</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Extract query parameters
+</span>        <span class="n">query_params</span> <span class="o">=</span> <span class="n">event</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="sh">"</span><span class="s">queryStringParameters</span><span class="sh">"</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">issue_number</span> <span class="o">=</span> <span class="n">query_params</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="sh">"</span><span class="s">id</span><span class="sh">"</span><span class="p">)</span>
+        <span class="n">github_url</span> <span class="o">=</span> <span class="n">query_params</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="sh">"</span><span class="s">url</span><span class="sh">"</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">issue_number</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">issue_number</span><span class="p">.</span><span class="nf">isdigit</span><span class="p">():</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="sh">"</span><span class="s">statusCode</span><span class="sh">"</span><span class="p">:</span> <span class="mi">400</span><span class="p">,</span>
+                <span class="sh">"</span><span class="s">body</span><span class="sh">"</span><span class="p">:</span> <span class="n">json</span><span class="p">.</span><span class="nf">dumps</span><span class="p">({</span><span class="sh">"</span><span class="s">error</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">You must specify a valid issue ID.</span><span class="sh">"</span><span class="p">}),</span>
+            <span class="p">}</span>
+
+        <span class="c1"># Determine owner and repo
+</span>        <span class="k">if</span> <span class="n">github_url</span><span class="p">:</span>
+            <span class="n">owner</span><span class="p">,</span> <span class="n">repo</span> <span class="o">=</span> <span class="nf">extract_owner_and_repo</span><span class="p">(</span><span class="n">github_url</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">owner</span> <span class="o">=</span> <span class="n">query_params</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="sh">"</span><span class="s">owner</span><span class="sh">"</span><span class="p">)</span>
+            <span class="n">repo</span> <span class="o">=</span> <span class="n">query_params</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="sh">"</span><span class="s">repo</span><span class="sh">"</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">owner</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">repo</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="sh">"</span><span class="s">statusCode</span><span class="sh">"</span><span class="p">:</span> <span class="mi">400</span><span class="p">,</span>
+                <span class="sh">"</span><span class="s">body</span><span class="sh">"</span><span class="p">:</span> <span class="n">json</span><span class="p">.</span><span class="nf">dumps</span><span class="p">({</span><span class="sh">"</span><span class="s">error</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">You must specify </span><span class="sh">'</span><span class="s">owner</span><span class="sh">'</span><span class="s"> and </span><span class="sh">'</span><span class="s">repo</span><span class="sh">'</span><span class="s"> or provide a valid GitHub URL.</span><span class="sh">"</span><span class="p">}),</span>
+            <span class="p">}</span>
+
+        <span class="n">issue_number</span> <span class="o">=</span> <span class="nf">int</span><span class="p">(</span><span class="n">issue_number</span><span class="p">)</span>
+
+        <span class="c1"># Check API rate limit
+</span>        <span class="n">rate_limit</span> <span class="o">=</span> <span class="n">octokit</span><span class="p">.</span><span class="nf">request</span><span class="p">(</span><span class="sh">"</span><span class="s">GET /rate_limit</span><span class="sh">"</span><span class="p">)[</span><span class="sh">"</span><span class="s">rate</span><span class="sh">"</span><span class="p">]</span>
+        <span class="n">remaining_requests</span> <span class="o">=</span> <span class="n">rate_limit</span><span class="p">[</span><span class="sh">"</span><span class="s">remaining</span><span class="sh">"</span><span class="p">]</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">GitHub API requests remaining: </span><span class="si">{</span><span class="n">remaining_requests</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">remaining_requests</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="sh">"</span><span class="s">statusCode</span><span class="sh">"</span><span class="p">:</span> <span class="mi">503</span><span class="p">,</span>
+                <span class="sh">"</span><span class="s">body</span><span class="sh">"</span><span class="p">:</span> <span class="n">json</span><span class="p">.</span><span class="nf">dumps</span><span class="p">({</span><span class="sh">"</span><span class="s">error</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">API rate limit exceeded.</span><span class="sh">"</span><span class="p">}),</span>
+            <span class="p">}</span>
+
+        <span class="c1"># Fetch comments for the given issue
+</span>        <span class="n">comments_response</span> <span class="o">=</span> <span class="n">octokit</span><span class="p">.</span><span class="nf">paginate</span><span class="p">(</span>
+            <span class="sh">"</span><span class="s">GET /repos/{owner}/{repo}/issues/{issue_number}/comments</span><span class="sh">"</span><span class="p">,</span>
+            <span class="p">{</span><span class="sh">"</span><span class="s">owner</span><span class="sh">"</span><span class="p">:</span> <span class="n">owner</span><span class="p">,</span> <span class="sh">"</span><span class="s">repo</span><span class="sh">"</span><span class="p">:</span> <span class="n">repo</span><span class="p">,</span> <span class="sh">"</span><span class="s">issue_number</span><span class="sh">"</span><span class="p">:</span> <span class="n">issue_number</span><span class="p">},</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Process comments
+</span>        <span class="n">response</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">comment</span> <span class="ow">in</span> <span class="n">comments_response</span><span class="p">:</span>
+            <span class="n">response</span><span class="p">.</span><span class="nf">append</span><span class="p">({</span>
+                <span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="sh">"</span><span class="s">avatarUrl</span><span class="sh">"</span><span class="p">:</span> <span class="n">comment</span><span class="p">[</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">][</span><span class="sh">"</span><span class="s">avatar_url</span><span class="sh">"</span><span class="p">],</span>
+                    <span class="sh">"</span><span class="s">name</span><span class="sh">"</span><span class="p">:</span> <span class="nf">escape</span><span class="p">(</span><span class="n">comment</span><span class="p">[</span><span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">][</span><span class="sh">"</span><span class="s">login</span><span class="sh">"</span><span class="p">]),</span>
+                    <span class="sh">"</span><span class="s">isAuthor</span><span class="sh">"</span><span class="p">:</span> <span class="n">comment</span><span class="p">[</span><span class="sh">"</span><span class="s">author_association</span><span class="sh">"</span><span class="p">]</span> <span class="o">==</span> <span class="sh">"</span><span class="s">OWNER</span><span class="sh">"</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="sh">"</span><span class="s">dateTime</span><span class="sh">"</span><span class="p">:</span> <span class="n">comment</span><span class="p">[</span><span class="sh">"</span><span class="s">created_at</span><span class="sh">"</span><span class="p">],</span>
+                <span class="sh">"</span><span class="s">dateRelative</span><span class="sh">"</span><span class="p">:</span> <span class="nf">str</span><span class="p">((</span><span class="n">datetime</span><span class="p">.</span><span class="nf">now</span><span class="p">()</span> <span class="o">-</span> <span class="n">datetime</span><span class="p">.</span><span class="nf">fromisoformat</span><span class="p">(</span>
+                    <span class="n">comment</span><span class="p">[</span><span class="sh">"</span><span class="s">created_at</span><span class="sh">"</span><span class="p">].</span><span class="nf">replace</span><span class="p">(</span><span class="sh">"</span><span class="s">Z</span><span class="sh">"</span><span class="p">,</span> <span class="sh">""</span><span class="p">))).</span><span class="n">days</span><span class="p">)</span> <span class="o">+</span> <span class="sh">"</span><span class="s"> days ago</span><span class="sh">"</span><span class="p">,</span>
+                <span class="sh">"</span><span class="s">isEdited</span><span class="sh">"</span><span class="p">:</span> <span class="n">comment</span><span class="p">[</span><span class="sh">"</span><span class="s">created_at</span><span class="sh">"</span><span class="p">]</span> <span class="o">!=</span> <span class="n">comment</span><span class="p">[</span><span class="sh">"</span><span class="s">updated_at</span><span class="sh">"</span><span class="p">],</span>
+                <span class="sh">"</span><span class="s">body</span><span class="sh">"</span><span class="p">:</span> <span class="nf">escape</span><span class="p">(</span><span class="nf">markdown</span><span class="p">(</span><span class="n">comment</span><span class="p">[</span><span class="sh">"</span><span class="s">body</span><span class="sh">"</span><span class="p">])),</span>
+            <span class="p">})</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="sh">"</span><span class="s">statusCode</span><span class="sh">"</span><span class="p">:</span> <span class="mi">200</span><span class="p">,</span>
+            <span class="sh">"</span><span class="s">body</span><span class="sh">"</span><span class="p">:</span> <span class="n">json</span><span class="p">.</span><span class="nf">dumps</span><span class="p">({</span><span class="sh">"</span><span class="s">data</span><span class="sh">"</span><span class="p">:</span> <span class="n">response</span><span class="p">}),</span>
+        <span class="p">}</span>
+
+    <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="nf">print</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">Error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="sh">"</span><span class="s">statusCode</span><span class="sh">"</span><span class="p">:</span> <span class="mi">500</span><span class="p">,</span>
+            <span class="sh">"</span><span class="s">body</span><span class="sh">"</span><span class="p">:</span> <span class="n">json</span><span class="p">.</span><span class="nf">dumps</span><span class="p">({</span><span class="sh">"</span><span class="s">error</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">Unable to fetch comments for this post.</span><span class="sh">"</span><span class="p">}),</span>
+        <span class="p">}</span>
+</code></pre></div></div>
+
+<p>This prototype handled input validation, GitHub API rate limiting, pagination, relative date formatting, edit detection, and Markdown rendering. It worked — but it was a lot of moving parts for blog comments.</p>
+
+<p>Why I ultimately rejected it:</p>
+
+<ul>
+  <li><strong>Requires a serverless function</strong> — Whether it’s Netlify Functions, AWS Lambda, or Cloudflare Workers, you need a backend to proxy the GitHub API (to avoid exposing tokens client-side)</li>
+  <li><strong>GitHub Issues aren’t designed for comments</strong> — Issues have a flat structure. No threading, no reactions on individual comments (only on the issue itself)</li>
+  <li><strong>Manual issue creation</strong> — You have to create a GitHub Issue for each post and link them. That’s a maintenance burden</li>
+  <li><strong>API rate limits</strong> — The GitHub API has rate limits that could be hit on popular posts</li>
+</ul>
+
+<h3 id="utterances--github-issues-client-side-close-second">Utterances — GitHub Issues, Client-Side (Close Second)</h3>
+
+<p><a href="https://github.com/utterance/utterances">Utterances</a> solves the serverless function problem by using a GitHub App to authenticate directly from the client. It still uses GitHub Issues as the backend but doesn’t need a proxy.</p>
+
+<p>Why I almost chose it:</p>
+
+<ul>
+  <li>No server needed — just a <code class="language-plaintext highlighter-rouge">&lt;script&gt;</code> tag</li>
+  <li>Clean, minimal UI</li>
+  <li>GitHub authentication (my audience has GitHub accounts)</li>
+  <li>Open source</li>
+</ul>
+
+<p>Why I chose Giscus instead:</p>
+
+<ul>
+  <li>Utterances uses <strong>Issues</strong>, Giscus uses <strong>Discussions</strong> — Discussions have threading, categories, and reactions</li>
+  <li>Utterances was less actively maintained at the time I evaluated it</li>
+  <li>Giscus is essentially “Utterances but better” — same concept, newer implementation, more features</li>
+</ul>
+
+<h3 id="staticman--git-based-comments-rejected">Staticman — Git-Based Comments (Rejected)</h3>
+
+<p><a href="https://staticman.net/">Staticman</a> takes a different approach: comments are submitted via a form, processed by a bot, and committed to your repository as data files (YAML/JSON). Jekyll then renders them at build time.</p>
+
+<p>Why I rejected it:</p>
+
+<ul>
+  <li><strong>Build required for every comment</strong> — Each comment triggers a site rebuild. That’s slow and burns CI minutes</li>
+  <li><strong>Moderation via pull requests</strong> — Clever, but adds friction</li>
+  <li><strong>Self-hosted bot or shared instance</strong> — The shared instance has availability issues; self-hosting is more infrastructure</li>
+</ul>
+
+<h3 id="gdpr-compliant-approaches">GDPR-Compliant Approaches</h3>
+
+<p>The <a href="https://jekyllcodex.org/blog/gdpr-compliant-comment/">Jekyll Codex GDPR-compliant comments</a> guide was useful for understanding the privacy landscape. Any solution that loads third-party JavaScript or sends user data to external servers needs consent management.</p>
+
+<h2 id="why-giscus-won">Why Giscus Won</h2>
+
+<p><a href="https://giscus.app/">Giscus</a> uses <strong>GitHub Discussions</strong> as the comment backend. It’s a single <code class="language-plaintext highlighter-rouge">&lt;script&gt;</code> tag that embeds a widget powered by the GitHub Discussions API via a GitHub App.</p>
+
+<p>The key insight: <strong>everything stays in the GitHub ecosystem</strong>. The blog source is on GitHub. The build runs on GitHub Actions. The site deploys to GitHub Pages. Comments live in GitHub Discussions. There’s no external service, no separate database, no additional account.</p>
+
+<p>What sealed the decision:</p>
+
+<ul>
+  <li><strong>Threaded replies</strong> — Discussions support nested replies, Issues don’t</li>
+  <li><strong>Reactions</strong> — Readers can react to individual comments, not just the top-level post</li>
+  <li><strong>Categories</strong> — Comments go into the “Announcements” category, keeping them organized</li>
+  <li><strong>Automatic mapping</strong> — <code class="language-plaintext highlighter-rouge">pathname</code> mapping means Giscus creates a Discussion for each post URL automatically. No manual issue creation</li>
+  <li><strong>Lazy loading</strong> — The widget loads only when scrolled into view (<code class="language-plaintext highlighter-rouge">loading: lazy</code>)</li>
+  <li><strong>Theme matching</strong> — <code class="language-plaintext highlighter-rouge">preferred_color_scheme</code> follows the reader’s dark/light mode preference</li>
+  <li><strong>Searchable</strong> — GitHub Discussions are fully searchable, both on GitHub and via search engines</li>
+  <li><strong>No server</strong> — Just a <code class="language-plaintext highlighter-rouge">&lt;script&gt;</code> tag and a <code class="language-plaintext highlighter-rouge">_config.yml</code> entry</li>
+  <li><strong>GDPR-friendly</strong> — Giscus loads from <code class="language-plaintext highlighter-rouge">giscus.app</code> (a GitHub App), not a third-party ad network. No tracking cookies. The <a href="https://github.com/giscus/giscus/blob/main/SELF-HOSTING.md">self-hosting option</a> exists if you want full control</li>
+</ul>
+
+<h2 id="implementation">Implementation</h2>
+
+<h3 id="step-1-enable-github-discussions">Step 1: Enable GitHub Discussions</h3>
+
+<p>In the repository settings (<code class="language-plaintext highlighter-rouge">mcgarrah/mcgarrah.github.io</code>), enable the Discussions feature and create an “Announcements” category.</p>
+
+<h3 id="step-2-install-the-giscus-github-app">Step 2: Install the Giscus GitHub App</h3>
+
+<p>Go to <a href="https://giscus.app/">giscus.app</a>, select your repository, and configure the options. It generates the <code class="language-plaintext highlighter-rouge">&lt;script&gt;</code> tag and gives you the <code class="language-plaintext highlighter-rouge">repo_id</code> and <code class="language-plaintext highlighter-rouge">category_id</code> values.</p>
+
+<h3 id="step-3-add-configuration-to-_configyml">Step 3: Add Configuration to <code class="language-plaintext highlighter-rouge">_config.yml</code></h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">giscus</span><span class="pi">:</span>
+  <span class="na">repo</span><span class="pi">:</span> <span class="s">mcgarrah/mcgarrah.github.io</span>
+  <span class="na">repo_id</span><span class="pi">:</span> <span class="s">R_kgDOKBKIdw</span>
+  <span class="na">category</span><span class="pi">:</span> <span class="s">Announcements</span>
+  <span class="na">category_id</span><span class="pi">:</span> <span class="s">DIC_kwDOKBKId84Cq3DK</span>
+  <span class="na">mapping</span><span class="pi">:</span> <span class="s">pathname</span>
+  <span class="na">strict</span><span class="pi">:</span> <span class="m">0</span>
+  <span class="na">reactions_enabled</span><span class="pi">:</span> <span class="m">1</span>
+  <span class="na">emit_metadata</span><span class="pi">:</span> <span class="m">0</span>
+  <span class="na">input_position</span><span class="pi">:</span> <span class="s">bottom</span>
+  <span class="na">theme</span><span class="pi">:</span> <span class="s">preferred_color_scheme</span>
+  <span class="na">lang</span><span class="pi">:</span> <span class="s">en</span>
+  <span class="na">loading</span><span class="pi">:</span> <span class="s">lazy</span>
+</code></pre></div></div>
+
+<p>Key configuration choices:</p>
+
+<ul>
+  <li><strong><code class="language-plaintext highlighter-rouge">mapping: pathname</code></strong> — Maps posts to Discussions by URL path. This means <code class="language-plaintext highlighter-rouge">/proxmox-ceph-nearfull/</code> gets its own Discussion automatically</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">strict: 0</code></strong> — Fuzzy matching on the pathname. Tolerates minor URL changes</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">input_position: bottom</code></strong> — Comment box below existing comments (natural reading order)</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">loading: lazy</code></strong> — Don’t load the iframe until the reader scrolls to the comments section. Improves initial page load performance</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">theme: preferred_color_scheme</code></strong> — Matches the reader’s OS dark/light mode setting</li>
+</ul>
+
+<h3 id="step-4-add-the-widget-to-the-post-layout">Step 4: Add the Widget to the Post Layout</h3>
+
+<p>In <code class="language-plaintext highlighter-rouge">_layouts/post.html</code>:</p>
+
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code>{%- if site.giscus -%}
+<span class="nt">&lt;section</span> <span class="na">class=</span><span class="s">"page__comments"</span><span class="nt">&gt;</span>
+  <span class="nt">&lt;script </span><span class="na">src=</span><span class="s">"https://giscus.app/client.js"</span>
+          <span class="na">data-repo=</span><span class="s">"{{ site.giscus.repo }}"</span>
+          <span class="na">data-repo-id=</span><span class="s">"{{ site.giscus.repo_id }}"</span>
+          <span class="na">data-category=</span><span class="s">"{{ site.giscus.category }}"</span>
+          <span class="na">data-category-id=</span><span class="s">"{{ site.giscus.category_id }}"</span>
+          <span class="na">data-mapping=</span><span class="s">"{{ site.giscus.mapping }}"</span>
+          <span class="na">data-strict=</span><span class="s">"{{ site.giscus.strict }}"</span>
+          <span class="na">data-reactions-enabled=</span><span class="s">"{{ site.giscus.reactions_enabled }}"</span>
+          <span class="na">data-emit-metadata=</span><span class="s">"{{ site.giscus.emit_metadata }}"</span>
+          <span class="na">data-input-position=</span><span class="s">"{{ site.giscus.input_position }}"</span>
+          <span class="na">data-theme=</span><span class="s">"{{ site.giscus.theme }}"</span>
+          <span class="na">data-lang=</span><span class="s">"{{ site.giscus.lang }}"</span>
+          <span class="na">data-loading=</span><span class="s">"{{ site.giscus.loading }}"</span>
+          <span class="na">crossorigin=</span><span class="s">"anonymous"</span>
+          <span class="na">async</span><span class="nt">&gt;</span>
+  <span class="nt">&lt;/script&gt;</span>
+<span class="nt">&lt;/section&gt;</span>
+{%- endif -%}
+</code></pre></div></div>
+
+<p>Every <code class="language-plaintext highlighter-rouge">_config.yml</code> value is templated via Liquid — no hardcoded values in the layout. The <code class="language-plaintext highlighter-rouge">{%- if site.giscus -%}</code> guard means the widget only renders if Giscus is configured, so the theme works without it.</p>
+
+<h3 id="legacy-dead-code">Legacy Dead Code</h3>
+
+<p>The post layout still contains the original theme’s Isso and Disqus support:</p>
+
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code>{% if page.comments != false and site.comments.isso or site.comments.disqus %}
+  {% if site.comments.isso_domain %}<span class="nt">&lt;div</span> <span class="na">id=</span><span class="s">"isso-thread"</span><span class="nt">&gt;&lt;/div&gt;</span>{% endif %}
+  {% if site.comments.disqus_shortname %}<span class="nt">&lt;div</span> <span class="na">id=</span><span class="s">"disqus_thread"</span><span class="nt">&gt;&lt;/div&gt;</span>{% endif %}
+{% endif %}
+</code></pre></div></div>
+
+<p>This never renders because neither <code class="language-plaintext highlighter-rouge">site.comments.isso_domain</code> nor <code class="language-plaintext highlighter-rouge">site.comments.disqus_shortname</code> is set in <code class="language-plaintext highlighter-rouge">_config.yml</code>. It’s harmless dead code from the Contrast theme fork. I’ve left it in case someone forks this blog and wants to use those systems instead.</p>
+
+<h2 id="the-github-ecosystem-advantage">The GitHub Ecosystem Advantage</h2>
+
+<p>What I find elegant about this setup is how the pieces reinforce each other:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Component</th>
+      <th>Service</th>
+      <th>Data Location</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Source code</td>
+      <td>GitHub repository</td>
+      <td><code class="language-plaintext highlighter-rouge">mcgarrah/mcgarrah.github.io</code></td>
+    </tr>
+    <tr>
+      <td>Build &amp; deploy</td>
+      <td>GitHub Actions</td>
+      <td><code class="language-plaintext highlighter-rouge">.github/workflows/jekyll.yml</code></td>
+    </tr>
+    <tr>
+      <td>Hosting</td>
+      <td>GitHub Pages</td>
+      <td><code class="language-plaintext highlighter-rouge">mcgarrah.org</code> via CNAME</td>
+    </tr>
+    <tr>
+      <td>Comments</td>
+      <td>GitHub Discussions</td>
+      <td>Same repository</td>
+    </tr>
+    <tr>
+      <td>Security scanning</td>
+      <td>GitHub CodeQL</td>
+      <td><code class="language-plaintext highlighter-rouge">.github/workflows/codeql.yml</code></td>
+    </tr>
+    <tr>
+      <td>Dependency updates</td>
+      <td>GitHub Dependabot</td>
+      <td><code class="language-plaintext highlighter-rouge">.github/dependabot.yml</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Everything is in one place. One login, one set of permissions, one backup strategy (the git repository itself). If GitHub goes down, the whole blog is down anyway — there’s no additional point of failure from the comment system.</p>
+
+<p>Comments are also version-controlled in a sense — GitHub Discussions have full edit history, and they’re tied to the repository. If I ever migrate the blog, the Discussions come with the repo.</p>
+
+<h2 id="what-id-do-differently">What I’d Do Differently</h2>
+
+<ul>
+  <li><strong>Clean up the dead Isso/Disqus code</strong> — It’s been there since the fork. Time to remove it</li>
+  <li><strong>Add a <code class="language-plaintext highlighter-rouge">comments: false</code> front matter option</strong> — The Isso/Disqus code checks <code class="language-plaintext highlighter-rouge">page.comments != false</code>, but the Giscus block doesn’t. Some posts (like the privacy policy) shouldn’t have comments</li>
+  <li><strong>Consider self-hosting Giscus</strong> — The <a href="https://github.com/giscus/giscus/blob/main/SELF-HOSTING.md">self-hosting guide</a> would eliminate the dependency on <code class="language-plaintext highlighter-rouge">giscus.app</code>. Low priority since the service has been reliable</li>
+</ul>
+
+<h2 id="related-posts">Related Posts</h2>
+
+<ul>
+  <li><a href="/setting-up-jekyll-blog-github-pages/">Building This Blog: Jekyll on GitHub Pages</a> — Setup guide with brief Giscus section</li>
+  <li><a href="/jekyll-markdown-feature-reference/">How the Sausage Is Made</a> — Feature inventory including comments</li>
+  <li><a href="/implementing-gdpr-compliance-jekyll-adsense/">Implementing GDPR Compliance for Jekyll with AdSense</a> — The GDPR work that informed comment system requirements</li>
+  <li><a href="/jekyll-github-actions-cicd-pipeline/">The CI/CD Pipeline Behind This Jekyll Blog</a> — How GitHub Actions ties into the ecosystem</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/jekyll/">jekyll</a>, 
+        
+          <a href="/tags/giscus/">giscus</a>, 
+        
+          <a href="/tags/comments/">comments</a>, 
+        
+          <a href="/tags/github-discussions/">github-discussions</a>, 
+        
+          <a href="/tags/github-pages/">github-pages</a>, 
+        
+          <a href="/tags/gdpr/">gdpr</a>, 
+        
+          <a href="/tags/engagement/">engagement</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/web-development/">web-development</a>, 
+        
+          <a href="/categories/technical/">technical</a>, 
+        
+          <a href="/categories/jekyll/">jekyll</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

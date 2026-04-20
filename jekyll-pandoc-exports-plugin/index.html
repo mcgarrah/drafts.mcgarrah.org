@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Building a Jekyll Plugin for Automated Document Exports - Part 2: Technical Implementation | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Building a Jekyll Plugin for Automated Document Exports - Part 2: Technical Implementation" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="Technical deep-dive into building a Jekyll plugin for automated PDF and DOCX exports using Pandoc, covering the hooks system, incremental builds, Unicode cleanup, CLI tools, and extensible architecture." />
+<meta property="og:description" content="Technical deep-dive into building a Jekyll plugin for automated PDF and DOCX exports using Pandoc, covering the hooks system, incremental builds, Unicode cleanup, CLI tools, and extensible architecture." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/jekyll-pandoc-exports-plugin/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/jekyll-pandoc-exports-plugin/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-04-12T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Building a Jekyll Plugin for Automated Document Exports - Part 2: Technical Implementation" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-04-12T00:00:00+00:00","datePublished":"2026-04-12T00:00:00+00:00","description":"Technical deep-dive into building a Jekyll plugin for automated PDF and DOCX exports using Pandoc, covering the hooks system, incremental builds, Unicode cleanup, CLI tools, and extensible architecture.","headline":"Building a Jekyll Plugin for Automated Document Exports - Part 2: Technical Implementation","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/jekyll-pandoc-exports-plugin/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/jekyll-pandoc-exports-plugin/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/jekyll-pandoc-exports-plugin/">Building a Jekyll Plugin for Automated Document Exports - Part 2: Technical Implementation</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-04-12T00:00:00+00:00">April 12, 2026</time><span class="reading-time">7 min read</span></header>
+
+  <!-- excerpt-end -->
+
+<p>In <a href="/ruby-gem-release-automation/">Part 1</a>, I covered the infrastructure challenges of building a professional Ruby gem with automated releases, documentation, and CI/CD. Now let’s dive into the technical implementation of the Jekyll plugin itself. In <a href="/jekyll-pandoc-exports-resume-integration/">Part 3</a>, I’ll cover integrating the plugin into a real project and the bugs that surfaced.</p>
+
+<p>The <a href="https://github.com/mcgarrah/jekyll-pandoc-exports">jekyll-pandoc-exports</a> plugin solves a common problem: automatically generating downloadable PDF and Word document versions of your Jekyll pages using Pandoc.</p>
+
+<p>Jekyll, as a static content website, requires all content to be processed in advance. Often other solutions for PDF and DOCX generation require a server and runtime environment. This is my solution to get those documents types handled with a simple easy to use interface.</p>
+
+<h2 id="the-problem">The Problem</h2>
+
+<p>While working on my <a href="https://github.com/mcgarrah/resume">resume site</a>, I needed a way to automatically generate PDF and DOCX versions of my resume whenever I updated the markdown content. Manually converting files was tedious and error-prone, especially when making frequent updates.</p>
+
+<p>I also wanted to refresh my Ruby programming skills as I had let them languish for several years. The Jekyll backend that I depend on being based on Ruby was also a factor. I hate not having skills ready for tools I use extensively.</p>
+
+<h2 id="the-solution">The Solution</h2>
+
+<p>The plugin hooks into Jekyll’s build process and automatically generates exports for any page with <code class="language-plaintext highlighter-rouge">docx: true</code> or <code class="language-plaintext highlighter-rouge">pdf: true</code> in its front matter:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nn">---</span>
+<span class="na">title</span><span class="pi">:</span> <span class="s">My Resume</span>
+<span class="na">docx</span><span class="pi">:</span> <span class="kc">true</span>
+<span class="na">pdf</span><span class="pi">:</span> <span class="kc">true</span>
+<span class="nn">---</span>
+</code></pre></div></div>
+
+<h2 id="key-features">Key Features</h2>
+
+<h3 id="automatic-generation">Automatic Generation</h3>
+
+<p>The plugin runs during Jekyll’s <code class="language-plaintext highlighter-rouge">post_write</code> phase, processing all configured collections (pages, posts, custom collections) and generating exports for marked content.</p>
+
+<h3 id="configurable-output">Configurable Output</h3>
+
+<p>Full configuration control through <code class="language-plaintext highlighter-rouge">_config.yml</code>:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">pandoc_exports</span><span class="pi">:</span>
+  <span class="na">enabled</span><span class="pi">:</span> <span class="kc">true</span>
+  <span class="na">output_dir</span><span class="pi">:</span> <span class="s1">'</span><span class="s">downloads'</span>
+  <span class="na">collections</span><span class="pi">:</span> <span class="pi">[</span><span class="s1">'</span><span class="s">pages'</span><span class="pi">]</span>
+  <span class="na">incremental</span><span class="pi">:</span> <span class="kc">true</span>
+  <span class="na">pdf_options</span><span class="pi">:</span>
+    <span class="na">variable</span><span class="pi">:</span> <span class="s1">'</span><span class="s">geometry:margin=0.75in'</span>
+  <span class="na">unicode_cleanup</span><span class="pi">:</span> <span class="kc">true</span>
+  <span class="na">inject_downloads</span><span class="pi">:</span> <span class="kc">false</span>
+  <span class="na">image_path_fixes</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">pattern</span><span class="pi">:</span> <span class="s1">'</span><span class="s">src="/resume/assets/'</span>
+      <span class="na">replacement</span><span class="pi">:</span> <span class="s1">'</span><span class="s">src="{{site.dest}}/assets/'</span>
+</code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">inject_downloads: false</code> setting is useful when your theme already has its own download links — as was the case with my resume site’s sidebar. The <code class="language-plaintext highlighter-rouge">image_path_fixes</code> array handles the path rewriting needed when a site uses a <code class="language-plaintext highlighter-rouge">baseurl</code> like <code class="language-plaintext highlighter-rouge">/resume</code>.</p>
+
+<h3 id="incremental-builds">Incremental Builds</h3>
+
+<p>The plugin only regenerates files when the source content changes, significantly improving build performance:</p>
+
+<div class="language-ruby highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nc">self</span><span class="o">.</span><span class="nf">skip_unchanged_file?</span><span class="p">(</span><span class="n">site</span><span class="p">,</span> <span class="n">item</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+  <span class="k">return</span> <span class="kp">false</span> <span class="k">unless</span> <span class="n">config</span><span class="p">[</span><span class="s1">'incremental'</span><span class="p">]</span>
+  
+  <span class="n">source_mtime</span> <span class="o">=</span> <span class="no">File</span><span class="p">.</span><span class="nf">mtime</span><span class="p">(</span><span class="n">source_file</span><span class="p">)</span>
+  <span class="k">return</span> <span class="kp">false</span> <span class="k">if</span> <span class="no">File</span><span class="p">.</span><span class="nf">mtime</span><span class="p">(</span><span class="n">output_file</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">source_mtime</span>
+  
+  <span class="kp">true</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<h3 id="download-link-injection">Download Link Injection</h3>
+
+<p>Automatically injects styled download links into pages that generate exports, with configurable CSS classes for print-friendly hiding.</p>
+
+<h2 id="advanced-features">Advanced Features</h2>
+
+<h3 id="hooks-system">Hooks System</h3>
+
+<p>Extensible architecture with pre and post-conversion hooks:</p>
+
+<div class="language-ruby highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Register custom processing</span>
+<span class="no">Jekyll</span><span class="o">::</span><span class="no">PandocExports</span><span class="o">::</span><span class="no">Hooks</span><span class="p">.</span><span class="nf">register_pre_conversion</span> <span class="k">do</span> <span class="o">|</span><span class="n">html_content</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">context</span><span class="o">|</span>
+  <span class="c1"># Modify HTML before conversion</span>
+  <span class="n">html_content</span><span class="p">.</span><span class="nf">gsub</span><span class="p">(</span><span class="s1">'old-pattern'</span><span class="p">,</span> <span class="s1">'new-pattern'</span><span class="p">)</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<h3 id="cli-tools">CLI Tools</h3>
+
+<p>Standalone command-line interface for batch processing:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Convert single file</span>
+jekyll-pandoc-exports <span class="nt">--file</span> page.html <span class="nt">--format</span> pdf
+
+<span class="c"># Process entire site</span>
+jekyll-pandoc-exports <span class="nt">--source</span> <span class="nb">.</span> <span class="nt">--destination</span> _site
+</code></pre></div></div>
+
+<h3 id="performance-monitoring">Performance Monitoring</h3>
+
+<p>Built-in statistics tracking with detailed timing and success metrics:</p>
+
+<div class="language-ruby highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="vi">@stats</span><span class="p">.</span><span class="nf">record_processing_start</span>
+<span class="c1"># ... conversion logic ...</span>
+<span class="vi">@stats</span><span class="p">.</span><span class="nf">record_conversion_success</span><span class="p">(</span><span class="ss">:pdf</span><span class="p">)</span>
+<span class="vi">@stats</span><span class="p">.</span><span class="nf">print_summary</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h2 id="technical-implementation">Technical Implementation</h2>
+
+<h3 id="dependency-validation">Dependency Validation</h3>
+
+<p>The plugin validates required dependencies (Pandoc, LaTeX) at runtime:</p>
+
+<div class="language-ruby highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nc">self</span><span class="o">.</span><span class="nf">validate_dependencies</span>
+  <span class="n">pandoc_available</span> <span class="o">=</span> <span class="nb">system</span><span class="p">(</span><span class="s1">'pandoc --version &gt; /dev/null 2&gt;&amp;1'</span><span class="p">)</span>
+  <span class="n">latex_available</span> <span class="o">=</span> <span class="nb">system</span><span class="p">(</span><span class="s1">'pdflatex --version &gt; /dev/null 2&gt;&amp;1'</span><span class="p">)</span>
+  
+  <span class="k">unless</span> <span class="n">pandoc_available</span>
+    <span class="no">Jekyll</span><span class="p">.</span><span class="nf">logger</span><span class="p">.</span><span class="nf">warn</span> <span class="s2">"Pandoc not found. Install with: brew install pandoc"</span>
+  <span class="k">end</span>
+  
+  <span class="n">pandoc_available</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<h3 id="unicode-cleanup">Unicode Cleanup</h3>
+
+<p>Automatic cleanup of problematic Unicode characters that cause LaTeX compilation errors:</p>
+
+<div class="language-ruby highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nc">self</span><span class="o">.</span><span class="nf">clean_unicode_characters</span><span class="p">(</span><span class="n">html</span><span class="p">)</span>
+  <span class="c1"># Remove emoji and symbol ranges that cause LaTeX issues</span>
+  <span class="n">html</span><span class="p">.</span><span class="nf">gsub</span><span class="p">(</span><span class="sr">/[\u{1F000}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/</span><span class="p">,</span> <span class="s1">''</span><span class="p">)</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<h3 id="template-system">Template System</h3>
+
+<p>Flexible template customization with header, footer, and CSS injection:</p>
+
+<div class="language-ruby highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nc">self</span><span class="o">.</span><span class="nf">apply_template</span><span class="p">(</span><span class="n">html_content</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+  <span class="n">template</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">'template'</span><span class="p">]</span>
+  
+  <span class="c1"># Add custom CSS</span>
+  <span class="k">if</span> <span class="o">!</span><span class="n">template</span><span class="p">[</span><span class="s1">'css'</span><span class="p">].</span><span class="nf">empty?</span>
+    <span class="n">css_tag</span> <span class="o">=</span> <span class="s2">"&lt;style&gt;</span><span class="si">#{</span><span class="n">template</span><span class="p">[</span><span class="s1">'css'</span><span class="p">]</span><span class="si">}</span><span class="s2">&lt;/style&gt;"</span>
+    <span class="n">html_content</span> <span class="o">=</span> <span class="n">html_content</span><span class="p">.</span><span class="nf">sub</span><span class="p">(</span><span class="sr">/&lt;\/head&gt;/</span><span class="p">,</span> <span class="s2">"</span><span class="si">#{</span><span class="n">css_tag</span><span class="si">}</span><span class="se">\n</span><span class="s2">&lt;/head&gt;"</span><span class="p">)</span>
+  <span class="k">end</span>
+  
+  <span class="n">html_content</span>
+<span class="k">end</span>
+</code></pre></div></div>
+
+<h2 id="development-journey">Development Journey</h2>
+
+<h3 id="from-simple-script-to-full-plugin">From Simple Script to Full Plugin</h3>
+
+<p>The plugin evolved from a simple script in my resume repository to a full-featured Ruby gem. As covered in <a href="/ruby-gem-release-automation/">Part 1</a>, the infrastructure and release automation consumed significant development time, but enabled rapid iteration on the plugin functionality.</p>
+
+<h3 id="testing-infrastructure">Testing Infrastructure</h3>
+
+<p>Implemented comprehensive test suite with 87 test runs and 176 assertions, covering:</p>
+
+<ul>
+  <li>Configuration validation</li>
+  <li>File processing logic</li>
+  <li>Hook system functionality</li>
+  <li>CLI tool operations</li>
+  <li>Error handling scenarios</li>
+</ul>
+
+<p>The automated testing pipeline (detailed in Part 1) runs across multiple Ruby versions and operating systems.</p>
+
+<h3 id="professional-documentation">Professional Documentation</h3>
+
+<p>The Read the Docs integration (covered in Part 1) provides professional documentation with:</p>
+
+<ul>
+  <li>Installation guides for multiple platforms</li>
+  <li>Configuration reference with examples</li>
+  <li>API documentation for hooks system</li>
+  <li>CLI usage guide</li>
+  <li>Development workflow documentation</li>
+</ul>
+
+<h2 id="real-world-usage">Real-World Usage</h2>
+
+<p>The plugin is integrated into my <a href="https://github.com/mcgarrah/resume">resume site</a>, replacing the previous workflow of manually exporting PDFs and committing static files. The integration uncovered several compatibility bugs and required HTML cleanup work to produce clean document output — that full story is covered in <a href="/jekyll-pandoc-exports-resume-integration/">Part 3</a>.</p>
+
+<h2 id="future-enhancements">Future Enhancements</h2>
+
+<p>Pandoc’s format support opens several directions for the plugin:</p>
+
+<ul>
+  <li><strong>Additional formats</strong> — ODT for LibreOffice users, RTF for maximum compatibility</li>
+  <li><strong>Site-wide EPUB generation</strong> — aggregate posts or collections into downloadable e-books with proper table of contents and metadata</li>
+  <li><strong>Mermaid diagram support</strong> — render Mermaid JavaScript diagrams to static SVG/PNG for PDF compatibility</li>
+  <li><strong>Enhanced templates</strong> — Liquid support in export templates, per-format CSS injection</li>
+  <li><strong>Batch optimizations</strong> — parallel processing and Jekyll asset pipeline integration</li>
+</ul>
+
+<h2 id="getting-started">Getting Started</h2>
+
+<p>Install system dependencies:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Ubuntu/Debian</span>
+<span class="nb">sudo </span>apt-get <span class="nb">install </span>pandoc texlive-latex-base texlive-fonts-recommended texlive-latex-extra
+
+<span class="c"># macOS</span>
+brew <span class="nb">install </span>pandoc
+brew <span class="nb">install</span> <span class="nt">--cask</span> mactex
+</code></pre></div></div>
+
+<p>Install the plugin (v0.1.12+ required for Jekyll 3.x / <code class="language-plaintext highlighter-rouge">github-pages</code> compatibility):</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>gem <span class="nb">install </span>jekyll-pandoc-exports
+</code></pre></div></div>
+
+<p>Add to your <code class="language-plaintext highlighter-rouge">_config.yml</code>:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">plugins</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="s">jekyll-pandoc-exports</span>
+</code></pre></div></div>
+
+<p>Mark pages for export:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nn">---</span>
+<span class="na">title</span><span class="pi">:</span> <span class="s">My Document</span>
+<span class="na">docx</span><span class="pi">:</span> <span class="kc">true</span>
+<span class="na">pdf</span><span class="pi">:</span> <span class="kc">true</span>
+<span class="nn">---</span>
+</code></pre></div></div>
+
+<p>For GitHub Actions CI builds, add a step to install Pandoc and LaTeX before the Jekyll build:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Install Pandoc and LaTeX</span>
+  <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+    <span class="s">sudo apt-get update</span>
+    <span class="s">sudo apt-get install -y pandoc texlive-latex-base texlive-fonts-recommended texlive-latex-extra</span>
+</code></pre></div></div>
+
+<p>The plugin handles the rest automatically during your Jekyll build process.</p>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>Building this plugin was a three-part challenge: creating robust infrastructure (<a href="/ruby-gem-release-automation/">Part 1</a>), implementing the core functionality (this article), and integrating it into a real project (<a href="/jekyll-pandoc-exports-resume-integration/">Part 3</a>). The Jekyll plugin architecture proved flexible and powerful, while Pandoc’s conversion capabilities enabled professional document generation.</p>
+
+<p>Key technical achievements:</p>
+
+<ul>
+  <li><strong>Zero-configuration</strong> document exports with sensible defaults</li>
+  <li><strong>Jekyll 3.x and 4.x</strong> compatibility for broad ecosystem support</li>
+  <li><strong>Extensible hooks system</strong> for custom processing workflows</li>
+  <li><strong>Performance optimization</strong> with incremental builds and statistics</li>
+  <li><strong>Professional error handling</strong> with dependency validation</li>
+  <li><strong>CI/CD ready</strong> with GitHub Actions workflow integration</li>
+</ul>
+
+<p>The automated export functionality has streamlined my content workflow, and the release automation (from Part 1) enables sustainable open-source development.</p>
+
+<p>The plugin demonstrates how proper infrastructure investment enables rapid feature development and professional software delivery. In <a href="/jekyll-pandoc-exports-resume-integration/">Part 3</a>, I cover the real-world integration into my resume site — where eating my own dog food uncovered Jekyll 3.x compatibility bugs, nil safety issues, and the surprising challenges of converting themed HTML into clean PDF and Word documents.</p>
+
+<hr />
+
+<p><strong>Series Resources:</strong></p>
+
+<ul>
+  <li><a href="/ruby-gem-release-automation/">Part 1: Release Automation</a></li>
+  <li><a href="/jekyll-pandoc-exports-resume-integration/">Part 3: Resume Integration</a></li>
+  <li><a href="https://github.com/mcgarrah/jekyll-pandoc-exports">GitHub Repository</a></li>
+  <li><a href="https://jekyll-pandoc-exports.readthedocs.io">Documentation Site</a></li>
+  <li><a href="https://rubygems.org/gems/jekyll-pandoc-exports">RubyGems Package</a></li>
+  <li><a href="https://github.com/mcgarrah/resume">Example Implementation</a></li>
+</ul>
+
+<h2 id="related-posts">Related Posts</h2>
+
+<ul>
+  <li><a href="/ruby-gem-release-automation/">Ruby Gem Release Automation</a> — Part 1: The CI/CD pipeline for this plugin</li>
+  <li><a href="/jekyll-pandoc-exports-resume-integration/">Pandoc Exports Resume Integration</a> — Part 3: Real-world integration and bug fixes</li>
+  <li><a href="/jekyll-mermaid-diagram-rendering-challenges/">Jekyll Mermaid Diagram Rendering Challenges</a> — Another Jekyll plugin integration challenge</li>
+  <li><a href="/jekyll-markdown-feature-reference/">How the Sausage Is Made</a> — Complete feature reference including Pandoc exports</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/jekyll-plugin/">jekyll-plugin</a>, 
+        
+          <a href="/tags/pandoc/">pandoc</a>, 
+        
+          <a href="/tags/pdf-generation/">pdf-generation</a>, 
+        
+          <a href="/tags/docx/">docx</a>, 
+        
+          <a href="/tags/ruby-gem/">ruby-gem</a>, 
+        
+          <a href="/tags/documentation/">documentation</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/jekyll/">jekyll</a>, 
+        
+          <a href="/categories/ruby/">ruby</a>, 
+        
+          <a href="/categories/pandoc/">pandoc</a>, 
+        
+          <a href="/categories/automation/">automation</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>ProxMox 8.2.2 Cluster on Dell Wyse 3040s | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="ProxMox 8.2.2 Cluster on Dell Wyse 3040s" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="I want a place to test and try out new features and capabilities in Proxmox 8.2.2 SDN (Software Defined Networking). I would also like to be able to test some Ceph Cluster configuration changes that are risky as well. I do not want to do it on my semi-production Proxmox 8.2.2 Ceph enabled Cluster that I have mentioned in earlier posts. With 55TiB of raw storage and 29TiB of it loaded up with content, that would be painful to rebuild or reload if I made a mistake during my testing of SDN or Ceph capabilities." />
+<meta property="og:description" content="I want a place to test and try out new features and capabilities in Proxmox 8.2.2 SDN (Software Defined Networking). I would also like to be able to test some Ceph Cluster configuration changes that are risky as well. I do not want to do it on my semi-production Proxmox 8.2.2 Ceph enabled Cluster that I have mentioned in earlier posts. With 55TiB of raw storage and 29TiB of it loaded up with content, that would be painful to rebuild or reload if I made a mistake during my testing of SDN or Ceph capabilities." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/proxmox-8-dell-wyse-3040/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/proxmox-8-dell-wyse-3040/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2024-07-23T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="ProxMox 8.2.2 Cluster on Dell Wyse 3040s" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-04-05T00:00:00+00:00","datePublished":"2024-07-23T00:00:00+00:00","description":"I want a place to test and try out new features and capabilities in Proxmox 8.2.2 SDN (Software Defined Networking). I would also like to be able to test some Ceph Cluster configuration changes that are risky as well. I do not want to do it on my semi-production Proxmox 8.2.2 Ceph enabled Cluster that I have mentioned in earlier posts. With 55TiB of raw storage and 29TiB of it loaded up with content, that would be painful to rebuild or reload if I made a mistake during my testing of SDN or Ceph capabilities.","headline":"ProxMox 8.2.2 Cluster on Dell Wyse 3040s","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/proxmox-8-dell-wyse-3040/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/proxmox-8-dell-wyse-3040/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/proxmox-8-dell-wyse-3040/">ProxMox 8.2.2 Cluster on Dell Wyse 3040s</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2024-07-23T00:00:00+00:00">July 23, 2024</time><span class="reading-time">14 min read</span></header>
+
+  <p>I want a place to test and try out new features and capabilities in <a href="https://pve.proxmox.com/pve-docs/chapter-pvesdn.html">Proxmox 8.2.2 <abbr title="Software Defined Networking">SDN</abbr></a> (<a href="https://en.wikipedia.org/wiki/Software-defined_networking">Software Defined Networking</a>). I would also like to be able to test some Ceph Cluster configuration changes that are risky as well. I do not want to do it on my semi-production Proxmox 8.2.2 Ceph enabled Cluster that I have mentioned in earlier posts. With 55TiB of raw storage and 29TiB of it loaded up with content, that would be painful to rebuild or reload if I made a mistake during my testing of <abbr title="Software Defined Networking">SDN</abbr> or Ceph capabilities.</p>
+
+<p><a href="/assets/images/what-could-go-wrong.jpg" target="_blank"><img src="/assets/images/what-could-go-wrong.jpg" alt="Test in Prod, what could go wrong?" width="30%" height="30%" style="display:block; margin-left:auto; margin-right:auto" /></a></p>
+
+<!-- excerpt-end -->
+
+<h2 id="why-i-am-doing-this">Why I am doing this</h2>
+
+<p>Like I mention above, I need a place to test out Proxmox and not trash my semi-production cluster. Fortunately for me, <a href="https://www.apalrd.net">Apalrd</a> post on this <a href="https://www.apalrd.net/posts/2022/pve_bullseye/">Installing Proxmox VE 7 on Debian Bullseye</a> that used an earlier <a href="https://pve.proxmox.com/wiki/Install_Proxmox_VE_on_Debian_Buster">Install Proxmox VE on Debian Buster</a> document for his exploration is where I got the idea to create an extremely low-end Proxmox 8 cluster for any testing that I didn’t want on my main cluster.</p>
+
+<p>Also fortunately, I happen to have an extra three (3) <a href="https://www.parkytowers.me.uk/thin/wyse/3040/">Dell Wyse 3040s</a> that will eventually become a <a href="https://tailscale.com/">Wifi 6e Tailscale</a> endpoint, or <a href="https://www.home-assistant.io/">Home Assistant</a> server, or an OpenWRT router from <a href="https://blog.m0les.com/2023/08/thin-client-router-part3-bare-metal-atom.html">Recompiling OpenWrt to run natively on the 3040</a> but are currently sitting on my shelf in a shoebox. With just two nodes, I can test Proxmox <abbr title="High Availability">HA</abbr> but with three nodes, I can test Proxmox <abbr title="High Availability">HA</abbr> failover, add a Ceph Cluster, use CephFS share storage, and try the new <abbr title="Software Defined Networking">SDN</abbr> Datacenter features as well.</p>
+
+<p>For an extra bit of fun, I added three (3) <a href="https://amzn.to/3ybtOUw">Amazon Basics USB 3.0 to 10/100/1000 Gigabit Ethernet Internet Adapter</a> so I can have more than a single network interfaces to make testing more expansive and interesting. I also scrounged around and pulled out three old 8GB USB2 Thumbdrives from an old box to use as the Ceph OSD media and then found a three pack of <a href="https://amzn.to/3YesqLq">SanDisk 32GB 3-Pack Ultra Fit USB 3.1 Flash Drive (3x32GB)</a> for under $20 on Amazon to upgrade that Ceph storage and offers an opportunity to learn about transitioning between media in Ceph Clusters. I’d like to test moving an OSD that contains active data between nodes and recover it on the fly.</p>
+
+<p>One area I will probably miss options for testing are the shared or passthru <abbr title="Input-Output Memory Management Unit">IOMMU</abbr> devices. From the <code class="language-plaintext highlighter-rouge">lspci</code> results below, I might be able to do something with the <strong>iGPU</strong> and the <strong>Built-in NIC</strong> and we can maybe do something with a <strong>USB Device</strong> as seen in the <code class="language-plaintext highlighter-rouge">lsusb</code> results. The SDIO Controller on some of the units have a Wifi card. I’m not sure what I can do there but I’ll explore it later.</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>root@pve1:~# <span class="nb">uname</span> <span class="nt">-a</span>
+Linux pve1 6.8.8-3-pve <span class="c">#1 SMP PREEMPT_DYNAMIC PMX 6.8.8-3 (2024-07-16T16:16Z) x86_64 GNU/Linux</span>
+root@pve1:~# lsb_release <span class="nt">-a</span>
+No LSB modules are available.
+Distributor ID: Debian
+Description:    Debian GNU/Linux 12 <span class="o">(</span>bookworm<span class="o">)</span>
+Release:        12
+Codename:       bookworm
+root@pve1:~# lscpu <span class="nt">-e</span>
+CPU NODE SOCKET CORE L1d:L1i:L2 ONLINE    MAXMHZ   MINMHZ       MHZ
+  0    0      0    0 0:0:0         <span class="nb">yes </span>1920.0000 480.0000  899.3300
+  1    0      0    1 2:2:0         <span class="nb">yes </span>1920.0000 480.0000  650.6640
+  2    0      0    2 4:4:1         <span class="nb">yes </span>1920.0000 480.0000 1921.6100
+  3    0      0    3 6:6:1         <span class="nb">yes </span>1920.0000 480.0000 1920.0240
+root@pve1:~# lspci <span class="nt">-tvnn</span>
+-[0000:00]-+-00.0  Intel Corporation Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series SoC Transaction Register <span class="o">[</span>8086:2280]
+           +-02.0  Intel Corporation Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Integrated Graphics Controller <span class="o">[</span>8086:22b0]
+           +-0b.0  Intel Corporation Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series Power Management Controller <span class="o">[</span>8086:22dc]
+           +-11.0  Intel Corporation Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series SDIO Controller <span class="o">[</span>8086:2295]
+           +-14.0  Intel Corporation Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series USB xHCI Controller <span class="o">[</span>8086:22b5]
+           +-1a.0  Intel Corporation Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series Trusted Execution Engine <span class="o">[</span>8086:2298]
+           +-1c.0-[01]----00.0  Realtek Semiconductor Co., Ltd. RTL8111/8168/8411 PCI Express Gigabit Ethernet Controller <span class="o">[</span>10ec:8168]
+           <span class="se">\-</span>1f.0  Intel Corporation Atom/Celeron/Pentium Processor x5-E8000/J3xxx/N3xxx Series PCU <span class="o">[</span>8086:229c]
+root@pve1:~# lsusb <span class="nt">-tv</span>
+/:  Bus 02.Port 1: Dev 1, <span class="nv">Class</span><span class="o">=</span>root_hub, <span class="nv">Driver</span><span class="o">=</span>xhci_hcd/6p, 5000M
+    ID 1d6b:0003 Linux Foundation 3.0 root hub
+/:  Bus 01.Port 1: Dev 1, <span class="nv">Class</span><span class="o">=</span>root_hub, <span class="nv">Driver</span><span class="o">=</span>xhci_hcd/7p, 480M
+    ID 1d6b:0002 Linux Foundation 2.0 root hub
+    |__ Port 1: Dev 2, If 0, <span class="nv">Class</span><span class="o">=</span>Mass Storage, <span class="nv">Driver</span><span class="o">=</span>usb-storage, 480M
+        ID 8644:8005 Intenso GmbG
+    |__ Port 3: Dev 3, If 0, <span class="nv">Class</span><span class="o">=</span>Communications, <span class="nv">Driver</span><span class="o">=</span>cdc_ncm, 480M
+        ID 0b95:1790 ASIX Electronics Corp. AX88179 Gigabit Ethernet
+    |__ Port 3: Dev 3, If 1, <span class="nv">Class</span><span class="o">=</span>CDC Data, <span class="nv">Driver</span><span class="o">=</span>cdc_ncm, 480M
+        ID 0b95:1790 ASIX Electronics Corp. AX88179 Gigabit Ethernet
+</code></pre></div></div>
+
+<p>The Dell Wyse 3040 hardware specs of 2GB RAM, 8GB of <abbr title="embedded MultiMediaCard (embedded flash memory)">eMMC</abbr> storage, and 4-core Atom CPU are extremely limiting. The 2GB of RAM makes you think about every bit of additional <abbr title="Container">CT</abbr>/<abbr title="Virtual Machine">VM</abbr> workload you are adding along with OS system services. The 6GB of available <abbr title="embedded MultiMediaCard (embedded flash memory)">eMMC</abbr> storage makes you consider each software package installed to the OS drive. So this makes the environment both frustrating and interesting at the same time. You really think about every bit of the system where on my main cluster I just install whatever and add however many <abbr title="Container">CT</abbr> or <abbr title="Virtual Machine">VM</abbr> to a node.</p>
+
+<h2 id="debian-12-on-wyse-3040">Debian 12 on Wyse 3040</h2>
+
+<p>You will need to read the earlier post <a href="/dell-wyse-3040-debian12/">Debian 12 on Dell Wyse 3040s</a> as this is were I started out for each of the Proxmox nodes for a base Debian 12 installation. You will need to fix the power down issue and have these units network capable and updated.</p>
+
+<h2 id="proxmox-822-overlay-on-debian-1252">Proxmox 8.2.2 overlay on Debian 12.5.2</h2>
+
+<p>The <a href="https://pve.proxmox.com/">Proxmox Documentation Wiki</a> has a page called <a href="https://pve.proxmox.com/wiki/Install_Proxmox_VE_on_Debian_12_Bookworm">Install Proxmox VE on Debian 12 Bookworm</a> that walks thru the steps to update a Debian 12 system to Proxmox 8. You should read and reference it when doing this process. It has more details on each step. I will note where the Dell Wyse 3040 has differences or minor issues I encountered as I run thru the steps I took to get my cluster running.</p>
+
+<p>Debian 12 likes to setup a user account (mine is just <strong>mcgarrah</strong>) and a <strong>root</strong> account that is separate. Proxmox only creates a <strong>root</strong> account and configures everything to use it. You will need to fix OpenSSH to allow <strong>root</strong> access if you want it to reflect a Proxmox system install. I also use the <code class="language-plaintext highlighter-rouge">sudo</code> command extensively which is not a norm with Proxmox.</p>
+
+<p>To get to a <strong>root</strong> session on a default Debian 12 setup, you can login remotely via the user account, then run <code class="language-plaintext highlighter-rouge">su -</code> and enter the <strong>root</strong> password. You will now be in a <strong>root</strong> session.</p>
+
+<h3 id="update-debian-12">Update Debian 12</h3>
+
+<p>Update your Debian to the most current of all packages. This smooths out some rough edges later.</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mcgarrah@pve1:~<span class="nv">$ </span>su -
+Password: <span class="k">**********</span>
+root@pve1:~# apt update <span class="o">&amp;&amp;</span> apt full-upgrade <span class="nt">-y</span>
+root@pve1:~# <span class="nb">exit
+</span>mcgarrah@pve1:~<span class="err">$</span>
+</code></pre></div></div>
+
+<h3 id="verify-hosts-file">Verify hosts file</h3>
+
+<p>Verify <code class="language-plaintext highlighter-rouge">/etc/hosts</code> has an IPv4 for hostname</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mcgarrah@pve1:~<span class="nv">$ </span><span class="nb">hostname</span> <span class="nt">--ip-address</span>
+192.168.89.11
+</code></pre></div></div>
+
+<h3 id="update-apt-repositories">Update APT repositories</h3>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>su -
+<span class="nb">echo</span> <span class="s2">"deb [arch=amd64] http://download.proxmox.com/debian/pve bookworm pve-no-subscription"</span> <span class="o">&gt;</span> /etc/apt/sources.list.d/pve-install-repo.list
+wget https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg <span class="nt">-O</span> /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg
+<span class="nb">sha512sum</span> /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg
+apt update <span class="o">&amp;&amp;</span> apt full-upgrade <span class="nt">-y</span>
+</code></pre></div></div>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mcgarrah@pve1:~<span class="nv">$ </span>su -
+Password: <span class="k">**********</span>
+root@pve1:~# <span class="nb">echo</span> <span class="s2">"deb [arch=amd64] http://download.proxmox.com/debian/pve bookworm pve-no-subscription"</span> <span class="o">&gt;</span> /etc/apt/sources.list.d/pve-install-repo.list
+root@pve1:~# wget https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg <span class="nt">-O</span> /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg
+<span class="nt">--2024-07-16</span> 23:29:06--  https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg
+Resolving enterprise.proxmox.com <span class="o">(</span>enterprise.proxmox.com<span class="o">)</span>... 144.217.225.162, 2a0b:7140:8:100::90
+Connecting to enterprise.proxmox.com <span class="o">(</span>enterprise.proxmox.com<span class="o">)</span>|144.217.225.162|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 1187 <span class="o">(</span>1.2K<span class="o">)</span> <span class="o">[</span>application/octet-stream]
+Saving to: ‘/etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg’
+/etc/apt/trusted.gpg.d 100%[<span class="o">==========================&gt;]</span>   1.16K  <span class="nt">--</span>.-KB/s    <span class="k">in </span>0s
+2024-07-16 23:29:07 <span class="o">(</span>2.85 MB/s<span class="o">)</span> - ‘/etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg’ saved <span class="o">[</span>1187/1187]
+root@pve1:~# <span class="nb">sha512sum</span> /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg
+7da6fe34168adc6e479327ba517796d4702fa2f8b4f0a9833f5ea6e6b48f6507a6da403a274fe201595edc86a84463d50383d07f64bdde2e3658108db7d6dc87  /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg
+root@pve1:~# apt update <span class="o">&amp;&amp;</span> apt full-upgrade <span class="nt">-y</span>
+...
+root@pve1:~# <span class="nb">exit
+</span>mcgarrah@pve1:~<span class="err">$</span>
+</code></pre></div></div>
+
+<h3 id="install-proxmox-ve-kernel">Install Proxmox VE Kernel</h3>
+
+<p>We need to get the PVE kernel installed so we have the compiled flags and features necessary for PVE to run. We have to reboot after installing the kernel before installing the rest of the packages.</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mcgarrah@pve1:~<span class="nv">$ </span>su -
+Password: <span class="k">**********</span>
+root@pve1:~# apt <span class="nb">install </span>proxmox-default-kernel <span class="nt">-y</span>
+...
+root@pve1:~# systemctl reboot
+</code></pre></div></div>
+
+<h3 id="install-proxmox-ve-packages">Install Proxmox VE Packages</h3>
+
+<p>Become root and install the PVE packages recommended by PVE docs.</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mcgarrah@pve1:~<span class="nv">$ </span>su -
+Password: <span class="k">**********</span>
+root@pve1:~# apt <span class="nb">install </span>proxmox-ve postfix open-iscsi chrony <span class="nt">-y</span>
+...
+root@pve1:~# <span class="nb">exit
+</span>mcgarrah@pve1:~<span class="err">$</span>
+</code></pre></div></div>
+
+<p>During the install, I picked “Local Only” for Postfix and regretted it later. YMMV.</p>
+
+<p>Later I found we were missing the <code class="language-plaintext highlighter-rouge">ksmtuned</code>, <code class="language-plaintext highlighter-rouge">dnsmasq</code> and <strong>FRR tools</strong>.</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mcgarrah@pve1:~<span class="nv">$ </span>su -
+Password: <span class="k">**********</span>
+root@pve1:~# apt <span class="nb">install </span>proxmox-ve frr-pythontools ksmtuned dnsmasq <span class="nt">-y</span>
+...
+root@pve1:~# <span class="nb">exit
+</span>mcgarrah@pve1:~<span class="err">$</span>
+</code></pre></div></div>
+
+<p>Adding <code class="language-plaintext highlighter-rouge">ksmtuned</code> enables Kernel Samepage Merging to help with memory utilization. Adding <code class="language-plaintext highlighter-rouge">dnsmasq</code> and <strong>FRR Tools</strong> are for DNS and routing support in <abbr title="Software Defined Networking">SDN</abbr>.</p>
+
+<h3 id="remove-debian-kernel-and-os-prober">Remove Debian Kernel and OS-Prober</h3>
+
+<p>Reduce complexity and future issues by removing the default Debian Kernel from the PVE system. <strong>OS-Prober</strong> can conflict with <abbr title="Virtual Machine">VM</abbr> hosts are worth removing early.</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mcgarrah@pve1:~<span class="nv">$ </span>su -
+Password: <span class="k">**********</span>
+root@pve1:~# apt remove linux-image-amd64 <span class="s1">'linux-image-6.1*'</span> os-prober <span class="nt">-y</span>
+root@pve1:~# update-grub
+...
+root@pve1:~# systemctl reboot
+</code></pre></div></div>
+
+<p>I recommend rebooting after making major changes like this to verify that the correct kernel and boot works.</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mcgarrah@pve1:~<span class="nv">$ </span><span class="nb">uname</span> <span class="nt">-a</span>
+Linux pve1 6.8.8-2-pve <span class="c">#1 SMP PREEMPT_DYNAMIC PMX 6.8.8-2 (2024-06-24T09:00Z) x86_64 GNU/Linux</span>
+</code></pre></div></div>
+
+<p>When you come back up, you should see the PVE kernel 6.8 which is newer than the Debian default of 6.1.</p>
+
+<hr />
+
+<p>Section of post updated 2024-08-26.</p>
+
+<p>Following up after <a href="/proxmox-8-dell-wyse-3040-upgrade/">ProxMox 8.2.4 Upgrade on Dell Wyse 3040s</a> where I needed some additional work to clean the Debian Kernel Images.</p>
+
+<p>First be very sure you are running the PVE kernel.</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mcgarrah@pve1:~<span class="nv">$ </span><span class="nb">uname</span> <span class="nt">-a</span>
+Linux pve1 6.8.8-2-pve <span class="c">#1 SMP PREEMPT_DYNAMIC PMX 6.8.8-2 (2024-06-24T09:00Z) x86_64 GNU/Linux</span>
+</code></pre></div></div>
+
+<p>Next <strong>purge</strong> the kernel image packages and not just remove them to really clean them out. This command will remove the meta-package and the individual linux images.</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>apt purge <span class="nt">-y</span> <span class="si">$(</span>dpkg <span class="nt">--list</span> | <span class="nb">grep</span> <span class="nt">-Ei</span> <span class="s1">'linux-image|linux-headers'</span> | <span class="nb">awk</span> <span class="s1">'{print $2}'</span> | <span class="nb">grep</span> <span class="nt">-v</span> <span class="s2">"</span><span class="si">$(</span><span class="nb">uname</span> <span class="nt">-r</span><span class="si">)</span><span class="s2">"</span> | <span class="nb">sort</span> <span class="nt">-V</span><span class="si">)</span>
+</code></pre></div></div>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>update-grub
+</code></pre></div></div>
+
+<p>Return to the original post.</p>
+
+<hr />
+
+<h3 id="proxmox-helper-scripts">Proxmox Helper Scripts</h3>
+
+<p><a href="https://helper-scripts.com/">Proxmox VE Helper-Scripts</a> are a great way to accelerate setting up and maintaining your Proxmox cluster.</p>
+
+<blockquote>
+  <p>“These scripts empower users to create a Linux container or virtual machine interactively, providing choices for both simple and advanced configurations. The basic setup adheres to default settings, while the advanced setup gives users the ability to customize these defaults. Options are displayed to users in a dialog box format. Once the user makes their selections, the script collects and validates their input to generate the final configuration for the container or virtual machine.”</p>
+</blockquote>
+
+<h4 id="pve-post-install">PVE Post Install</h4>
+
+<p><a href="https://tteck.github.io/Proxmox/#proxmox-ve-post-install">Proxmox VE Post Install</a> script will offer a set of prompts. Take the defaults except for the “Disabling high availability” if you intents to have a Proxmox Cluster or use Ceph. The rest of the defaults are good. Often the last step is for an upgrade of all packages and prompts about rebooting.</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mcgarrah@pve1:~<span class="nv">$ </span>su -
+Password: <span class="k">**********</span>
+root@pve1:~# bash <span class="nt">-c</span> <span class="s2">"</span><span class="si">$(</span>wget <span class="nt">-qLO</span> - https://github.com/tteck/Proxmox/raw/main/misc/post-pve-install.sh<span class="si">)</span><span class="s2">"</span>
+    ____ _    ________   ____             __     ____           __        ____
+   / __ <span class="se">\ </span>|  / / ____/  / __ <span class="se">\_</span>___  _____/ /_   /  _/___  _____/ /_____ _/ / /
+  / /_/ / | / / __/    / /_/ / __ <span class="se">\/</span> ___/ __/   / // __ <span class="se">\/</span> ___/ __/ __ <span class="sb">`</span>/ / /
+ / ____/| |/ / /___   / ____/ /_/ <span class="o">(</span>__  <span class="o">)</span> /_   _/ // / / <span class="o">(</span>__  <span class="o">)</span> /_/ /_/ / / /
+/_/     |___/_____/  /_/    <span class="se">\_</span>___/____/<span class="se">\_</span>_/  /___/_/ /_/____/<span class="se">\_</span>_/<span class="se">\_</span>_,_/_/_/
+
+ ✓ Corrected Proxmox VE Sources
+ ✓ Disabled <span class="s1">'pve-enterprise'</span> repository
+ ✓ Enabled <span class="s1">'pve-no-subscription'</span> repository
+ ✓ Corrected <span class="s1">'ceph package repositories'</span>
+ ✓ Added <span class="s1">'pvetest'</span> repository
+ ✓ Disabled subscription nag <span class="o">(</span>Delete browser cache<span class="o">)</span>
+ ✗ Selected no to Disabling high availability
+ ✓ Updated Proxmox VE
+ ✓ Completed Post Install Routines
+root@pve1:~# <span class="nb">exit
+</span>mcgarrah@pve1:~<span class="err">$</span>
+</code></pre></div></div>
+
+<h4 id="pve-cpu-microcode-updates">PVE CPU Microcode Updates</h4>
+
+<p><a href="https://tteck.github.io/Proxmox/#proxmox-ve-processor-microcode">Proxmox VE Processor Microcode</a> script updates the low-level firmware for your CPU.</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mcgarrah@pve1:~<span class="nv">$ </span>su -
+Password: <span class="k">**********</span>
+root@pve1:~# bash <span class="nt">-c</span> <span class="s2">"</span><span class="si">$(</span>wget <span class="nt">-qLO</span> - https://github.com/tteck/Proxmox/raw/main/misc/microcode.sh<span class="si">)</span><span class="s2">"</span>
+
+ ✓ GenuineIntel was detected
+ ✓ Intel iucode-tool is already installed
+ - Downloading the Intel Processor Microcode Package intel-microcode_3.20240531.1+nmu1_amd               
+ ✓ Downloaded the Intel Processor Microcode Package intel-microcode_3.20240531.1+nmu1_amd64.deb
+ ✓ Installed intel-microcode_3.20240531.1+nmu1_amd64.deb
+ ✓ Cleaned
+
+In order to apply the changes, a system reboot will be necessary.
+root@pve1:~# systemctl reboot
+</code></pre></div></div>
+
+<h4 id="pve-kernel-clean">PVE Kernel Clean</h4>
+
+<p><a href="https://tteck.github.io/Proxmox/#proxmox-ve-kernel-clean">Proxmox VE Kernel Clean</a> scripts clears out old or unused kernels. It is worth using occasionally after you upgrade your system a few times.</p>
+
+<h3 id="utilities-and-tools">Utilities and Tools</h3>
+
+<p>Adding the sudo command and permissions. You have to logout of the session and log back in for the permissions to take effect.</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mcgarrah@pve1:~<span class="nv">$ </span>su -
+root@pve1:~# apt <span class="nb">install sudo</span> <span class="nt">-y</span>
+root@pve1:~# usermod <span class="nt">-aG</span> <span class="nb">sudo </span>mcgarrah
+root@pve1:~# <span class="nb">exit
+</span>mcgarrah@pve1:~<span class="nv">$ </span><span class="nb">exit</span>
+</code></pre></div></div>
+
+<p>Here are some tools I just install everywhere because they are useful. You can add them or not.</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mcgarrah@pve1:~<span class="nv">$ </span><span class="nb">sudo </span>apt <span class="nb">install </span>vim curl tmux <span class="nt">-y</span>
+</code></pre></div></div>
+
+<p>Here are several tools worth having for diagnosing issues with performance.</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mcgarrah@pve1:~<span class="nv">$ </span><span class="nb">sudo </span>apt <span class="nb">install </span>htop iftop iptraf dstat ioping iotop <span class="nt">-y</span>
+</code></pre></div></div>
+
+<p><strong>Note</strong>: I removed the <code class="language-plaintext highlighter-rouge">atop</code> command later in my post <a href="/proxmox-8-dell-wyse-3040-upgrade/">ProxMox 8.2.4 Upgrade on Dell Wyse 3040s</a> as it stores logs daily which ties up disk space I cannot afford on these small boxes. It is a great tool but not for these SFF systems.</p>
+
+<p>Add these for grabbing information on the disk and cpu temperatures and other contents.</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>mcgarrah@pve1:~<span class="nv">$ </span><span class="nb">sudo </span>apt <span class="nb">install </span>lm-sensors <span class="nt">-y</span>
+mcgarrah@pve1:~<span class="nv">$ </span>sensors
+coretemp-isa-0000
+Adapter: ISA adapter
+Core 0:       +52.0°C  <span class="o">(</span>high <span class="o">=</span> +90.0°C, crit <span class="o">=</span> +90.0°C<span class="o">)</span>
+Core 1:       +52.0°C  <span class="o">(</span>high <span class="o">=</span> +90.0°C, crit <span class="o">=</span> +90.0°C<span class="o">)</span>
+Core 2:       +55.0°C  <span class="o">(</span>high <span class="o">=</span> +90.0°C, crit <span class="o">=</span> +90.0°C<span class="o">)</span>
+Core 3:       +55.0°C  <span class="o">(</span>high <span class="o">=</span> +90.0°C, crit <span class="o">=</span> +90.0°C<span class="o">)</span>
+
+soc_dts0-virtual-0
+Adapter: Virtual device
+temp1:        +54.0°C
+
+soc_dts1-virtual-0
+Adapter: Virtual device
+temp1:        +52.0°C
+
+acpitz-acpi-0
+Adapter: ACPI interface
+temp1:         +0.0°C
+</code></pre></div></div>
+
+<h2 id="voilà">Voilà</h2>
+
+<p><a href="/assets/images/wyse3040-proxmox8-summary.png" target="_blank"><img src="/assets/images/wyse3040-proxmox8-summary.png" alt="Proxmox Mini Cluster" width="45%" height="45%" style="display:block; margin-left:auto; margin-right:auto" /></a></p>
+
+<p>Above is a three node Proxmox 8 Cluster with Ceph and CephFS configured. A single Debian Container in a <abbr title="High Availability">HA</abbr> failover configuration that used Ceph RBD and CephFS for shared storage. The network is setup with two bridged networks on <strong>vmbr0</strong> and <strong>vmbr1</strong> for a LAN and SAN configuration with the Ceph Cluster using both. An overlay <abbr title="Software Defined Networking">SDN</abbr> network is configured but currently unused by the <abbr title="Container">CT</abbr> or future <abbr title="Virtual Machine">VM</abbr>.</p>
+
+<h2 id="references">References</h2>
+
+<p>Here is a collection of posts and articles that helped me down this path.</p>
+
+<p>ParkyTowers Thin Client site has the <a href="https://www.parkytowers.me.uk/thin/wyse/3040/">Wyse 3040 (N10D): Hardware</a> which is beyond useful. A great place to look for other thin client hardware and other hacking on that hardware.</p>
+
+<p>The series of posts on <a href="https://blog.m0les.com/">M0les - Thoughts that go “bump” in the night</a> on the Wyse 3040 of from May, June, and August of 2023 have some excellent information and worth a read.</p>
+
+<ul>
+  <li><a href="https://blog.m0les.com/2023/05/misusing-dell-wyse-3040-thin-client.html">Misusing the Dell Wyse 3040 thin client</a></li>
+  <li><a href="https://blog.m0les.com/2023/06/thin-client-router-part-2-virtual.html">Thin client router part 2: virtual insanity</a></li>
+  <li><a href="https://blog.m0les.com/2023/08/thin-client-router-part3-bare-metal-atom.html">Thin client router part3: Bare metal atom</a></li>
+</ul>
+
+<p><a href="https://qubitsandbytes.co.uk/install-a-new-os-on-a-dell-wyse-3040/">Install a New Linux OS On a Dell Wyse 3040</a> from Feb 2022 is an excellent article for starting out.</p>
+
+<p>Apalrd’s posts on <a href="https://www.apalrd.net/posts/2022/pve_bullseye/">Installing Proxmox VE 7 on Debian Bullseye</a> and <a href="https://www.apalrd.net/posts/2022/wyse_3040/">Buying More Thin Clients for more ‘fun’?</a> are what got me started on this idea when I watched his Youtube channel.</p>
+
+<p><a href="https://blog.kroy.io/2020/01/17/the-baby-wyse-the-dell-3040/">A Baby WYSE, the 3040</a> is an early look at these as a Raspberry Pi replacement.</p>
+
+<hr />
+
+<p>I hope you find some of this helpful or at least interesting to read.</p>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/proxmox/">proxmox</a>, 
+        
+          <a href="/tags/ceph/">ceph</a>, 
+        
+          <a href="/tags/dell-wyse-3040/">dell-wyse-3040</a>, 
+        
+          <a href="/tags/virtualization/">virtualization</a>, 
+        
+          <a href="/tags/homelab/">homelab</a>, 
+        
+          <a href="/tags/clustering/">clustering</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/technical/">technical</a>, 
+        
+          <a href="/categories/homelab/">homelab</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

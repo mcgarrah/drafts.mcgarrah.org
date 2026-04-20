@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Upgrading Jekyll: Two Years of Cascading Breakage | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Upgrading Jekyll: Two Years of Cascading Breakage" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="A chronicle of upgrading Jekyll from 4.2 to 4.4.1 over two years: webrick dependency, SASS index naming conflicts, Dart Sass 2.0 division syntax, module system migration, circular dependency restructuring, and Node.js 24 GitHub Actions updates. Each upgrade’s breakage and fix documented from git history." />
+<meta property="og:description" content="A chronicle of upgrading Jekyll from 4.2 to 4.4.1 over two years: webrick dependency, SASS index naming conflicts, Dart Sass 2.0 division syntax, module system migration, circular dependency restructuring, and Node.js 24 GitHub Actions updates. Each upgrade’s breakage and fix documented from git history." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/jekyll-upgrade-two-years-cascading-breakage/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/jekyll-upgrade-two-years-cascading-breakage/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-04-24T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Upgrading Jekyll: Two Years of Cascading Breakage" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-04-24T00:00:00+00:00","datePublished":"2026-04-24T00:00:00+00:00","description":"A chronicle of upgrading Jekyll from 4.2 to 4.4.1 over two years: webrick dependency, SASS index naming conflicts, Dart Sass 2.0 division syntax, module system migration, circular dependency restructuring, and Node.js 24 GitHub Actions updates. Each upgrade’s breakage and fix documented from git history.","headline":"Upgrading Jekyll: Two Years of Cascading Breakage","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/jekyll-upgrade-two-years-cascading-breakage/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/jekyll-upgrade-two-years-cascading-breakage/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/jekyll-upgrade-two-years-cascading-breakage/">Upgrading Jekyll: Two Years of Cascading Breakage</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-04-24T00:00:00+00:00">April 24, 2026</time><span class="reading-time">7 min read</span></header>
+
+  <p>I’ve upgraded Jekyll three times in two years. Each time, the version bump was one line in the Gemfile. Each time, the cascading breakage took hours to fix. The Jekyll upgrade was never the hard part — it was everything that broke downstream.</p>
+
+<p>Here’s the full timeline.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="the-starting-point-contrast-theme">The Starting Point: Contrast Theme</h2>
+
+<p>This blog is built on the <a href="https://github.com/niklasbuschmann/contrast">Contrast theme</a> by Niklas Buschmann. The theme was last updated March 2021 — over three years before I started customizing it. That gap meant every upgrade had to bridge years of ecosystem changes in Ruby, SASS, and GitHub Actions simultaneously.</p>
+
+<p>I maintain <code class="language-plaintext highlighter-rouge">upstream</code> and <code class="language-plaintext highlighter-rouge">clean</code> branches to track divergence from the original theme:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git diff clean upstream
+</code></pre></div></div>
+
+<p>The divergence has grown significant enough that pushing changes back upstream is no longer practical.</p>
+
+<h2 id="timeline">Timeline</h2>
+
+<h3 id="march-2024-webrick--the-missing-server">March 2024: webrick — The Missing Server</h3>
+
+<p><strong>Problem:</strong> <code class="language-plaintext highlighter-rouge">bundle exec jekyll serve</code> stopped working after a Ruby update.</p>
+
+<p><strong>Root cause:</strong> Ruby 3.0 removed <code class="language-plaintext highlighter-rouge">webrick</code> from the standard library. Jekyll’s development server depends on it, but the Gemfile didn’t list it as a dependency because it used to ship with Ruby.</p>
+
+<p><strong>Fix:</strong> One line in the Gemfile:</p>
+
+<div class="language-ruby highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">gem</span> <span class="s2">"webrick"</span><span class="p">,</span> <span class="s2">"~&gt; 1.9.1"</span>
+</code></pre></div></div>
+
+<p><strong>Lesson:</strong> Ruby’s stdlib removals break tools that assumed those libraries would always be there. Always pin your server dependencies explicitly.</p>
+
+<h3 id="june-2024-ubuntu-2404-lts--local-development">June 2024: Ubuntu 24.04 LTS — Local Development</h3>
+
+<p><strong>Problem:</strong> The local development startup script needed updates for Ubuntu 24.04 LTS.</p>
+
+<p><strong>Fix:</strong> Updated <code class="language-plaintext highlighter-rouge">start-jekyll.sh</code> with the correct package installation and gem path setup:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Setting up on Ubuntu 24.04 LTS</span>
+<span class="nb">sudo </span>apt <span class="nt">-y</span> <span class="nb">install </span>make build-essential ruby ruby-dev
+
+<span class="c"># In ~/.bashrc or ~/.zshrc</span>
+<span class="nb">export </span><span class="nv">GEM_HOME</span><span class="o">=</span><span class="nv">$HOME</span>/.gems
+<span class="nb">export </span><span class="nv">PATH</span><span class="o">=</span><span class="nv">$HOME</span>/.gems/bin:<span class="nv">$PATH</span>
+</code></pre></div></div>
+
+<p>The script also documents every useful <code class="language-plaintext highlighter-rouge">jekyll serve</code> flag — <code class="language-plaintext highlighter-rouge">--drafts</code>, <code class="language-plaintext highlighter-rouge">--future</code>, <code class="language-plaintext highlighter-rouge">--unpublished</code>, <code class="language-plaintext highlighter-rouge">--livereload</code>, <code class="language-plaintext highlighter-rouge">--incremental</code> — which I use daily during development.</p>
+
+<h3 id="august-2024-jekyll-42--433--sass-breaks">August 2024: Jekyll 4.2 → 4.3.3 — SASS Breaks</h3>
+
+<p><strong>Problem:</strong> Jekyll 4.3 shipped with an updated <code class="language-plaintext highlighter-rouge">jekyll-sass-converter</code> that changed how SASS files are resolved.</p>
+
+<p><strong>Three things broke at once:</strong></p>
+
+<p><strong>1. Duplicate <code class="language-plaintext highlighter-rouge">index.sass</code> naming conflict</strong></p>
+
+<p>The Contrast theme had <code class="language-plaintext highlighter-rouge">_sass/index.sass</code> as the main SASS entry point. The new SASS converter also looked for <code class="language-plaintext highlighter-rouge">index.sass</code> as a directory index file, creating an ambiguity. Fix: rename <code class="language-plaintext highlighter-rouge">_sass/index.sass</code> to <code class="language-plaintext highlighter-rouge">_sass/main.sass</code> and update all imports.</p>
+
+<p><strong>2. Dart Sass 2.0 division syntax</strong></p>
+
+<p>Dart Sass 2.0 deprecated the <code class="language-plaintext highlighter-rouge">/</code> operator for division (because <code class="language-plaintext highlighter-rouge">/</code> is valid CSS for shorthand properties like <code class="language-plaintext highlighter-rouge">font: 12px/1.5</code>). Every SASS file using division needed updating:</p>
+
+<div class="language-sass highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Before (deprecated)</span>
+<span class="nl">width</span><span class="p">:</span> <span class="nv">$container-width</span> <span class="o">/</span> <span class="m">2</span>
+
+<span class="c1">// After</span>
+<span class="k">@use</span> <span class="s2">"sass:math"</span>
+<span class="nl">width</span><span class="p">:</span> <span class="n">math</span><span class="o">.</span><span class="nf">div</span><span class="p">(</span><span class="nv">$container-width</span><span class="o">,</span> <span class="m">2</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p><strong>3. Gemfile version bump</strong></p>
+
+<div class="language-ruby highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Before</span>
+<span class="n">gem</span> <span class="s2">"jekyll"</span><span class="p">,</span> <span class="s2">"~&gt; 4.2.0"</span>
+
+<span class="c1"># After</span>
+<span class="n">gem</span> <span class="s2">"jekyll"</span><span class="p">,</span> <span class="s2">"~&gt; 4.3.3"</span>
+</code></pre></div></div>
+
+<p>This was the commit that taught me: a one-line Gemfile change can cascade into five file changes across the SASS architecture.</p>
+
+<h3 id="may-2025-dart-sass-30--the-module-system">May 2025: Dart Sass 3.0 — The Module System</h3>
+
+<p><strong>Problem:</strong> Dart Sass 3.0 deprecated <code class="language-plaintext highlighter-rouge">@import</code> in favor of <code class="language-plaintext highlighter-rouge">@use</code> and <code class="language-plaintext highlighter-rouge">@forward</code>. The deprecation warnings were becoming errors.</p>
+
+<p><strong>Two commits, two days:</strong></p>
+
+<p><strong>Day 1: Color function migration</strong></p>
+
+<p>Every global color function was deprecated in favor of namespaced versions:</p>
+
+<div class="language-sass highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Before (deprecated)</span>
+<span class="nl">color</span><span class="p">:</span> <span class="nf">lighten</span><span class="p">(</span><span class="nv">$base-color</span><span class="o">,</span> <span class="m">20%</span><span class="p">)</span>
+<span class="nl">color</span><span class="p">:</span> <span class="nf">darken</span><span class="p">(</span><span class="nv">$base-color</span><span class="o">,</span> <span class="m">10%</span><span class="p">)</span>
+<span class="nl">background</span><span class="p">:</span> <span class="nf">mix</span><span class="p">(</span><span class="nv">$color-a</span><span class="o">,</span> <span class="nv">$color-b</span><span class="o">,</span> <span class="m">50%</span><span class="p">)</span>
+
+<span class="c1">// After</span>
+<span class="k">@use</span> <span class="s2">"sass:color"</span>
+<span class="nl">color</span><span class="p">:</span> <span class="nb">color</span><span class="o">.</span><span class="nf">adjust</span><span class="p">(</span><span class="nv">$base-color</span><span class="o">,</span> <span class="nv">$lightness</span><span class="o">:</span> <span class="m">20%</span><span class="p">)</span>
+<span class="nl">color</span><span class="p">:</span> <span class="nb">color</span><span class="o">.</span><span class="nf">adjust</span><span class="p">(</span><span class="nv">$base-color</span><span class="o">,</span> <span class="nv">$lightness</span><span class="o">:</span> <span class="m">-10%</span><span class="p">)</span>
+<span class="nl">background</span><span class="p">:</span> <span class="nb">color</span><span class="o">.</span><span class="nf">mix</span><span class="p">(</span><span class="nv">$color-a</span><span class="o">,</span> <span class="nv">$color-b</span><span class="o">,</span> <span class="m">50%</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>Six files changed. Every color manipulation in the theme needed updating.</p>
+
+<p><strong>Day 2: Module system migration</strong></p>
+
+<p>Replaced <code class="language-plaintext highlighter-rouge">@import</code> chains with <code class="language-plaintext highlighter-rouge">@use</code>/<code class="language-plaintext highlighter-rouge">@forward</code>:</p>
+
+<div class="language-sass highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Before: _sass/main.sass</span>
+<span class="k">@import</span> <span class="s">"basic"</span>
+<span class="k">@import</span> <span class="s">"layout"</span>
+<span class="k">@import</span> <span class="s">"classes"</span>
+
+<span class="c1">// After: _sass/index.sass (forwarding file)</span>
+<span class="k">@forward</span> <span class="s2">"variables"</span>
+<span class="k">@forward</span> <span class="s2">"basic"</span>
+<span class="k">@forward</span> <span class="s2">"layout"</span>
+<span class="k">@forward</span> <span class="s2">"classes"</span>
+</code></pre></div></div>
+
+<p>Created a central <code class="language-plaintext highlighter-rouge">_sass/index.sass</code> forwarding file and a <code class="language-plaintext highlighter-rouge">_sass/variables.sass</code> for shared values. Nine files changed.</p>
+
+<h3 id="may-2025-google-jules-pr--more-sass-pain">May 2025: Google Jules PR — More SASS Pain</h3>
+
+<p>The Google Jules experiment PR (#13) added four new SASS files (copy-button, comments, tags-categories, reading-time). The AI-generated code used SCSS syntax (curly braces and semicolons) in <code class="language-plaintext highlighter-rouge">.sass</code> files (which expect indented syntax). Three rounds of fixes were needed:</p>
+
+<ol>
+  <li>Convert SCSS syntax to indented SASS</li>
+  <li>Update <code class="language-plaintext highlighter-rouge">@import</code> to <code class="language-plaintext highlighter-rouge">@use</code> in the new files</li>
+  <li>Fix <code class="language-plaintext highlighter-rouge">@use</code> rule ordering (must come before variable declarations)</li>
+</ol>
+
+<p><strong>Lesson:</strong> AI code generators don’t always respect the existing project’s SASS dialect. Always check whether the project uses <code class="language-plaintext highlighter-rouge">.sass</code> (indented) or <code class="language-plaintext highlighter-rouge">.scss</code> (braces).</p>
+
+<h3 id="september-2025-jekyll-433--441--the-circular-dependency">September 2025: Jekyll 4.3.3 → 4.4.1 + The Circular Dependency</h3>
+
+<p><strong>The upgrade itself</strong> was clean — just a Gemfile version bump:</p>
+
+<div class="language-ruby highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">gem</span> <span class="s2">"jekyll"</span><span class="p">,</span> <span class="s2">"~&gt; 4.4.1"</span>
+</code></pre></div></div>
+
+<p><strong>The same day</strong>, I added a print stylesheet (<code class="language-plaintext highlighter-rouge">_sass/print.sass</code>) and a Google Custom Search stylesheet (<code class="language-plaintext highlighter-rouge">_sass/google-search.sass</code>). Both needed to import the theme’s color variables. This created a circular dependency:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>main.sass → imports print.sass → imports main.sass → ∞
+</code></pre></div></div>
+
+<p><strong>The fix</strong> required restructuring the entire SASS architecture:</p>
+
+<ul>
+  <li>Extract variables and functions to a new <code class="language-plaintext highlighter-rouge">_sass/variables.sass</code></li>
+  <li>Update all SASS files to import from <code class="language-plaintext highlighter-rouge">variables</code> instead of <code class="language-plaintext highlighter-rouge">main</code></li>
+  <li>Reorganize <code class="language-plaintext highlighter-rouge">_sass/index.sass</code> to properly forward modules</li>
+  <li>Nine files changed, 92 insertions, 171 deletions</li>
+</ul>
+
+<p>This is documented in detail in <a href="/sass-circular-dependency-nightmare/">SASS Circular Dependency Nightmare</a>.</p>
+
+<h3 id="april-2026-nodejs-24--github-actions-forced-update">April 2026: Node.js 24 — GitHub Actions Forced Update</h3>
+
+<p><strong>Problem:</strong> GitHub announced that Node.js 20 actions would be forced to Node.js 24 starting June 2, 2026. All three workflows needed updates.</p>
+
+<p><strong>Changes across all workflows:</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Action</th>
+      <th>Before</th>
+      <th>After</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>actions/checkout</td>
+      <td>v5</td>
+      <td>v6</td>
+    </tr>
+    <tr>
+      <td>ruby/setup-ruby</td>
+      <td>v1.198.0</td>
+      <td>v1.300.0</td>
+    </tr>
+    <tr>
+      <td>actions/configure-pages</td>
+      <td>v5</td>
+      <td>v6</td>
+    </tr>
+    <tr>
+      <td>actions/deploy-pages</td>
+      <td>v4</td>
+      <td>v5</td>
+    </tr>
+    <tr>
+      <td>actions/upload-artifact</td>
+      <td>v4</td>
+      <td>v7</td>
+    </tr>
+    <tr>
+      <td>treosh/lighthouse-ci-action</td>
+      <td>v10</td>
+      <td>v12</td>
+    </tr>
+    <tr>
+      <td>lycheeverse/lychee-action</td>
+      <td>v2.0.2</td>
+      <td>v2.4.0</td>
+    </tr>
+    <tr>
+      <td>github/codeql-action</td>
+      <td>v3</td>
+      <td>v4</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Three workflow files, 16 insertions, 16 deletions. This one was mechanical but the blast radius was wide — every workflow in the repository needed changes simultaneously.</p>
+
+<h2 id="the-current-stack">The Current Stack</h2>
+
+<div class="language-ruby highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># Gemfile (as of April 2026)</span>
+<span class="n">source</span> <span class="s2">"https://rubygems.org"</span>
+
+<span class="n">gem</span> <span class="s2">"jekyll"</span><span class="p">,</span> <span class="s2">"~&gt; 4.4.1"</span>
+
+<span class="n">group</span> <span class="ss">:jekyll_plugins</span> <span class="k">do</span>
+  <span class="n">gem</span> <span class="s2">"jekyll-feed"</span><span class="p">,</span> <span class="s2">"~&gt; 0.17.0"</span>
+  <span class="n">gem</span> <span class="s2">"jekyll-sitemap"</span><span class="p">,</span> <span class="s2">"~&gt; 1.4.0"</span>
+  <span class="n">gem</span> <span class="s2">"jekyll-paginate"</span><span class="p">,</span> <span class="s2">"~&gt; 1.1.0"</span>
+  <span class="n">gem</span> <span class="s2">"jekyll-seo-tag"</span><span class="p">,</span> <span class="s2">"~&gt; 2.8.0"</span>
+  <span class="n">gem</span> <span class="s2">"jekyll-redirect-from"</span><span class="p">,</span> <span class="s2">"~&gt; 0.16.0"</span>
+<span class="k">end</span>
+
+<span class="n">gem</span> <span class="s2">"webrick"</span><span class="p">,</span> <span class="s2">"~&gt; 1.9.1"</span>
+</code></pre></div></div>
+
+<h2 id="lessons-learned">Lessons Learned</h2>
+
+<p><strong>One-line changes cascade.</strong> A Gemfile version bump is never just a version bump. It’s a version bump plus every downstream incompatibility that the new version exposes.</p>
+
+<p><strong>SASS is the most fragile layer.</strong> Of the six upgrade events, four involved SASS breakage. The Dart Sass team’s deprecation-to-removal pipeline is aggressive, and Jekyll themes written in 2019-2021 are full of deprecated patterns.</p>
+
+<p><strong>Pin everything.</strong> The Gemfile uses <code class="language-plaintext highlighter-rouge">~&gt;</code> (pessimistic version constraints) for every gem. This prevents surprise major version jumps while allowing patch updates. The GitHub Actions workflows pin specific versions with comments linking to release pages.</p>
+
+<p><strong>Keep a startup script.</strong> The <code class="language-plaintext highlighter-rouge">start-jekyll.sh</code> script documents the full local development setup — Ruby gem paths, package dependencies, and every useful <code class="language-plaintext highlighter-rouge">jekyll serve</code> flag. When Ubuntu 24.04 changed things, the script was the single place to update.</p>
+
+<p><strong>AI-generated code needs dialect checking.</strong> The Google Jules PR generated valid SCSS that was invalid SASS. The syntax is similar enough that it looks right at first glance but fails at build time.</p>
+
+<p><strong>Upstream divergence is permanent.</strong> The Contrast theme hasn’t been updated since 2021. My fork has diverged through three Jekyll versions, a complete SASS module system migration, and dozens of new features. Contributing back upstream is no longer practical — the codebases have evolved in different directions.</p>
+
+<h2 id="related-posts">Related Posts</h2>
+
+<ul>
+  <li><a href="/sass-circular-dependency-nightmare/">SASS Circular Dependency Nightmare</a> — The September 2025 restructuring in detail</li>
+  <li><a href="/jekyll-github-actions-cicd-pipeline/">The CI/CD Pipeline Behind This Jekyll Blog</a> — The GitHub Actions workflows that needed Node.js 24 updates</li>
+  <li><a href="/setting-up-jekyll-blog-github-pages/">Building This Blog: Jekyll on GitHub Pages</a> — Overall setup guide</li>
+  <li><a href="/jekyll-markdown-feature-reference/">How the Sausage Is Made</a> — Full feature inventory including SASS architecture</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/jekyll/">jekyll</a>, 
+        
+          <a href="/tags/ruby/">ruby</a>, 
+        
+          <a href="/tags/sass/">sass</a>, 
+        
+          <a href="/tags/dart-sass/">dart-sass</a>, 
+        
+          <a href="/tags/github-actions/">github-actions</a>, 
+        
+          <a href="/tags/github-pages/">github-pages</a>, 
+        
+          <a href="/tags/upgrade/">upgrade</a>, 
+        
+          <a href="/tags/webrick/">webrick</a>, 
+        
+          <a href="/tags/node-js/">node-js</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/web-development/">web-development</a>, 
+        
+          <a href="/categories/technical/">technical</a>, 
+        
+          <a href="/categories/jekyll/">jekyll</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Monitoring ZFS Boot Mirror Health in Proxmox 8 Clusters | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Monitoring ZFS Boot Mirror Health in Proxmox 8 Clusters" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="Automated SMART monitoring and cost planning for ZFS boot mirrors across a six-node Proxmox homelab cluster with mixed SSD/HDD hardware. Track drive health, plan replacements, and manage homelab storage costs effectively." />
+<meta property="og:description" content="Automated SMART monitoring and cost planning for ZFS boot mirrors across a six-node Proxmox homelab cluster with mixed SSD/HDD hardware. Track drive health, plan replacements, and manage homelab storage costs effectively." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/proxmox-zfs-boot-mirror-smart-analysis/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/proxmox-zfs-boot-mirror-smart-analysis/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-02-05T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Monitoring ZFS Boot Mirror Health in Proxmox 8 Clusters" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-02-05T00:00:00+00:00","datePublished":"2026-02-05T00:00:00+00:00","description":"Automated SMART monitoring and cost planning for ZFS boot mirrors across a six-node Proxmox homelab cluster with mixed SSD/HDD hardware. Track drive health, plan replacements, and manage homelab storage costs effectively.","headline":"Monitoring ZFS Boot Mirror Health in Proxmox 8 Clusters","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/proxmox-zfs-boot-mirror-smart-analysis/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/proxmox-zfs-boot-mirror-smart-analysis/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/proxmox-zfs-boot-mirror-smart-analysis/">Monitoring ZFS Boot Mirror Health in Proxmox 8 Clusters</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-02-05T00:00:00+00:00">February 05, 2026</time><span class="reading-time">16 min read</span></header>
+
+  <h1 id="zfs-boot-mirror-drive-analysis">ZFS Boot Mirror Drive Analysis</h1>
+
+<h2 id="the-problem">The Problem</h2>
+
+<p>Two nodes in my six-node Proxmox 8.4 cluster experienced catastrophic boot drive failures that threatened cluster availability. <strong>Harlan</strong> and <strong>Quell</strong> required emergency migrations to SSDs to restore stability. This was a risk I accepted when using aging hardware, but mitigated with ZFS boot mirrors that kept the nodes operational during the crisis.</p>
+
+<p><strong>Harlan</strong> had aging spinning rust HDDs that began failing on both sides of the mirror simultaneously. <strong>Quell</strong> had newer 120GB Bliksem SSDs (purchased Feb/Mar 2024) that stopped reporting SMART data correctly and threw ZFS errors without warning. Both drives were out of warranty and headed for the discard pile.</p>
+
+<p>Both nodes were migrated to new 128GB SSDs, but with different approaches:</p>
+
+<ul>
+  <li><strong>Harlan</strong>: Required full Proxmox reinstall due to disk size reduction (larger HDDs → smaller SSDs), then migrated configuration from old to new installation</li>
+  <li><strong>Quell</strong>: Used ZFS resilver approach - dropped one failing SSD from mirror, added new SSD to resilver from the partially-working drive, then replaced the second failing drive</li>
+</ul>
+
+<p>These emergency replacements provided valuable lessons for proactive planning. Four remaining nodes still show concerning ZFS boot mirror health issues:</p>
+
+<ol>
+  <li><strong>edgar</strong>: 384 reallocated sectors on sdb (Toshiba MQ01ABD100) - active drive degradation</li>
+  <li><strong>poe</strong>: 56,048 power-on hours (6.4 years) - oldest drive in cluster</li>
+  <li><strong>tanaka</strong>: Aging HDDs (24,725h / 19,422h) with 1 reallocated sector - upgrade recommended</li>
+  <li><strong>kovacs</strong>: 43,712 hours (5 years) - aging but stable, monitor quarterly</li>
+</ol>
+
+<p>All six nodes currently run BIOS boot mode with legacy MBR partitioning. No nodes have been migrated to UEFI yet - this is planned for future drive replacements requiring complete Proxmox reinstalls.</p>
+
+<p>Two nodes (<strong>harlan</strong> and <strong>quell</strong>) now have new 128GB SSDs but still boot in BIOS mode. The remaining HDD-based nodes (<strong>kovacs</strong>, <strong>poe</strong>, <strong>edgar</strong>, <strong>tanaka</strong>) require proactive replacement planning to avoid repeating the emergency migration experience.</p>
+
+<p>The challenge: Reinstalling Proxmox 8.4 on new media is time-intensive, especially when migrating from BIOS to UEFI boot. Spreading these upgrades across multiple months makes the cost and effort manageable for a homelab environment.</p>
+
+<h2 id="the-solution">The Solution</h2>
+
+<p>Implement automated SMART monitoring scripts to track drive health across all nodes, enabling proactive replacement planning. The solution provides:</p>
+
+<ul>
+  <li><strong>Health visibility</strong>: Automated SMART data collection across six nodes</li>
+  <li><strong>Cost planning</strong>: Spread replacements over 6-12 months based on priority</li>
+  <li><strong>Standardization</strong>: Migrate all nodes to 128GB SSD mirrors for reliability</li>
+  <li><strong>UEFI migration</strong>: Combine drive replacement with BIOS-to-UEFI conversion (planned for next reinstall)</li>
+</ul>
+
+<h2 id="replacement-priority">Replacement Priority</h2>
+
+<h3 id="immediate-0-3-months">Immediate (0-3 months)</h3>
+<ol>
+  <li><strong>edgar</strong>: 384 reallocated sectors on sdb - active drive degradation</li>
+  <li><strong>tanaka</strong>: Aging HDDs with 1 reallocated sector, 2 available SATA ports for easy upgrade</li>
+</ol>
+
+<h3 id="short-term-3-6-months">Short-term (3-6 months)</h3>
+<ol>
+  <li><strong>poe</strong>: 56,048 power-on hours (6.4 years) - oldest drive in cluster</li>
+</ol>
+
+<h3 id="medium-term-6-12-months">Medium-term (6-12 months)</h3>
+<ol>
+  <li><strong>kovacs</strong>: 43,712 hours (5 years) - aging but stable, monitor quarterly</li>
+</ol>
+
+<h3 id="completed-">Completed ✅</h3>
+<ul>
+  <li><strong>harlan</strong>: Emergency migration to 128GB SSD mirror after HDD boot mirror failure (384 hours, BIOS boot - UEFI planned)</li>
+  <li><strong>quell</strong>: Emergency migration to 128GB Timetec SSD mirror after HDD boot mirror failure (145-152 hours, BIOS boot - UEFI planned)</li>
+</ul>
+
+<p><strong>Note:</strong> Both harlan and quell migrations were unplanned emergency responses to imminent HDD failures that threatened node availability. These rapid migrations validated the process and informed the proactive replacement strategy for remaining nodes.</p>
+
+<h2 id="current-cluster-status">Current Cluster Status</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Node</th>
+      <th>Disks</th>
+      <th>Type</th>
+      <th>Size</th>
+      <th>Power-On Hours</th>
+      <th>Health</th>
+      <th>Priority</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>harlan</strong></td>
+      <td>sda, sdb</td>
+      <td>SSD</td>
+      <td>119.2G</td>
+      <td>384h (~16 days)</td>
+      <td>✅ Excellent</td>
+      <td>Complete</td>
+    </tr>
+    <tr>
+      <td><strong>quell</strong></td>
+      <td>sda, sdb</td>
+      <td>SSD</td>
+      <td>119.2G</td>
+      <td>152h / 145h (~6 days)</td>
+      <td>✅ Excellent</td>
+      <td>Complete</td>
+    </tr>
+    <tr>
+      <td><strong>edgar</strong></td>
+      <td>sda, sdb</td>
+      <td>HDD</td>
+      <td>931.5G</td>
+      <td>36,590h / 15,255h</td>
+      <td>⚠️ 384 reallocated sectors</td>
+      <td><strong>Immediate</strong></td>
+    </tr>
+    <tr>
+      <td><strong>tanaka</strong></td>
+      <td>sda, sdb</td>
+      <td>HDD</td>
+      <td>465.8G</td>
+      <td>24,725h / 19,422h</td>
+      <td>⚠️ 1 reallocated sector</td>
+      <td><strong>Immediate</strong></td>
+    </tr>
+    <tr>
+      <td><strong>poe</strong></td>
+      <td>sda, sdb</td>
+      <td>HDD</td>
+      <td>149G</td>
+      <td>56,048h / 49,045h</td>
+      <td>⚠️ Oldest drives</td>
+      <td>Short-term</td>
+    </tr>
+    <tr>
+      <td><strong>kovacs</strong></td>
+      <td>sda, sdb</td>
+      <td>HDD</td>
+      <td>149G</td>
+      <td>43,712h / 42,801h</td>
+      <td>⚠️ Aging</td>
+      <td>Medium-term</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Hardware readiness:</strong></p>
+<ul>
+  <li><strong>edgar</strong>: 2x 128GB SSDs on shelf, ready for immediate installation</li>
+  <li><strong>tanaka</strong>: 2x 128GB SSDs ordered from Amazon, arriving next week</li>
+</ul>
+
+<h3 id="benefits-of-spreading-costs">Benefits of Spreading Costs</h3>
+
+<ul>
+  <li><strong>Budget management</strong>: $30-40/month vs $160 upfront</li>
+  <li><strong>Learning curve</strong>: Refine BIOS-to-UEFI process across multiple installations</li>
+  <li><strong>Risk mitigation</strong>: Test migration process before critical nodes</li>
+  <li><strong>Operational continuity</strong>: Maintain cluster availability during upgrades</li>
+</ul>
+
+<h2 id="detailed-node-analysis">Detailed Node Analysis</h2>
+
+<h3 id="harlan-ssd---excellent">harlan (SSD - Excellent)</h3>
+<ul>
+  <li><strong>Type:</strong> 2x 119.2G SSDs (ZFS mirror)</li>
+  <li><strong>Power-On:</strong> 384 hours (~16 days)</li>
+  <li><strong>Cycles:</strong> 22 / 21</li>
+  <li><strong>Temperature:</strong> 40°C</li>
+  <li><strong>Reallocated Sectors:</strong> 0</li>
+  <li><strong>Pending Sectors:</strong> 0</li>
+  <li><strong>Reserved Space:</strong> 100%</li>
+  <li><strong>Status:</strong> ✅ New drives, perfect health</li>
+  <li><strong>Boot Mode:</strong> BIOS (UEFI migration planned)</li>
+</ul>
+
+<h3 id="kovacs-hdd---aging">kovacs (HDD - Aging)</h3>
+<ul>
+  <li><strong>Type:</strong> 2x Samsung HD161HJ 149G HDDs (ZFS mirror)</li>
+  <li><strong>Power-On:</strong> 43,712h / 42,801h (~5 years)</li>
+  <li><strong>Cycles:</strong> 212 / 167</li>
+  <li><strong>Temperature:</strong> 33°C / 36°C</li>
+  <li><strong>Reallocated Sectors:</strong> 0</li>
+  <li><strong>Pending Sectors:</strong> 0</li>
+  <li><strong>Status:</strong> ⚠️ Aging but healthy, monitor quarterly</li>
+</ul>
+
+<h3 id="poe-hdd---aging-oldest">poe (HDD - Aging, Oldest)</h3>
+<ul>
+  <li><strong>Type:</strong> Seagate ST3160812AS + Samsung HD161HJ 149G (ZFS mirror)</li>
+  <li><strong>Power-On:</strong> 56,048h / 49,045h (~6.4 / 5.6 years)</li>
+  <li><strong>Cycles:</strong> 202 / 193</li>
+  <li><strong>Temperature:</strong> 40°C / 36°C</li>
+  <li><strong>Reallocated Sectors:</strong> 0</li>
+  <li><strong>Pending Sectors:</strong> 0</li>
+  <li><strong>Status:</strong> ⚠️ Oldest drives in cluster, plan replacement</li>
+</ul>
+
+<h3 id="edgar-hdd---degraded">edgar (HDD - Degraded)</h3>
+<ul>
+  <li><strong>Type:</strong> Seagate ST31000524AS + Toshiba MQ01ABD100 931.5G (ZFS mirror)</li>
+  <li><strong>Power-On:</strong> 36,590h / 15,255h (~4.2 / 1.7 years)</li>
+  <li><strong>Cycles:</strong> 125 / 163</li>
+  <li><strong>Temperature:</strong> 42°C / 37°C</li>
+  <li><strong>Reallocated Sectors:</strong> 0 / <strong>384</strong> ⚠️</li>
+  <li><strong>Pending Sectors:</strong> 0</li>
+  <li><strong>Status:</strong> ⚠️ <strong>sdb has 384 reallocated sectors - replace immediately</strong></li>
+</ul>
+
+<h3 id="tanaka-hdd---aging-desktop-form-factor">tanaka (HDD - Aging, Desktop Form Factor)</h3>
+<ul>
+  <li><strong>Type:</strong> Apple HDD HTS547550A9E384 + Seagate ST3500418AS 465.8G (ZFS mirror)</li>
+  <li><strong>Power-On:</strong> 24,725h / 19,422h (~2.8 / 2.2 years)</li>
+  <li><strong>Cycles:</strong> 911 / 2,860</li>
+  <li><strong>Temperature:</strong> 33°C / 30°C</li>
+  <li><strong>Reallocated Sectors:</strong> 0 / 1</li>
+  <li><strong>Pending Sectors:</strong> 0</li>
+  <li><strong>Status:</strong> ⚠️ Dell Optiplex 990 Desktop, 4 SATA ports (2 boot + 2 available), good upgrade candidate</li>
+</ul>
+
+<h3 id="quell-ssd---excellent">quell (SSD - Excellent)</h3>
+<ul>
+  <li><strong>Type:</strong> 2x Timetec 30TT253X2-128G 119.2G SSDs (ZFS mirror)</li>
+  <li><strong>Power-On:</strong> 152h / 145h (~6 days)</li>
+  <li><strong>Cycles:</strong> 12 / 6</li>
+  <li><strong>Temperature:</strong> 40°C</li>
+  <li><strong>Reallocated Sectors:</strong> 0</li>
+  <li><strong>Pending Sectors:</strong> 0</li>
+  <li><strong>Reserved Space:</strong> 100%</li>
+  <li><strong>Status:</strong> ✅ New drives, perfect health</li>
+  <li><strong>Boot Mode:</strong> BIOS (UEFI migration planned)</li>
+</ul>
+
+<h2 id="sata-port-availability">SATA Port Availability</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Node</th>
+      <th>SATA Ports</th>
+      <th>Boot</th>
+      <th>Ceph OSDs</th>
+      <th>Available</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>harlan</td>
+      <td>6</td>
+      <td>2</td>
+      <td>3</td>
+      <td>1</td>
+      <td>Dell Optiplex 990 Mini Tower</td>
+    </tr>
+    <tr>
+      <td>kovacs</td>
+      <td>6</td>
+      <td>2</td>
+      <td>3</td>
+      <td>1</td>
+      <td>Dell Optiplex 990 Mini Tower</td>
+    </tr>
+    <tr>
+      <td>poe</td>
+      <td>6</td>
+      <td>2</td>
+      <td>3</td>
+      <td>1</td>
+      <td>Dell Optiplex 990 Mini Tower</td>
+    </tr>
+    <tr>
+      <td>edgar</td>
+      <td>6</td>
+      <td>2</td>
+      <td>3</td>
+      <td>1</td>
+      <td>Dell Optiplex 990 Mini Tower</td>
+    </tr>
+    <tr>
+      <td>tanaka</td>
+      <td>4</td>
+      <td>2</td>
+      <td>0</td>
+      <td><strong>2</strong></td>
+      <td>Dell Optiplex 990 Desktop</td>
+    </tr>
+    <tr>
+      <td>quell</td>
+      <td>6</td>
+      <td>2</td>
+      <td>3</td>
+      <td>1</td>
+      <td>Dell Optiplex 990 Mini Tower</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Key Insight:</strong> Tanaka has 2 available SATA ports, sufficient for in-place upgrade to dual SSD mirror without removing existing drives during installation.</p>
+
+<h2 id="monitoring-scripts">Monitoring Scripts</h2>
+
+<p>Two scripts provide comprehensive health monitoring across all cluster nodes. Scripts are stored in <code class="language-plaintext highlighter-rouge">/mnt/pve/cephfs/bin/</code> for cluster-wide access and automatically discover nodes using Proxmox API. Scripts use IP addresses instead of hostnames for DNS-independent operation.</p>
+
+<h3 id="1-check-zfs-boot-diskssh---comprehensive-inventory-recommended">1. check-zfs-boot-disks.sh - Comprehensive Inventory (Recommended)</h3>
+
+<p>Provides detailed disk information including model numbers and SATA port availability.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+<span class="c"># Comprehensive boot disk inventory for ZFS mirrors</span>
+
+<span class="nb">echo</span> <span class="s2">"NODE       DISKS       SIZE      ROTA  TYPE       MODEL                      SATA"</span>
+<span class="nb">echo</span> <span class="s2">"------------------------------------------------------------------------------------"</span>
+
+<span class="k">for </span>ip <span class="k">in</span> <span class="si">$(</span>pvesh get /cluster/status <span class="nt">--output-format</span> json | jq <span class="nt">-r</span> <span class="s1">'.[] | select(.type=="node") | .ip'</span><span class="si">)</span><span class="p">;</span> <span class="k">do
+    </span><span class="nv">node</span><span class="o">=</span><span class="si">$(</span>pvesh get /cluster/status <span class="nt">--output-format</span> json | jq <span class="nt">-r</span> <span class="s2">".[] | select(.ip==</span><span class="se">\"</span><span class="nv">$ip</span><span class="se">\"</span><span class="s2">) | .name"</span><span class="si">)</span>
+    ssh <span class="nt">-o</span> <span class="nv">ConnectTimeout</span><span class="o">=</span>5 root@<span class="nv">$ip</span> <span class="s2">"
+        DEVS=</span><span class="se">\$</span><span class="s2">(zpool status rpool | grep -E 'ata-|sd[a-z][0-9]|nvme' | awk '{print </span><span class="se">\$</span><span class="s2">1}')
+        DISKS=</span><span class="se">\"\"</span><span class="s2">
+        SIZES=</span><span class="se">\"\"</span><span class="s2">
+        ROTAS=</span><span class="se">\"\"</span><span class="s2">
+        TYPES=</span><span class="se">\"\"</span><span class="s2">
+        MODELS=</span><span class="se">\"\"</span><span class="s2">
+        for dev in </span><span class="se">\$</span><span class="s2">DEVS; do
+            if [[ </span><span class="se">\$</span><span class="s2">dev == ata-* ]]; then
+                DISK=</span><span class="se">\$</span><span class="s2">(readlink -f /dev/disk/by-id/</span><span class="se">\$</span><span class="s2">dev 2&gt;/dev/null | sed 's|/dev/||;s|[0-9]*</span><span class="nv">$|</span><span class="s2">|')
+            else
+                DISK=</span><span class="se">\$</span><span class="s2">(echo </span><span class="se">\$</span><span class="s2">dev | sed 's|[0-9]*</span><span class="nv">$|</span><span class="s2">|')
+            fi
+            [ -z </span><span class="se">\"\$</span><span class="s2">DISK</span><span class="se">\"</span><span class="s2"> ] &amp;&amp; continue
+            ROTA=</span><span class="se">\$</span><span class="s2">(cat /sys/block/</span><span class="se">\$</span><span class="s2">DISK/queue/rotational 2&gt;/dev/null)
+            SIZE=</span><span class="se">\$</span><span class="s2">(lsblk -d -o SIZE /dev/</span><span class="se">\$</span><span class="s2">DISK 2&gt;/dev/null | tail -1 | xargs)
+            MODEL=</span><span class="se">\$</span><span class="s2">(lsblk -d -o MODEL /dev/</span><span class="se">\$</span><span class="s2">DISK 2&gt;/dev/null | tail -1 | xargs)
+            [ </span><span class="se">\"\$</span><span class="s2">ROTA</span><span class="se">\"</span><span class="s2"> = </span><span class="se">\"</span><span class="s2">0</span><span class="se">\"</span><span class="s2"> ] &amp;&amp; TYPE=</span><span class="se">\"</span><span class="s2">SSD</span><span class="se">\"</span><span class="s2"> || TYPE=</span><span class="se">\"</span><span class="s2">HDD</span><span class="se">\"</span><span class="s2">
+            DISKS=</span><span class="se">\"\$</span><span class="s2">DISKS</span><span class="se">\$</span><span class="s2">DISK,</span><span class="se">\"</span><span class="s2">
+            SIZES=</span><span class="se">\"\$</span><span class="s2">SIZES</span><span class="se">\$</span><span class="s2">SIZE,</span><span class="se">\"</span><span class="s2">
+            ROTAS=</span><span class="se">\"\$</span><span class="s2">ROTAS</span><span class="se">\$</span><span class="s2">ROTA,</span><span class="se">\"</span><span class="s2">
+            TYPES=</span><span class="se">\"\$</span><span class="s2">TYPES</span><span class="se">\$</span><span class="s2">TYPE,</span><span class="se">\"</span><span class="s2">
+            MODELS=</span><span class="se">\"\$</span><span class="s2">MODELS</span><span class="se">\$</span><span class="s2">MODEL|</span><span class="se">\"</span><span class="s2">
+        done
+        DISKS=</span><span class="se">\$</span><span class="s2">(echo </span><span class="se">\$</span><span class="s2">DISKS | sed 's/,</span><span class="nv">$/</span><span class="s2">/' | tr ',' '</span><span class="se">\n</span><span class="s2">' | sort -u | tr '</span><span class="se">\n</span><span class="s2">' ',' | sed 's/,</span><span class="nv">$/</span><span class="s2">/')
+        SIZES=</span><span class="se">\$</span><span class="s2">(echo </span><span class="se">\$</span><span class="s2">SIZES | sed 's/,</span><span class="nv">$/</span><span class="s2">/')
+        ROTAS=</span><span class="se">\$</span><span class="s2">(echo </span><span class="se">\$</span><span class="s2">ROTAS | sed 's/,</span><span class="nv">$/</span><span class="s2">/')
+        TYPES=</span><span class="se">\$</span><span class="s2">(echo </span><span class="se">\$</span><span class="s2">TYPES | sed 's/,</span><span class="nv">$/</span><span class="s2">/')
+        MODELS=</span><span class="se">\$</span><span class="s2">(echo </span><span class="se">\$</span><span class="s2">MODELS | sed 's/|</span><span class="nv">$/</span><span class="s2">/')
+        SATA=</span><span class="se">\$</span><span class="s2">(ls -1 /sys/class/ata_port/ 2&gt;/dev/null | wc -l)
+        printf </span><span class="se">\"</span><span class="s2">%-10s %-11s %-9s %-5s %-10s %-26s %s</span><span class="se">\n\"</span><span class="s2"> </span><span class="se">\"</span><span class="nv">$node</span><span class="se">\"</span><span class="s2"> </span><span class="se">\"\$</span><span class="s2">DISKS</span><span class="se">\"</span><span class="s2"> </span><span class="se">\"\$</span><span class="s2">SIZES</span><span class="se">\"</span><span class="s2"> </span><span class="se">\"\$</span><span class="s2">ROTAS</span><span class="se">\"</span><span class="s2"> </span><span class="se">\"\$</span><span class="s2">TYPES</span><span class="se">\"</span><span class="s2"> </span><span class="se">\"\$</span><span class="s2">MODELS</span><span class="se">\"</span><span class="s2"> </span><span class="se">\"\$</span><span class="s2">SATA</span><span class="se">\"</span><span class="s2">
+    "</span> 2&gt;/dev/null <span class="o">||</span> <span class="nb">printf</span> <span class="s2">"%-10s %-11s %-9s %-5s %-10s %-26s %s</span><span class="se">\n</span><span class="s2">"</span> <span class="s2">"</span><span class="nv">$node</span><span class="s2">"</span> <span class="s2">"-"</span> <span class="s2">"-"</span> <span class="s2">"-"</span> <span class="s2">"-"</span> <span class="s2">"Connection failed"</span> <span class="s2">"-"</span>
+<span class="k">done</span>
+</code></pre></div></div>
+
+<p><strong>Example output:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>NODE       DISKS       SIZE      ROTA  TYPE       MODEL                      SATA
+------------------------------------------------------------------------------------
+harlan     sda,sdb     119.2G,119.2G 0,0   SSD,SSD    SSD|SSD                    6
+kovacs     sda,sdb     149G,149G 1,1   HDD,HDD    SAMSUNG HD161HJ|SAMSUNG HD161HJ 6
+poe        sda,sdb     149G,149G 1,1   HDD,HDD    ST3160812AS|SAMSUNG HD161HJ 6
+edgar      sda,sdb     931.5G,931.5G 1,1   HDD,HDD    ST31000524AS|TOSHIBA MQ01ABD100 6
+tanaka     sda,sdb     465.8G,465.8G 1,1   HDD,HDD    APPLE HDD HTS547550A9E384|ST3500418AS 4
+quell      sda,sdb     119.2G,119.2G 0,0   SSD,SSD    Timetec 30TT253X2-128G|Timetec 30TT253X2-128G 6
+</code></pre></div></div>
+
+<h3 id="2-check-zfs-boot-smartsh---smart-health-analysis">2. check-zfs-boot-smart.sh - SMART Health Analysis</h3>
+
+<p>Collects critical SMART attributes for health assessment.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+<span class="c"># SMART health monitoring for ZFS boot mirrors</span>
+
+<span class="nb">echo</span> <span class="s2">"=== ZFS Boot Mirror SMART Health Report ==="</span>
+<span class="nb">echo</span> <span class="s2">""</span>
+
+<span class="k">for </span>ip <span class="k">in</span> <span class="si">$(</span>pvesh get /cluster/status <span class="nt">--output-format</span> json | jq <span class="nt">-r</span> <span class="s1">'.[] | select(.type=="node") | .ip'</span><span class="si">)</span><span class="p">;</span> <span class="k">do
+    </span><span class="nv">node</span><span class="o">=</span><span class="si">$(</span>pvesh get /cluster/status <span class="nt">--output-format</span> json | jq <span class="nt">-r</span> <span class="s2">".[] | select(.ip==</span><span class="se">\"</span><span class="nv">$ip</span><span class="se">\"</span><span class="s2">) | .name"</span><span class="si">)</span>
+    <span class="nb">echo</span> <span class="s2">"Node: </span><span class="nv">$node</span><span class="s2"> (</span><span class="nv">$ip</span><span class="s2">)"</span>
+    <span class="nb">echo</span> <span class="s2">"---"</span>
+    
+    ssh <span class="nt">-o</span> <span class="nv">ConnectTimeout</span><span class="o">=</span>5 root@<span class="nv">$ip</span> <span class="s2">"
+        DEVS=</span><span class="se">\$</span><span class="s2">(zpool status rpool | grep -E 'ata-|sd[a-z][0-9]|nvme' | awk '{print </span><span class="se">\$</span><span class="s2">1}')
+        for dev in </span><span class="se">\$</span><span class="s2">DEVS; do
+            if [[ </span><span class="se">\$</span><span class="s2">dev == ata-* ]]; then
+                DISK=</span><span class="se">\$</span><span class="s2">(readlink -f /dev/disk/by-id/</span><span class="se">\$</span><span class="s2">dev 2&gt;/dev/null | sed 's|/dev/||;s|[0-9]*</span><span class="nv">$|</span><span class="s2">|')
+            else
+                DISK=</span><span class="se">\$</span><span class="s2">(echo </span><span class="se">\$</span><span class="s2">dev | sed 's|[0-9]*</span><span class="nv">$|</span><span class="s2">|')
+            fi
+            [ -z </span><span class="se">\"\$</span><span class="s2">DISK</span><span class="se">\"</span><span class="s2"> ] &amp;&amp; continue
+            
+            echo </span><span class="se">\"</span><span class="s2">Disk: /dev/</span><span class="se">\$</span><span class="s2">DISK</span><span class="se">\"</span><span class="s2">
+            smartctl -H /dev/</span><span class="se">\$</span><span class="s2">DISK 2&gt;/dev/null | grep -E 'SMART overall-health|SMART Health Status'
+            smartctl -A /dev/</span><span class="se">\$</span><span class="s2">DISK 2&gt;/dev/null | grep -E 'Power_On_Hours|Power_Cycle_Count|Reallocated_Sector|Current_Pending_Sector|Offline_Uncorrectable|Temperature_Celsius|Wear_Leveling_Count|Media_Wearout_Indicator|Available_Reservd_Space|Percentage Used'
+            echo </span><span class="se">\"\"</span><span class="s2">
+        done
+    "</span> 2&gt;/dev/null <span class="o">||</span> <span class="nb">echo</span> <span class="s2">"Connection failed"</span>
+    
+    <span class="nb">echo</span> <span class="s2">"========================================"</span>
+    <span class="nb">echo</span> <span class="s2">""</span>
+<span class="k">done</span>
+</code></pre></div></div>
+
+<p><strong>Example output (edgar - showing degraded drive):</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Node: edgar (192.168.86.14)
+---
+Disk: /dev/sda
+SMART overall-health self-assessment test result: PASSED
+  5 Reallocated_Sector_Ct   0x0033   100   100   036    Pre-fail  Always       -       0
+  9 Power_On_Hours          0x0032   059   059   000    Old_age   Always       -       36590
+ 12 Power_Cycle_Count       0x0032   100   100   020    Old_age   Always       -       125
+194 Temperature_Celsius     0x0022   042   053   000    Old_age   Always       -       42
+197 Current_Pending_Sector  0x0012   100   100   000    Old_age   Always       -       0
+
+Disk: /dev/sdb
+SMART overall-health self-assessment test result: PASSED
+  5 Reallocated_Sector_Ct   0x0033   100   100   050    Pre-fail  Always       -       384
+  9 Power_On_Hours          0x0032   062   062   000    Old_age   Always       -       15255
+ 12 Power_Cycle_Count       0x0032   100   100   000    Old_age   Always       -       163
+194 Temperature_Celsius     0x0022   100   100   000    Old_age   Always       -       37
+</code></pre></div></div>
+
+<p><strong>Key findings from latest scan:</strong></p>
+<ul>
+  <li><strong>harlan/quell SSDs</strong>: 384/145-152 hours, 100% reserved space, perfect health</li>
+  <li><strong>edgar sdb</strong>: 384 reallocated sectors confirmed (immediate replacement needed)</li>
+  <li><strong>poe sda</strong>: 56,048 hours (6.4 years) - oldest drive in cluster</li>
+  <li><strong>tanaka sdb</strong>: 1 reallocated sector, 19,422 hours</li>
+  <li><strong>kovacs</strong>: 43,712/42,801 hours, no reallocated sectors (aging but stable)</li>
+</ul>
+
+<h3 id="usage">Usage</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Comprehensive inventory with model numbers (recommended)</span>
+/mnt/pve/cephfs/bin/check-zfs-boot-disks.sh
+
+<span class="c"># Detailed SMART health analysis</span>
+/mnt/pve/cephfs/bin/check-zfs-boot-smart.sh
+</code></pre></div></div>
+
+<h2 id="migration-strategy">Migration Strategy</h2>
+
+<h3 id="current-boot-configuration">Current Boot Configuration</h3>
+
+<p><strong>All nodes currently use BIOS boot mode:</strong></p>
+<ul>
+  <li>Legacy MBR partitioning</li>
+  <li>No UEFI support enabled</li>
+  <li>Works reliably but lacks modern features</li>
+</ul>
+
+<p><strong>UEFI migration planned for next reinstall:</strong></p>
+<ul>
+  <li>Requires complete Proxmox reinstallation</li>
+  <li>Cannot be done in-place</li>
+  <li>Will be combined with drive replacements</li>
+  <li>First UEFI migration target: edgar or tanaka</li>
+</ul>
+
+<h3 id="bios-to-uefi-conversion-planned">BIOS to UEFI Conversion (Planned)</h3>
+
+<p>All future drive replacements will include BIOS-to-UEFI migration:</p>
+
+<ol>
+  <li><strong>Enable UEFI in BIOS</strong> (Dell OptiPlex 990 supports both)</li>
+  <li><strong>Backup node configuration</strong> (network, storage, VM configs)</li>
+  <li><strong>Install new SSDs</strong> alongside existing drives</li>
+  <li><strong>Boot from Proxmox USB installer</strong> in UEFI mode</li>
+  <li><strong>Install Proxmox 8.4</strong> with ZFS mirror on new SSDs (GPT partitioning)</li>
+  <li><strong>Restore configuration</strong> and rejoin cluster</li>
+  <li><strong>Migrate VMs/containers</strong> back to node</li>
+  <li><strong>Repurpose old drives</strong> for backup/archive storage</li>
+</ol>
+
+<p><strong>Benefits of UEFI:</strong></p>
+<ul>
+  <li>GPT partitioning (supports &gt;2TB boot drives)</li>
+  <li>Secure Boot capability (optional)</li>
+  <li>Faster boot times</li>
+  <li>Modern firmware interface</li>
+  <li>Better hardware compatibility</li>
+</ul>
+
+<h3 id="hardware-requirements-per-node">Hardware Requirements per Node</h3>
+
+<p><strong>Standard Upgrade (harlan, kovacs, poe, edgar, quell):</strong></p>
+<ul>
+  <li>2x 128GB SATA SSDs</li>
+  <li>Existing SATA ports (1 available per node)</li>
+  <li>2.5” drive bays or adapters</li>
+</ul>
+
+<p><strong>Tanaka Specific (Dell Optiplex 990 Desktop):</strong></p>
+<ul>
+  <li>2x 128GB SATA SSDs (2.5” form factor)</li>
+  <li>2 available SATA ports (4 total, 2 in use by current HDD mirror)</li>
+  <li>2x 2.5” to 3.5” drive bay adapters</li>
+  <li>Desktop form factor allows easy side-by-side installation</li>
+</ul>
+
+<h3 id="recommended-ssds">Recommended SSDs</h3>
+
+<p><strong>Budget-friendly options:</strong></p>
+<ul>
+  <li>Kingston A400 128GB (~$15-20)</li>
+  <li>Crucial BX500 128GB (~$15-20)</li>
+  <li>Samsung 870 EVO 128GB (~$25-30, premium)</li>
+</ul>
+
+<p><strong>⚠️ Avoid: Bliksem SSDs</strong></p>
+
+<p>Bliksem 128GB SSDs purchased from Amazon (Feb/Mar 2024) failed within 2 years:</p>
+<ul>
+  <li>Stopped reporting SMART data correctly</li>
+  <li>ZFS reported bad blocks and corruption</li>
+  <li>CrystalDiskInfo couldn’t diagnose issues</li>
+  <li>Proactive replacement prevented data loss</li>
+  <li><strong>Stick with established brands</strong> (Kingston, Crucial, Samsung)</li>
+</ul>
+
+<h2 id="monitoring-schedule">Monitoring Schedule</h2>
+
+<h3 id="automated-reporting">Automated Reporting</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Add to crontab on management node or CephFS shared location</span>
+<span class="c"># Weekly disk inventory (quick status check)</span>
+0 8 <span class="k">*</span> <span class="k">*</span> 1 /mnt/pve/cephfs/bin/check-zfs-boot-disks.sh | mail <span class="nt">-s</span> <span class="s2">"Weekly ZFS Boot Status"</span> admin@homelab
+
+<span class="c"># Monthly detailed SMART report (health metrics)</span>
+0 9 1 <span class="k">*</span> <span class="k">*</span> /mnt/pve/cephfs/bin/check-zfs-boot-smart.sh | mail <span class="nt">-s</span> <span class="s2">"Monthly SMART Report"</span> admin@homelab
+</code></pre></div></div>
+
+<h3 id="manual-checks">Manual Checks</h3>
+
+<p><strong>Monthly (aging HDDs only):</strong></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Check specific node SMART health</span>
+ssh root@192.168.86.14 <span class="s1">'smartctl -A /dev/sdb | grep Reallocated_Sector'</span>
+</code></pre></div></div>
+
+<p><strong>Quarterly (all HDD nodes):</strong></p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Full SMART report for kovacs, poe, edgar, tanaka</span>
+/mnt/pve/cephfs/bin/check-zfs-boot-smart.sh
+</code></pre></div></div>
+
+<p><strong>Annual:</strong></p>
+<ul>
+  <li>Review drive replacement timeline</li>
+  <li>Update budget for upcoming migrations</li>
+  <li>Assess new SSD pricing and availability</li>
+</ul>
+
+<h3 id="alert-thresholds">Alert Thresholds</h3>
+
+<p><strong>Immediate action required:</strong></p>
+<ul>
+  <li>Reallocated sectors &gt; 100</li>
+  <li>Current pending sectors &gt; 0</li>
+  <li>SMART overall health: FAILED</li>
+  <li>Power-on hours &gt; 70,000 (8 years)</li>
+</ul>
+
+<p><strong>Plan replacement (3-6 months):</strong></p>
+<ul>
+  <li>Reallocated sectors: 1-100</li>
+  <li>Power-on hours &gt; 50,000 (5.7 years)</li>
+  <li>Temperature consistently &gt; 50°C</li>
+</ul>
+
+<h2 id="lessons-learned">Lessons Learned</h2>
+
+<h3 id="emergency-migrations-harlan-quell">Emergency Migrations (harlan, quell)</h3>
+
+<p><strong>Context:</strong> Both nodes experienced HDD boot mirror failures requiring immediate replacement to prevent node loss.</p>
+
+<p><strong>What worked:</strong></p>
+
+<ol>
+  <li><strong>ZFS mirror redundancy</strong> - degraded pool kept nodes operational</li>
+  <li><strong>Quick decision-making</strong> - prioritized stability over perfection</li>
+  <li><strong>Two migration approaches</strong> - full reinstall (harlan) vs resilver (quell) both successful</li>
+</ol>
+
+<p><strong>What we learned:</strong></p>
+<ol>
+  <li><strong>Emergency migrations are stressful</strong> - proactive replacement is far better</li>
+  <li><strong>ZFS mirror saved us</strong> - degraded pool continued operating until replacement</li>
+  <li><strong>Have spare SSDs on hand</strong> - eliminated ordering delays during crisis</li>
+  <li><strong>Document the process</strong> - enabled faster execution under pressure</li>
+  <li><strong>UEFI can wait</strong> - BIOS boot works fine, don’t add complexity during emergencies</li>
+</ol>
+
+<h3 id="challenges">Challenges</h3>
+
+<ol>
+  <li><strong>Time investment</strong>: 2-4 hours per node for complete migration</li>
+  <li><strong>Cluster coordination</strong>: Requires temporary VM migration</li>
+  <li><strong>BIOS/UEFI decision</strong>: UEFI migration deferred to reduce complexity</li>
+  <li><strong>Drive compatibility</strong>: Verify SATA port availability before purchase</li>
+  <li><strong>Configuration backup</strong>: Document all settings before reinstall</li>
+</ol>
+
+<h3 id="bliksem-ssd-failure-analysis-root-cause">Bliksem SSD Failure Analysis (Root Cause)</h3>
+
+<p><strong>What triggered the emergency migrations:</strong></p>
+
+<p>The Bliksem SSDs installed in harlan and quell (Feb/Mar 2024) began failing catastrophically in early 2026, forcing emergency replacements.</p>
+
+<p><strong>Timeline:</strong></p>
+<ul>
+  <li>Feb/Mar 2024: Purchased Bliksem 128GB SSDs from Amazon</li>
+  <li>Jan 2026: SMART data reporting anomalies</li>
+  <li>Feb 2026: ZFS reporting bad blocks, proactive replacement</li>
+</ul>
+
+<p><strong>Symptoms:</strong></p>
+<ul>
+  <li>SMART attributes stopped updating correctly</li>
+  <li>ZFS scrub found checksum errors</li>
+  <li>CrystalDiskInfo showed “Good” health despite ZFS errors</li>
+  <li>No advance warning before degradation</li>
+</ul>
+
+<p><strong>Root cause:</strong> Unknown (possibly controller firmware issues)</p>
+
+<p><strong>Resolution:</strong> Replaced with Kingston A400 and Timetec SSDs</p>
+
+<p><strong>Recommendation:</strong> Avoid no-name brands for critical boot drives</p>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>Proactive monitoring and phased replacement planning enables reliable homelab operations without emergency failures or budget strain. The automated scripts provide visibility into drive health across all nodes, while the 12-month migration timeline spreads costs and effort.</p>
+
+<p><strong>Next steps:</strong></p>
+<ol>
+  <li>Install SSDs in edgar (hardware on hand, ready to proceed)</li>
+  <li>Install SSDs in tanaka when Amazon delivery arrives next week</li>
+  <li>Monitor poe quarterly for degradation signs</li>
+  <li>Continue monthly SMART checks on all HDD nodes</li>
+</ol>
+
+<p><strong>Key takeaway:</strong> Emergency replacements during HDD failures taught us the value of proactive monitoring. Spending $30-40 every few months on planned upgrades prevents the stress and risk of emergency replacements during production failures.</p>
+
+<h2 id="cost-planning">Cost Planning</h2>
+
+<h3 id="full-cluster-migration-budget">Full Cluster Migration Budget</h3>
+
+<p><strong>Strategy:</strong> Replace all HDDs with standardized 128GB SSDs, spreading costs over 6-12 months.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Node</th>
+      <th>Current</th>
+      <th>Target</th>
+      <th>Est. Cost</th>
+      <th>Timeline</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>quell</strong></td>
+      <td>✅ SSD 128GB</td>
+      <td>Complete</td>
+      <td>$0</td>
+      <td>Done</td>
+    </tr>
+    <tr>
+      <td><strong>harlan</strong></td>
+      <td>✅ SSD 128GB</td>
+      <td>Complete</td>
+      <td>$0</td>
+      <td>Done</td>
+    </tr>
+    <tr>
+      <td><strong>edgar</strong></td>
+      <td>HDD 931GB</td>
+      <td>2x 128GB SSD</td>
+      <td>$30-40</td>
+      <td>Month 1 (Immediate)</td>
+    </tr>
+    <tr>
+      <td><strong>tanaka</strong></td>
+      <td>HDD 465GB</td>
+      <td>2x 128GB SSD</td>
+      <td>$30-40</td>
+      <td>Month 2 (Immediate)</td>
+    </tr>
+    <tr>
+      <td><strong>poe</strong></td>
+      <td>HDD 149GB</td>
+      <td>2x 128GB SSD</td>
+      <td>$30-40</td>
+      <td>Month 4-6 (Short-term)</td>
+    </tr>
+    <tr>
+      <td><strong>kovacs</strong></td>
+      <td>HDD 149GB</td>
+      <td>2x 128GB SSD</td>
+      <td>$30-40</td>
+      <td>Month 8-12 (Medium-term)</td>
+    </tr>
+    <tr>
+      <td><strong>Total</strong></td>
+      <td> </td>
+      <td> </td>
+      <td><strong>$120-160</strong></td>
+      <td>12 months</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>Notes:</strong></p>
+<ul>
+  <li><strong>Current usage</strong>: Nodes use 2.3-7.1GB for Proxmox boot (harlan: 2.3GB, quell: 6.8GB, edgar: 6.6GB, poe: 7.1GB, kovacs: 7.0GB, tanaka: 4.5GB)</li>
+  <li><strong>128GB provides ample space</strong>: 10-20x current usage with room for growth</li>
+  <li>Standardizing on single SSD size simplifies inventory and reduces costs</li>
+  <li>BIOS to UEFI migration enables modern boot features and GPT partitioning</li>
+  <li>All data storage handled by Ceph cluster, not boot drives</li>
+</ul>
+
+<h2 id="related-articles">Related Articles</h2>
+
+<ul>
+  <li><a href="/proxmox-consolidated-notes/">Consolidating Proxmox Notes: A Python Export Script</a> — Automating cluster documentation</li>
+  <li><a href="/dell-wyse-3040-emmc-monitoring/">Dell Wyse 3040 eMMC Storage Health Monitoring</a> — Monitoring embedded storage health</li>
+  <li><a href="/usb-drive-smart/">Enabling SMART Monitoring on Seagate USB Drives</a> — Getting health data from USB storage</li>
+  <li><a href="/proxmox-ceph-guide/">Proxmox &amp; Ceph Homelab Guide</a> — All my Proxmox and Ceph articles in one place</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/proxmox/">proxmox</a>, 
+        
+          <a href="/tags/zfs/">zfs</a>, 
+        
+          <a href="/tags/smart/">smart</a>, 
+        
+          <a href="/tags/storage/">storage</a>, 
+        
+          <a href="/tags/cluster/">cluster</a>, 
+        
+          <a href="/tags/hardware/">hardware</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/proxmox/">proxmox</a>, 
+        
+          <a href="/categories/zfs/">zfs</a>, 
+        
+          <a href="/categories/storage/">storage</a>, 
+        
+          <a href="/categories/monitoring/">monitoring</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

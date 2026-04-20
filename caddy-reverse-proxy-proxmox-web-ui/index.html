@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Caddy Reverse Proxy for Proxmox Web UI | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Caddy Reverse Proxy for Proxmox Web UI" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="Managing a six-node Proxmox cluster means six different web interfaces on six different IPs, all on port 8006 with self-signed certificates. A Caddy reverse proxy in an LXC container gives you a single entry point with load balancing, health checks, and working WebSocket support for the console — all in about 30 lines of configuration." />
+<meta property="og:description" content="Managing a six-node Proxmox cluster means six different web interfaces on six different IPs, all on port 8006 with self-signed certificates. A Caddy reverse proxy in an LXC container gives you a single entry point with load balancing, health checks, and working WebSocket support for the console — all in about 30 lines of configuration." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/caddy-reverse-proxy-proxmox-web-ui/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/caddy-reverse-proxy-proxmox-web-ui/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-05-18T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Caddy Reverse Proxy for Proxmox Web UI" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-05-18T00:00:00+00:00","datePublished":"2026-05-18T00:00:00+00:00","description":"Managing a six-node Proxmox cluster means six different web interfaces on six different IPs, all on port 8006 with self-signed certificates. A Caddy reverse proxy in an LXC container gives you a single entry point with load balancing, health checks, and working WebSocket support for the console — all in about 30 lines of configuration.","headline":"Caddy Reverse Proxy for Proxmox Web UI","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/caddy-reverse-proxy-proxmox-web-ui/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/caddy-reverse-proxy-proxmox-web-ui/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/caddy-reverse-proxy-proxmox-web-ui/">Caddy Reverse Proxy for Proxmox Web UI</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-05-18T00:00:00+00:00">May 18, 2026</time><span class="reading-time">5 min read</span></header>
+
+  <p>Managing a six-node Proxmox cluster means six different web interfaces on six different IPs, all on port 8006 with self-signed certificates. A Caddy reverse proxy in an LXC container gives you a single entry point with load balancing, health checks, and working WebSocket support for the console — all in about 30 lines of configuration.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="why-proxy-the-proxmox-web-ui">Why Proxy the Proxmox Web UI?</h2>
+
+<p>The Proxmox web interface runs on each node at <code class="language-plaintext highlighter-rouge">https://&lt;node-ip&gt;:8006</code>. In a multi-node cluster, this means:</p>
+
+<ul>
+  <li><strong>Bookmarking a single node</strong> — if that node goes down, you lose access to the UI</li>
+  <li><strong>Self-signed certificate warnings</strong> — every browser session starts with clicking through warnings</li>
+  <li><strong>No load balancing</strong> — all your management traffic hits one node</li>
+  <li><strong>WebSocket issues</strong> — the noVNC console needs proper proxy headers to work</li>
+</ul>
+
+<p>A Caddy reverse proxy solves all of these with a single URL: <code class="language-plaintext highlighter-rouge">https://192.168.86.30/</code></p>
+
+<h2 id="prerequisites">Prerequisites</h2>
+
+<ul>
+  <li>A Proxmox cluster (mine has six nodes: harlan, kovacs, poe, edgar, quell, tanaka)</li>
+  <li>An LXC container for Caddy (I used Debian 12 Bookworm)</li>
+  <li>Static IP for the LXC (192.168.86.30 in my case)</li>
+</ul>
+
+<h2 id="step-1-create-the-lxc-container">Step 1: Create the LXC Container</h2>
+
+<p>I created a Debian 12 LXC container on Proxmox using the <a href="https://helper-scripts.com">Proxmox Helper Scripts</a>. You can also create one manually:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># On a Proxmox node — adjust storage, bridge, and VMID as needed</span>
+pct create 130 <span class="nb">local</span>:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst <span class="se">\</span>
+  <span class="nt">--hostname</span> caddy <span class="se">\</span>
+  <span class="nt">--memory</span> 512 <span class="se">\</span>
+  <span class="nt">--cores</span> 1 <span class="se">\</span>
+  <span class="nt">--net0</span> <span class="nv">name</span><span class="o">=</span>eth0,bridge<span class="o">=</span>vmbr0,ip<span class="o">=</span>192.168.86.30/23,gw<span class="o">=</span>192.168.86.1 <span class="se">\</span>
+  <span class="nt">--storage</span> local-lvm <span class="se">\</span>
+  <span class="nt">--rootfs</span> local-lvm:4 <span class="se">\</span>
+  <span class="nt">--unprivileged</span> 1 <span class="se">\</span>
+  <span class="nt">--start</span> 1
+</code></pre></div></div>
+
+<h2 id="step-2-install-caddy">Step 2: Install Caddy</h2>
+
+<p>Inside the LXC container:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>apt update <span class="o">&amp;&amp;</span> apt <span class="nb">install</span> <span class="nt">-y</span> debian-keyring debian-archive-keyring apt-transport-https curl
+
+curl <span class="nt">-1sLf</span> <span class="s1">'https://dl.cloudsmith.io/public/caddy/stable/gpg.key'</span> | <span class="se">\</span>
+  gpg <span class="nt">--dearmor</span> <span class="nt">-o</span> /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+
+curl <span class="nt">-1sLf</span> <span class="s1">'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt'</span> | <span class="se">\</span>
+  <span class="nb">tee</span> /etc/apt/sources.list.d/caddy-stable.list
+
+apt update <span class="o">&amp;&amp;</span> apt <span class="nb">install</span> <span class="nt">-y</span> caddy
+</code></pre></div></div>
+
+<p>Verify the installation:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>caddy version
+<span class="c"># v2.10.2</span>
+</code></pre></div></div>
+
+<h2 id="step-3-configure-the-caddyfile">Step 3: Configure the Caddyfile</h2>
+
+<p>Replace <code class="language-plaintext highlighter-rouge">/etc/caddy/Caddyfile</code> with the following configuration:</p>
+
+<pre><code class="language-caddyfile">https://192.168.86.30 {
+	reverse_proxy * {
+		to 192.168.86.11:8006
+		to 192.168.86.12:8006
+		to 192.168.86.13:8006
+		to 192.168.86.14:8006
+		to 192.168.86.15:8006
+		to 192.168.86.16:8006
+
+		lb_policy ip_hash
+		health_uri /
+		health_interval 10s
+		health_timeout 2s
+		health_status 200
+
+		transport http {
+			tls_insecure_skip_verify
+		}
+
+		# WebSocket support for noVNC console
+		header_up Upgrade {http.request.header.Upgrade}
+		header_up Connection {http.request.header.Connection}
+	}
+}
+</code></pre>
+
+<h3 id="configuration-breakdown">Configuration Breakdown</h3>
+
+<ul>
+  <li><strong>All six nodes listed</strong> — Caddy distributes requests across the cluster</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">lb_policy ip_hash</code></strong> — Sticky sessions ensure your browser stays on the same node during a session, which is important for the Proxmox authentication token</li>
+  <li><strong>Health checks</strong> — Caddy automatically removes unhealthy nodes and re-adds them when they recover (10-second interval, 2-second timeout)</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">tls_insecure_skip_verify</code></strong> — Required because Proxmox uses self-signed certificates on port 8006. Caddy needs to trust the upstream, and the Proxmox PVE CA isn’t in the system trust store</li>
+  <li><strong>WebSocket headers</strong> — The <code class="language-plaintext highlighter-rouge">Upgrade</code> and <code class="language-plaintext highlighter-rouge">Connection</code> header forwarding is critical for the noVNC/xterm.js console to work through the proxy</li>
+</ul>
+
+<h3 id="a-note-on-tls-verification">A Note on TLS Verification</h3>
+
+<p>For a more secure alternative, you could trust the PVE CA directly instead of skipping verification:</p>
+
+<pre><code class="language-caddyfile"># More secure alternative if you copy the PVE CA into the LXC:
+# tls_trusted_ca_certs /etc/ssl/certs/pve-root-ca.pem
+</code></pre>
+
+<p>The <code class="language-plaintext highlighter-rouge">/etc/pve</code> filesystem isn’t directly accessible from inside an LXC container, but you can copy the CA cert in manually. For an internal homelab proxy, <code class="language-plaintext highlighter-rouge">tls_insecure_skip_verify</code> is pragmatic — the traffic never leaves your LAN.</p>
+
+<h2 id="step-4-enable-and-start-caddy">Step 4: Enable and Start Caddy</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>systemctl <span class="nb">enable </span>caddy
+systemctl restart caddy
+systemctl status caddy
+</code></pre></div></div>
+
+<p>Caddy automatically generates a self-signed certificate for the HTTPS listener. You’ll get one browser warning the first time you visit <code class="language-plaintext highlighter-rouge">https://192.168.86.30/</code> — after accepting it, you’re done.</p>
+
+<h2 id="step-5-verify-it-works">Step 5: Verify It Works</h2>
+
+<ol>
+  <li>Open <code class="language-plaintext highlighter-rouge">https://192.168.86.30/</code> in your browser</li>
+  <li>Accept the self-signed certificate warning (one time)</li>
+  <li>You should see the Proxmox login page</li>
+  <li>Log in and verify the noVNC console works (click a VM → Console)</li>
+</ol>
+
+<h2 id="how-it-behaves">How It Behaves</h2>
+
+<h3 id="node-failover">Node Failover</h3>
+
+<p>If a node goes down, Caddy’s health checker detects it within 10 seconds and stops routing traffic to it. You’ll see log entries like:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"msg":"host is down","host":"192.168.86.14:8006"
+</code></pre></div></div>
+
+<p>When the node comes back:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"msg":"host is up","host":"192.168.86.14:8006"
+</code></pre></div></div>
+
+<p>No manual intervention needed.</p>
+
+<h3 id="session-persistence">Session Persistence</h3>
+
+<p>The <code class="language-plaintext highlighter-rouge">ip_hash</code> load balancing policy means your browser always hits the same backend node (based on your client IP). This is important because Proxmox authentication tickets are node-specific — without sticky sessions, you’d get logged out randomly as requests bounce between nodes.</p>
+
+<h2 id="troubleshooting">Troubleshooting</h2>
+
+<h3 id="console-not-working">Console Not Working</h3>
+
+<p>If the noVNC or xterm.js console shows a blank screen or disconnects immediately, verify the WebSocket headers are being forwarded:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>caddy validate <span class="nt">--config</span> /etc/caddy/Caddyfile
+</code></pre></div></div>
+
+<h3 id="health-check-timeouts">Health Check Timeouts</h3>
+
+<p>If you see frequent health check failures in the logs for a specific node, that node may be under heavy load. Increase the timeout:</p>
+
+<pre><code class="language-caddyfile">health_timeout 5s
+</code></pre>
+
+<h3 id="checking-caddy-logs">Checking Caddy Logs</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>journalctl <span class="nt">-u</span> caddy <span class="nt">-f</span>
+</code></pre></div></div>
+
+<h2 id="future-improvements">Future Improvements</h2>
+
+<ul>
+  <li><strong>DNS name</strong> — Switch from IP to <code class="language-plaintext highlighter-rouge">proxmox.home.mcgarrah.org</code> once Technitium DNS is configured with the appropriate record</li>
+  <li><strong>Proper TLS</strong> — Use cert-manager or Caddy’s ACME with Porkbun DNS-01 for a real certificate</li>
+  <li><strong>Access logging</strong> — Add structured logging for audit trails</li>
+  <li><strong>Authentication layer</strong> — Add Authentik/Keycloak SSO in front of the proxy</li>
+</ul>
+
+<h2 id="my-running-configuration">My Running Configuration</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Component</th>
+      <th>Detail</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>LXC Host</td>
+      <td>Debian 12 (Bookworm)</td>
+    </tr>
+    <tr>
+      <td>Caddy Version</td>
+      <td>v2.10.2</td>
+    </tr>
+    <tr>
+      <td>LXC IP</td>
+      <td>192.168.86.30</td>
+    </tr>
+    <tr>
+      <td>Proxy URL</td>
+      <td><code class="language-plaintext highlighter-rouge">https://192.168.86.30/</code></td>
+    </tr>
+    <tr>
+      <td>Backend Nodes</td>
+      <td>6 (192.168.86.11–16:8006)</td>
+    </tr>
+    <tr>
+      <td>Load Balancing</td>
+      <td>ip_hash (sticky sessions)</td>
+    </tr>
+    <tr>
+      <td>Health Checks</td>
+      <td>10s interval, 2s timeout</td>
+    </tr>
+    <tr>
+      <td>Uptime</td>
+      <td>Running in production</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="related-articles">Related Articles</h2>
+
+<ul>
+  <li><a href="/caddy-reverse-proxy-ceph-dashboard/">Caddy Reverse Proxy for Ceph Dashboard</a> — Adding the Ceph Dashboard as a second proxy site</li>
+  <li><a href="/proxmox-add-ceph-dashboard/">Adding Ceph Dashboard to Your Proxmox Cluster</a> — Setting up the Ceph monitoring dashboard</li>
+  <li><a href="/proxmox-consolidated-notes/">Consolidating Proxmox Notes: A Python Export Script</a> — Backing up cluster documentation</li>
+  <li><a href="/proxmox-8-lessons-learned/">Proxmox 8 Lessons Learned in the Homelab</a> — Hard-won tips from running Proxmox</li>
+  <li><a href="/proxmox-ceph-guide/">Proxmox &amp; Ceph Homelab Guide</a> — All my Proxmox and Ceph articles in one place</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/proxmox/">proxmox</a>, 
+        
+          <a href="/tags/caddy/">caddy</a>, 
+        
+          <a href="/tags/reverse-proxy/">reverse-proxy</a>, 
+        
+          <a href="/tags/lxc/">lxc</a>, 
+        
+          <a href="/tags/ssl/">ssl</a>, 
+        
+          <a href="/tags/web-interface/">web-interface</a>, 
+        
+          <a href="/tags/homelab/">homelab</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/technical/">technical</a>, 
+        
+          <a href="/categories/homelab/">homelab</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

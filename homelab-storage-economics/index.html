@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Homelab Storage Economics: Ceph vs Single Drive Costs | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Homelab Storage Economics: Ceph vs Single Drive Costs" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="After building and running a Ceph cluster for my homelab, I’ve gained valuable insights into the real-world economics of distributed storage versus traditional single-drive solutions. This analysis breaks down the actual costs per GB across different storage strategies in my setup." />
+<meta property="og:description" content="After building and running a Ceph cluster for my homelab, I’ve gained valuable insights into the real-world economics of distributed storage versus traditional single-drive solutions. This analysis breaks down the actual costs per GB across different storage strategies in my setup." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/homelab-storage-economics/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/homelab-storage-economics/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2025-11-26T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Homelab Storage Economics: Ceph vs Single Drive Costs" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-04-14T00:00:00+00:00","datePublished":"2025-11-26T00:00:00+00:00","description":"After building and running a Ceph cluster for my homelab, I’ve gained valuable insights into the real-world economics of distributed storage versus traditional single-drive solutions. This analysis breaks down the actual costs per GB across different storage strategies in my setup.","headline":"Homelab Storage Economics: Ceph vs Single Drive Costs","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/homelab-storage-economics/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/homelab-storage-economics/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/homelab-storage-economics/">Homelab Storage Economics: Ceph vs Single Drive Costs</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2025-11-26T00:00:00+00:00">November 26, 2025</time><span class="reading-time">6 min read</span></header>
+
+  <p>After building and running a Ceph cluster for my homelab, I’ve gained valuable insights into the real-world economics of distributed storage versus traditional single-drive solutions. This analysis breaks down the actual costs per GB across different storage strategies in my setup.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="my-current-storage-architecture">My Current Storage Architecture</h2>
+
+<p>My homelab storage consists of three distinct tiers:</p>
+
+<ul>
+  <li><strong>Ceph Cluster</strong>: 15 × 5TB OSDs across 5 nodes (3 OSDs per node)</li>
+  <li><strong>Primary Backup</strong>: 20TB external drive for CephFS backups</li>
+  <li><strong>Secondary Storage</strong>: 28TB external drive for expanded backup capacity</li>
+</ul>
+
+<p>Each tier serves different purposes and has dramatically different cost profiles when you factor in redundancy and usable capacity.</p>
+
+<h2 id="ceph-cluster-economics">Ceph Cluster Economics</h2>
+
+<h3 id="the-drive-acquisition-story">The Drive Acquisition Story</h3>
+
+<p>Building a 15-drive Ceph cluster happened in phases, with costs varying significantly based on timing and sourcing:</p>
+
+<p><strong>Early Drives (Costco Special)</strong></p>
+
+<ul>
+  <li><strong>Quantity</strong>: 6-7 drives</li>
+  <li><strong>Cost</strong>: $89 each (Costco special pricing)</li>
+  <li><strong>Cost per TB</strong>: $17.80/TB</li>
+</ul>
+
+<p><strong>Later Drives (Amazon/Seagate Sales)</strong></p>
+
+<ul>
+  <li><strong>Quantity</strong>: 8-9 drives</li>
+  <li><strong>Average Cost</strong>: ~$110 each (sale pricing)</li>
+  <li><strong>Cost per TB</strong>: $22.00/TB</li>
+</ul>
+
+<p><strong>Most Recent Drive</strong></p>
+
+<ul>
+  <li><strong>Model</strong>: Seagate Portable 5TB (STGX5000400)</li>
+  <li><strong>Cost</strong>: $109.99 (October 2025)</li>
+  <li><strong>Cost per TB</strong>: $22.00/TB</li>
+</ul>
+
+<h3 id="ceph-storage-math">Ceph Storage Math</h3>
+
+<p><strong>Raw Capacity</strong>: 15 × 5TB = 75TB
+<strong>Total Investment</strong>: ~$1,500 (averaging $100/drive)
+<strong>Raw Cost per TB</strong>: $20.00/TB</p>
+
+<p><strong>With 3/2 Erasure Coding</strong>:</p>
+
+<ul>
+  <li><strong>Usable Capacity</strong>: ~50TB (66.7% efficiency)</li>
+  <li><strong>Effective Cost per Usable TB</strong>: $30.00/TB</li>
+  <li><strong>Redundancy</strong>: Can lose 1 drive per erasure group</li>
+  <li><strong>Performance</strong>: Distributed I/O across 15 spindles</li>
+</ul>
+
+<h3 id="ceph-advantages-beyond-cost">Ceph Advantages Beyond Cost</h3>
+
+<ul>
+  <li><strong>Fault Tolerance</strong>: Automatic recovery from drive failures</li>
+  <li><strong>Scalability</strong>: Add capacity by adding nodes/drives</li>
+  <li><strong>Performance</strong>: Parallel I/O across multiple drives</li>
+  <li><strong>Network Storage</strong>: CephFS accessible from any node</li>
+  <li><strong>Snapshots</strong>: Built-in snapshot capabilities</li>
+  <li><strong>Self-Healing</strong>: Automatic data integrity checking</li>
+</ul>
+
+<h2 id="backup-storage-economics">Backup Storage Economics</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Drive</th>
+      <th>Model</th>
+      <th>Purchase Date</th>
+      <th>Cost</th>
+      <th>Cost/TB</th>
+      <th>Current Usage</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>20TB</strong></td>
+      <td>Avolusion PRO-X 20TB</td>
+      <td>June 16, 2024</td>
+      <td>$219.99</td>
+      <td>$11.00/TB</td>
+      <td>ZFS volume for CephFS backups</td>
+    </tr>
+    <tr>
+      <td><strong>28TB</strong></td>
+      <td>Seagate Expansion 28TB (STKP28000400)</td>
+      <td>November 21, 2025</td>
+      <td>$289.99</td>
+      <td>$10.36/TB</td>
+      <td>Planned as primary backup</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="backup-strategy-and-efficiency">Backup Strategy and Efficiency</h3>
+
+<p>The backup drives reveal something fascinating about my Ceph cluster’s real-world efficiency. That 20TB drive currently holds complete rsync backups of my entire 50TB usable Ceph capacity, which tells me I’m getting compression ratios of 2.5:1 or better. This isn’t just theoretical - it’s actual data from VMs, containers, and file storage that compresses remarkably well due to similar base images and redundant content.</p>
+
+<p>My plan is to promote the new 28TB drive to primary backup duty while relocating the 20TB drive for off-site backup rotation. This gives me both local and remote backup coverage at an average cost of $10.68/TB - less than half the cost of the Ceph storage, but without any of the redundancy or performance benefits. It’s the perfect complement to the distributed storage: cheap, simple, and effective for disaster recovery scenarios.</p>
+
+<h2 id="cost-comparison-analysis">Cost Comparison Analysis</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Storage Type</th>
+      <th>Raw Cost/TB</th>
+      <th>Usable Cost/TB</th>
+      <th>Redundancy</th>
+      <th>Performance</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Ceph Cluster</strong></td>
+      <td>$20.00</td>
+      <td>$30.00</td>
+      <td>Built-in (3/2)</td>
+      <td>High (15 drives)</td>
+    </tr>
+    <tr>
+      <td><strong>20TB Backup</strong></td>
+      <td>$11.00</td>
+      <td>$11.00</td>
+      <td>None</td>
+      <td>Single drive</td>
+    </tr>
+    <tr>
+      <td><strong>28TB Backup</strong></td>
+      <td>$10.36</td>
+      <td>$10.36</td>
+      <td>None</td>
+      <td>Single drive</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="the-redundancy-tax">The Redundancy Tax</h3>
+
+<p>Ceph’s redundancy comes at a 50% capacity penalty, effectively doubling the cost per usable TB. However, this “tax” provides:</p>
+
+<ul>
+  <li><strong>Automatic failover</strong> during drive failures</li>
+  <li><strong>No data loss</strong> from single drive failures</li>
+  <li><strong>No downtime</strong> for drive replacements</li>
+  <li><strong>Performance benefits</strong> from distributed I/O</li>
+</ul>
+
+<h3 id="the-redundancy-tax-vs-backup-value">The Redundancy Tax vs Backup Value</h3>
+
+<p>The backup drives demonstrate why having multiple storage tiers makes sense. While Ceph’s redundancy comes at a 50% capacity penalty, the backup drives show the true efficiency of the cluster - 50TB of usable data compresses well enough that a 20TB drive can hold complete backups. This compression comes from:</p>
+
+<ul>
+  <li><strong>Similar VM/container base images</strong> creating natural deduplication opportunities</li>
+  <li><strong>Incremental rsync strategies</strong> that only backup changed data</li>
+  <li><strong>File-level compression</strong> on the ZFS backup volumes</li>
+</ul>
+
+<h2 id="real-world-storage-costs">Real-World Storage Costs</h2>
+
+<h3 id="total-storage-investment">Total Storage Investment</h3>
+
+<ul>
+  <li><strong>Ceph Cluster</strong>: ~$1,500 (75TB raw, 50TB usable)</li>
+  <li><strong>Backup Drives</strong>: $510 (48TB total)</li>
+  <li><strong>Total Investment</strong>: ~$2,010</li>
+  <li><strong>Total Usable</strong>: 98TB (50TB + 48TB)</li>
+  <li><strong>Blended Cost</strong>: $20.51/TB</li>
+</ul>
+
+<h3 id="operational-considerations">Operational Considerations</h3>
+
+<p><strong>Power Consumption</strong>:</p>
+
+<ul>
+  <li>Ceph: 15 drives × 8W = 120W continuous</li>
+  <li>Backup drives: Powered only during backup operations</li>
+  <li>Annual power cost difference: ~$100-150</li>
+</ul>
+
+<p><strong>Maintenance</strong>:</p>
+
+<ul>
+  <li>Ceph: Occasional drive replacements, cluster maintenance</li>
+  <li>Backup drives: Manual backup scheduling, drive rotation</li>
+</ul>
+
+<h2 id="lessons-learned">Lessons Learned</h2>
+
+<h3 id="1-timing-matters-for-drive-purchases">1. Timing Matters for Drive Purchases</h3>
+
+<p>The $89 Costco drives versus $110+ regular pricing shows a 24% cost difference. Patience and deal hunting significantly impact total cluster cost.</p>
+
+<h3 id="2-redundancy-has-real-costs">2. Redundancy Has Real Costs</h3>
+
+<p>Ceph’s 3/2 erasure coding provides excellent protection but at a 50% capacity penalty. For homelab use, this trade-off provides peace of mind worth the cost.</p>
+
+<h3 id="3-backup-drives-provide-excellent-value">3. Backup Drives Provide Excellent Value</h3>
+
+<p>Large external drives offer the best $/TB ratio and serve as an excellent complement to distributed storage for backup purposes.</p>
+
+<h3 id="4-compression-is-your-friend">4. Compression Is Your Friend</h3>
+
+<p>50TB of Ceph data fitting on a 20TB backup drive demonstrates the value of compression and deduplication in real-world scenarios.</p>
+
+<h2 id="future-storage-strategy">Future Storage Strategy</h2>
+
+<h3 id="short-term">Short Term</h3>
+
+<ul>
+  <li>Configure 28TB drive as primary backup volume</li>
+  <li>Relocate 20TB drive for off-site backup rotation</li>
+  <li>Implement automated backup verification</li>
+</ul>
+
+<h3 id="long-term">Long Term</h3>
+
+<ul>
+  <li>Monitor drive prices for Ceph expansion opportunities</li>
+  <li>Consider NVMe cache tiers for hot data</li>
+  <li>Evaluate backup retention policies based on capacity</li>
+</ul>
+
+<h2 id="the-real-story-behind-the-numbers">The Real Story Behind the Numbers</h2>
+
+<p>Look, I’ll be honest - when I started building this Ceph cluster, I wasn’t thinking about cost per TB. I was thinking “this is cool distributed storage technology” and “I want to learn how this works.” The economics came later when my wife asked why I needed another 5TB drive.</p>
+
+<p>Turns out the math is actually pretty interesting. Yes, Ceph costs me 3x more per usable TB than just buying big external drives. But here’s the thing - when one of those 5TB drives dies (and they will), I don’t even notice. The cluster just keeps running. Compare that to the heart attack I’d have if my single 28TB backup drive failed.</p>
+
+<p>The $89 Costco drives were a steal, and I kick myself for not buying more when they were available. But even at $110 each, building this cluster has been worth it for the learning experience alone. Plus, there’s something deeply satisfying about having 15 drives working together as one big storage pool.</p>
+
+<p>The backup drives? They’re the unsung heroes of this setup. That 20TB drive backing up my entire 50TB Ceph cluster shows just how well compression and deduplication work in the real world. It’s like having a safety net that costs $11/TB.</p>
+
+<p><strong>Bottom Line</strong>: If you’re just looking for cheap storage, buy the biggest external drive you can afford. But if you want to learn about distributed systems, have some redundancy, and don’t mind paying the “education tax,” Ceph is pretty amazing. Just don’t tell my wife how much those drives actually cost.</p>
+
+<p>The real lesson here? Different storage serves different purposes. Sometimes you pay for convenience, sometimes for reliability, and sometimes just for the fun of learning something new. In my homelab, all three have their place.</p>
+
+<h2 id="related-posts">Related Posts</h2>
+
+<ul>
+  <li><a href="/proxmox-ceph-homelab-settings/">Proxmox Ceph Settings for the Homelab</a> — Tuning Ceph for homelab hardware</li>
+  <li><a href="/ceph-ssd-wal-db-usb-storage/">Hybrid Ceph Storage: SSD WAL/DB Acceleration</a> — The hybrid architecture that balances cost and performance</li>
+  <li><a href="/proxmox-ceph-nearfull/">Managing Ceph Nearfull Warnings</a> — What happens when capacity gets tight</li>
+  <li><a href="/usb-drive-smart/">Enabling SMART Monitoring on Seagate USB Drives</a> — Monitoring the USB drives that make this affordable</li>
+  <li><a href="/hard-drive-costs/">Hard Drive Costs</a> — Historical pricing context</li>
+  <li><a href="/proxmox-ceph-guide/">Proxmox &amp; Ceph Homelab Guide</a> — All Proxmox and Ceph articles</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/ceph/">ceph</a>, 
+        
+          <a href="/tags/storage/">storage</a>, 
+        
+          <a href="/tags/costs/">costs</a>, 
+        
+          <a href="/tags/homelab/">homelab</a>, 
+        
+          <a href="/tags/economics/">economics</a>, 
+        
+          <a href="/tags/backup/">backup</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/homelab/">homelab</a>, 
+        
+          <a href="/categories/storage/">storage</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

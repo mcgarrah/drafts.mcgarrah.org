@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>AlteredCarbon: My Proxmox Homelab Infrastructure Overview | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="AlteredCarbon: My Proxmox Homelab Infrastructure Overview" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="A comprehensive overview of my six-node Proxmox cluster with Ceph storage, multi-site networking, and the foundation for Kubernetes deployment." />
+<meta property="og:description" content="A comprehensive overview of my six-node Proxmox cluster with Ceph storage, multi-site networking, and the foundation for Kubernetes deployment." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/proxmox-homelab-infrastructure-overview/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/proxmox-homelab-infrastructure-overview/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-02-12T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="AlteredCarbon: My Proxmox Homelab Infrastructure Overview" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-02-12T00:00:00+00:00","datePublished":"2026-02-12T00:00:00+00:00","description":"A comprehensive overview of my six-node Proxmox cluster with Ceph storage, multi-site networking, and the foundation for Kubernetes deployment.","headline":"AlteredCarbon: My Proxmox Homelab Infrastructure Overview","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/proxmox-homelab-infrastructure-overview/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/proxmox-homelab-infrastructure-overview/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/proxmox-homelab-infrastructure-overview/">AlteredCarbon: My Proxmox Homelab Infrastructure Overview</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-02-12T00:00:00+00:00">February 12, 2026</time><span class="reading-time">5 min read</span></header>
+
+  <p>After two years of building, breaking, and rebuilding my homelab, it’s time to document the current state of the “AlteredCarbon” cluster. This post serves as both a reference for myself and a foundation for the Kubernetes deployment I’m planning.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="cluster-overview">Cluster Overview</h2>
+
+<p>The AlteredCarbon cluster (named after the Netflix series) consists of six Dell OptiPlex 990 systems running Proxmox VE 8.4.16 with Ceph Reef 18.2.7 for distributed storage.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Node</th>
+      <th>IP Address</th>
+      <th>CPU</th>
+      <th>RAM</th>
+      <th>Role</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>harlan</td>
+      <td>192.168.86.11</td>
+      <td>8 cores</td>
+      <td>31 GB</td>
+      <td>Ceph Mon/OSD, P620 GPU</td>
+    </tr>
+    <tr>
+      <td>kovacs</td>
+      <td>192.168.86.12</td>
+      <td>8 cores</td>
+      <td>31 GB</td>
+      <td>Ceph Mon/OSD, P620 GPU</td>
+    </tr>
+    <tr>
+      <td>poe</td>
+      <td>192.168.86.13</td>
+      <td>8 cores</td>
+      <td>31 GB</td>
+      <td>Ceph Mon/OSD, P620 GPU</td>
+    </tr>
+    <tr>
+      <td>edgar</td>
+      <td>192.168.86.14</td>
+      <td>8 cores</td>
+      <td>31 GB</td>
+      <td>Ceph OSD, K600 GPU</td>
+    </tr>
+    <tr>
+      <td>tanaka</td>
+      <td>192.168.86.15</td>
+      <td>4 cores</td>
+      <td>16 GB</td>
+      <td>Ceph Mon (no OSD), K600 GPU</td>
+    </tr>
+    <tr>
+      <td>quell</td>
+      <td>192.168.86.16</td>
+      <td>8 cores</td>
+      <td>31 GB</td>
+      <td>Ceph Mon/OSD, P620 GPU</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Total resources: 44 CPU cores, 173 GB RAM, and 69 TiB raw Ceph storage.</p>
+
+<h2 id="ceph-storage-architecture">Ceph Storage Architecture</h2>
+
+<p>The Ceph cluster runs 15 OSDs across 5 hosts (tanaka is monitor-only due to limited SATA ports). Each OSD host has 3 drives providing approximately 13-14 TiB per host.</p>
+
+<p><strong>Storage Pools:</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Pool</th>
+      <th>Type</th>
+      <th>Used</th>
+      <th>Available</th>
+      <th>Purpose</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>cephfs_data</td>
+      <td>CephFS</td>
+      <td>10 TiB</td>
+      <td>6.5 TiB</td>
+      <td>Media library, shared files</td>
+    </tr>
+    <tr>
+      <td>cephrbd</td>
+      <td>RBD</td>
+      <td>74 GB</td>
+      <td>6.5 TiB</td>
+      <td>VM disks, LXC rootfs</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>With 3x replication, the cluster can survive losing 2 entire OSD hosts while maintaining data availability. The cephrbd pool is nearly empty and ready for Kubernetes persistent volumes.</p>
+
+<h3 id="network-separation">Network Separation</h3>
+
+<p>Ceph uses dual-network architecture for optimal performance:</p>
+
+<ul>
+  <li><strong>Public Network (192.168.86.0/23)</strong>: Client traffic, monitor communication</li>
+  <li><strong>Cluster Network (10.10.10.0/23)</strong>: OSD-to-OSD replication, heartbeats</li>
+</ul>
+
+<p>This separation prevents heavy replication traffic from competing with client I/O—critical when running 3x replication across 15 OSDs.</p>
+
+<h2 id="multi-site-network-architecture">Multi-Site Network Architecture</h2>
+
+<p>The homelab spans five physical locations, each with its own /23 network:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Location</th>
+      <th>Network</th>
+      <th>Gateway</th>
+      <th>ISP</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Raleigh</td>
+      <td>192.168.86.0/23</td>
+      <td>192.168.86.1</td>
+      <td>Google Fiber</td>
+      <td>Primary (Proxmox cluster)</td>
+    </tr>
+    <tr>
+      <td>Beach (Emerald Isle)</td>
+      <td>192.168.88.0/23</td>
+      <td>192.168.88.1</td>
+      <td>Spectrum</td>
+      <td>Secondary</td>
+    </tr>
+    <tr>
+      <td>Wilson</td>
+      <td>192.168.84.0/23</td>
+      <td>192.168.84.1</td>
+      <td>Greenlight</td>
+      <td>Future</td>
+    </tr>
+    <tr>
+      <td>Katie</td>
+      <td>192.168.82.0/23</td>
+      <td>192.168.82.1</td>
+      <td>AT&amp;T Fiber</td>
+      <td>Future</td>
+    </tr>
+    <tr>
+      <td>Sam</td>
+      <td>192.168.80.0/23</td>
+      <td>192.168.80.1</td>
+      <td>Spectrum</td>
+      <td>Future</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Each site has a Dell Wyse 3040 running Tailscale (backup VPN) and Technitium DNS for local resolution. Primary site-to-site connectivity will use GL-iNet Brume 2 (GL-MT2500A) WireGuard VPN gateways in a hybrid topology — Raleigh Brume 2 on LAN as WireGuard server, spoke sites with Brume 2 inline between ISP modem and Google Wifi/Nest Wifi for transparent cross-site routing.</p>
+
+<h3 id="ip-allocation-strategy">IP Allocation Strategy</h3>
+
+<p>The /23 CIDR provides 512 IPs per site. For Raleigh:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Range</th>
+      <th>Purpose</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>192.168.86.1</td>
+      <td>Gateway (Google Wifi)</td>
+    </tr>
+    <tr>
+      <td>192.168.86.2-3</td>
+      <td>Infrastructure (Tailscale, DNS)</td>
+    </tr>
+    <tr>
+      <td>192.168.86.11-19</td>
+      <td>Proxmox nodes</td>
+    </tr>
+    <tr>
+      <td>192.168.86.20-100</td>
+      <td>DHCP pool</td>
+    </tr>
+    <tr>
+      <td>192.168.86.101-200</td>
+      <td>Kubernetes VMs</td>
+    </tr>
+    <tr>
+      <td>192.168.87.100-200</td>
+      <td>MetalLB LoadBalancer pool</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>This allocation keeps Kubernetes resources cleanly separated from infrastructure while providing 101 IPs for LoadBalancer services.</p>
+
+<h2 id="gpu-hardware">GPU Hardware</h2>
+
+<p>The cluster includes six NVIDIA Quadro GPUs for hardware transcoding:</p>
+
+<ul>
+  <li><strong>4x Quadro P620</strong> (GP107GL): harlan, kovacs, poe, quell</li>
+  <li><strong>2x Quadro K600</strong> (GK107GL): edgar, tanaka</li>
+</ul>
+
+<p>Proxmox HA groups (P620, K600) enable automatic VM placement on nodes with the required GPU hardware. This is essential for Jellyfin transcoding and future ML workloads.</p>
+
+<h2 id="current-services">Current Services</h2>
+
+<h3 id="running-lxc-containers">Running LXC Containers</h3>
+
+<ul>
+  <li><strong>Jellyfin</strong> (192.168.86.29): Media server with GPU passthrough, metadata on CephFS</li>
+  <li><strong>Technitium DNS</strong> (192.168.86.3): Primary DNS with zone replication</li>
+  <li><strong>Caddy</strong> (192.168.86.30): Reverse proxy for internal services</li>
+</ul>
+
+<h3 id="infrastructure-services">Infrastructure Services</h3>
+
+<ul>
+  <li><strong>WireGuard VPN</strong>: Site-to-site via GL-iNet Brume 2 (GL-MT2500A) — primary VPN (planned)</li>
+  <li><strong>Tailscale</strong>: Backup VPN and DNS replication via Dell Wyse 3040 gateways</li>
+  <li><strong>Technitium DNS</strong>: 6-node HA cluster across all sites</li>
+  <li><strong>Proxmox HA</strong>: Configured for automatic VM/LXC failover</li>
+</ul>
+
+<h2 id="storage-strategy">Storage Strategy</h2>
+
+<p>The storage architecture separates concerns:</p>
+
+<ul>
+  <li><strong>Ceph RBD</strong>: VM disks, LXC rootfs (fast, block-level)</li>
+  <li><strong>CephFS</strong>: Shared data, media libraries (scalable, POSIX)</li>
+  <li><strong>USB Drives</strong>: Backups via PBS (28 TiB + 20 TiB ZFS pools)</li>
+</ul>
+
+<p>This separation allows the media library to grow independently of VM storage while maintaining performance for both workloads.</p>
+
+<h2 id="whats-missing-for-kubernetes">What’s Missing for Kubernetes</h2>
+
+<p>While the infrastructure is solid, several components need attention before deploying Kubernetes:</p>
+
+<ol>
+  <li><strong>Site-to-Site VPN</strong>: GL-iNet Brume 2 WireGuard deployment for full subnet routing across all 5 sites (hybrid topology — Raleigh on LAN, spoke sites inline)</li>
+  <li><strong>DNS Configuration</strong>: Change all Google Wifi/Nest Wifi DNS from “Automatic” to Custom (Technitium) for internal hostname resolution</li>
+  <li><strong>Network Upgrades</strong>: Deploy HP ProCurve 2824 (primary) and HP ProCurve 2810 (SAN) switches for LACP bonding</li>
+  <li><strong>Backup Infrastructure</strong>: Configure PBS with USB drives for VM/LXC backups</li>
+  <li><strong>Boot Drive Health</strong>: Replace aging HDDs with SSDs on several nodes</li>
+</ol>
+
+<h2 id="hardware-considerations">Hardware Considerations</h2>
+
+<p>The Dell OptiPlex 990 systems are 14 years old (Intel i7-2600, Sandy Bridge). They lack modern features like AVX2 but remain capable for homelab use. Key limitations:</p>
+
+<ul>
+  <li>No 10GbE support (1GbE only)</li>
+  <li>Limited PCIe slots</li>
+  <li>Aging boot drives (some with 50,000+ power-on hours)</li>
+</ul>
+
+<p>The cost-effectiveness of this hardware makes it ideal for learning, but production Kubernetes workloads may eventually require upgrades.</p>
+
+<h2 id="monitoring-and-observability">Monitoring and Observability</h2>
+
+<p>Current monitoring is basic:</p>
+
+<ul>
+  <li>Proxmox built-in metrics for nodes and Ceph</li>
+  <li>Manual health checks via CLI</li>
+  <li>No centralized logging or alerting</li>
+</ul>
+
+<p>Post-Kubernetes, I plan to deploy Prometheus, Grafana, and Loki for comprehensive observability.</p>
+
+<h2 id="lessons-learned">Lessons Learned</h2>
+
+<p>Two years of homelab operation have taught me:</p>
+
+<ol>
+  <li><strong>Ceph scrubbing defaults are aggressive</strong>: Weekly deep scrubs will kill SSDs. I changed to 28-day intervals.</li>
+  <li><strong>USB storage is tricky</strong>: UAS (USB Attached SCSI) causes random disconnects during large transfers.</li>
+  <li><strong>Separate your networks</strong>: Ceph replication on the same network as client traffic is painful.</li>
+  <li><strong>Document everything</strong>: Future-you will thank present-you.</li>
+  <li><strong>Start simple</strong>: LXC containers are easier than Kubernetes for single services.</li>
+</ol>
+
+<h2 id="whats-next">What’s Next</h2>
+
+<p>The immediate priorities are:</p>
+
+<ol>
+  <li>Deploy site-to-site VPN (GL-iNet Brume 2 WireGuard — hybrid topology across 5 sites)</li>
+  <li>Configure DNS (Custom Technitium DNS on all Google Wifi/Nest Wifi devices)</li>
+  <li>Configure PBS backups</li>
+  <li>Complete Jellyfin and ARR suite deployment</li>
+  <li>Then: Kubernetes</li>
+</ol>
+
+<p>The <a href="https://github.com/mcgarrah/k8s-proxmox">k8s-proxmox</a> repository contains the detailed implementation guides for the Kubernetes deployment, but the foundation documented here must be solid first.</p>
+
+<h2 id="conclusion">Conclusion</h2>
+
+<p>The AlteredCarbon cluster represents a significant investment in learning distributed systems, storage, and virtualization. While the hardware is aging, the architecture is sound and ready for the next phase: Kubernetes.</p>
+
+<p>The key insight from this journey is that infrastructure fundamentals matter more than the latest technology. A well-designed network, reliable storage, and proper backups are prerequisites for any successful deployment—whether it’s a simple media server or a full Kubernetes cluster.</p>
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://pve.proxmox.com/wiki/Main_Page">Proxmox VE Documentation</a></li>
+  <li><a href="https://docs.ceph.com/">Ceph Documentation</a></li>
+  <li><a href="https://github.com/mcgarrah/k8s-proxmox">k8s-proxmox Repository</a></li>
+  <li><a href="/tags/#proxmox">Previous Proxmox Posts</a></li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/proxmox/">proxmox</a>, 
+        
+          <a href="/tags/ceph/">ceph</a>, 
+        
+          <a href="/tags/homelab/">homelab</a>, 
+        
+          <a href="/tags/infrastructure/">infrastructure</a>, 
+        
+          <a href="/tags/networking/">networking</a>, 
+        
+          <a href="/tags/kubernetes/">kubernetes</a>, 
+        
+          <a href="/tags/virtualization/">virtualization</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/technical/">technical</a>, 
+        
+          <a href="/categories/homelab/">homelab</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

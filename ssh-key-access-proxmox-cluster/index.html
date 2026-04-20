@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>SSH Key-Based Access to a Proxmox Cluster | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="SSH Key-Based Access to a Proxmox Cluster" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="Step-by-step guide to configuring SSH key-based authentication for a Proxmox cluster. Covers key generation, key deployment, SSH config setup with named hosts, and how Proxmox’s shared authorized_keys across cluster nodes means you only copy the key once." />
+<meta property="og:description" content="Step-by-step guide to configuring SSH key-based authentication for a Proxmox cluster. Covers key generation, key deployment, SSH config setup with named hosts, and how Proxmox’s shared authorized_keys across cluster nodes means you only copy the key once." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/ssh-key-access-proxmox-cluster/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/ssh-key-access-proxmox-cluster/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-04-17T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="SSH Key-Based Access to a Proxmox Cluster" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-04-17T00:00:00+00:00","datePublished":"2026-04-17T00:00:00+00:00","description":"Step-by-step guide to configuring SSH key-based authentication for a Proxmox cluster. Covers key generation, key deployment, SSH config setup with named hosts, and how Proxmox’s shared authorized_keys across cluster nodes means you only copy the key once.","headline":"SSH Key-Based Access to a Proxmox Cluster","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/ssh-key-access-proxmox-cluster/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/ssh-key-access-proxmox-cluster/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/ssh-key-access-proxmox-cluster/">SSH Key-Based Access to a Proxmox Cluster</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-04-17T00:00:00+00:00">April 17, 2026</time><span class="reading-time">5 min read</span></header>
+
+  <p>Typing passwords every time you SSH into a Proxmox node gets old fast — especially when you have a six-node cluster and you’re bouncing between nodes all day. SSH key-based authentication eliminates the password prompts entirely, and Proxmox makes it even easier because the cluster shares <code class="language-plaintext highlighter-rouge">authorized_keys</code> across all nodes. Copy the key once, access every node.</p>
+
+<p>I needed this set up so I could run the <a href="/ceph-wal-vs-db-performance-test/">Ceph WAL vs DB performance benchmarks</a> from my development machine — scripting SSH commands across multiple nodes to collect latency data, trigger scrubs, and restart OSDs is painful when every command demands a password. Getting passwordless SSH sorted first made the whole test workflow possible.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="prerequisites">Prerequisites</h2>
+
+<ul>
+  <li>A local development machine (I’m running Ubuntu 24.04 LTS)</li>
+  <li>A Proxmox cluster on the local network (I’m running Proxmox 8.4)</li>
+  <li>Root password for at least one Proxmox node (you’ll need it one last time)</li>
+</ul>
+
+<h2 id="my-cluster">My Cluster</h2>
+
+<p>My homelab cluster is named <strong>AlteredCarbon</strong> (yes, after the show). Six Dell OptiPlex 990 nodes:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Node</th>
+      <th>IP Address</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>harlan</td>
+      <td>192.168.86.11</td>
+    </tr>
+    <tr>
+      <td>kovacs</td>
+      <td>192.168.86.12</td>
+    </tr>
+    <tr>
+      <td>poe</td>
+      <td>192.168.86.13</td>
+    </tr>
+    <tr>
+      <td>edgar</td>
+      <td>192.168.86.14</td>
+    </tr>
+    <tr>
+      <td>tanaka</td>
+      <td>192.168.86.15</td>
+    </tr>
+    <tr>
+      <td>quell</td>
+      <td>192.168.86.16</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="step-1-generate-an-ssh-key">Step 1: Generate an SSH Key</h2>
+
+<p>If you already have a key at <code class="language-plaintext highlighter-rouge">~/.ssh/id_ed25519</code>, skip this step. Check with:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">ls</span> ~/.ssh/id_ed25519.pub
+</code></pre></div></div>
+
+<p>If you don’t have one, generate it:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ssh-keygen <span class="nt">-t</span> ed25519 <span class="nt">-C</span> <span class="s2">"yourname-dev"</span>
+</code></pre></div></div>
+
+<p>Accept the default path (<code class="language-plaintext highlighter-rouge">~/.ssh/id_ed25519</code>). Adding a passphrase is optional but recommended — you can use <code class="language-plaintext highlighter-rouge">ssh-agent</code> to avoid retyping it every time.</p>
+
+<p><strong>Why ed25519?</strong> It’s faster, more secure, and produces shorter keys than RSA. There’s no reason to use RSA for new keys unless you’re dealing with ancient systems that don’t support it.</p>
+
+<h2 id="step-2-pre-load-host-key-fingerprints">Step 2: Pre-load Host Key Fingerprints</h2>
+
+<p>The first time you SSH into a new host, you get the “authenticity can’t be established” prompt and have to type “yes” to accept the fingerprint. With six nodes, that’s six interactive prompts. Skip all of them by pulling the host keys in bulk with <code class="language-plaintext highlighter-rouge">ssh-keyscan</code>:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ssh-keyscan 192.168.86.<span class="o">{</span>11..16<span class="o">}</span> <span class="o">&gt;&gt;</span> ~/.ssh/known_hosts 2&gt;/dev/null
+</code></pre></div></div>
+
+<p>This grabs the ED25519 (and other) host keys from all six nodes and appends them to your <code class="language-plaintext highlighter-rouge">known_hosts</code> file. No interactive prompts, no typing “yes” six times.</p>
+
+<p>If you’ve already set up your SSH config (Step 4 below), you can also scan by name to cover both hostname and IP lookups:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ssh-keyscan harlan kovacs poe edgar tanaka quell 192.168.86.<span class="o">{</span>11..16<span class="o">}</span> <span class="o">&gt;&gt;</span> ~/.ssh/known_hosts 2&gt;/dev/null
+</code></pre></div></div>
+
+<h2 id="step-3-copy-the-key-to-one-proxmox-node">Step 3: Copy the Key to One Proxmox Node</h2>
+
+<p>Here’s the nice part about Proxmox clusters — the <code class="language-plaintext highlighter-rouge">/etc/pve/</code> filesystem is shared across all nodes via <code class="language-plaintext highlighter-rouge">pmxcfs</code> (the Proxmox Cluster File System). This means <code class="language-plaintext highlighter-rouge">authorized_keys</code> for root is shared too. Copy your key to any single node and it’s available on all of them:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ssh-copy-id root@192.168.86.11
+</code></pre></div></div>
+
+<p>Enter the root password when prompted. That’s the last time you’ll need it.</p>
+
+<h2 id="step-4-create-an-ssh-config">Step 4: Create an SSH Config</h2>
+
+<p>Rather than typing <code class="language-plaintext highlighter-rouge">ssh root@192.168.86.11</code> every time, create <code class="language-plaintext highlighter-rouge">~/.ssh/config</code> so you can just type <code class="language-plaintext highlighter-rouge">ssh harlan</code>:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code># AlteredCarbon Proxmox Cluster
+Host harlan
+    HostName 192.168.86.11
+    User root
+
+Host kovacs
+    HostName 192.168.86.12
+    User root
+
+Host poe
+    HostName 192.168.86.13
+    User root
+
+Host edgar
+    HostName 192.168.86.14
+    User root
+
+Host tanaka
+    HostName 192.168.86.15
+    User root
+
+Host quell
+    HostName 192.168.86.16
+    User root
+
+Host harlan kovacs poe edgar tanaka quell
+    IdentityFile ~/.ssh/id_ed25519
+    StrictHostKeyChecking accept-new
+</code></pre></div></div>
+
+<p>Set the correct permissions (SSH will refuse to use a config file that’s too open):</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">chmod </span>600 ~/.ssh/config
+</code></pre></div></div>
+
+<p>The shared <code class="language-plaintext highlighter-rouge">Host</code> block at the bottom applies two settings to all cluster nodes:</p>
+
+<ul>
+  <li><strong>IdentityFile</strong> — points to your ed25519 key so SSH doesn’t have to guess</li>
+  <li><strong>StrictHostKeyChecking accept-new</strong> — automatically accepts the host key on first connection, but will warn you if it changes later (which could indicate a MITM attack or a node reinstall)</li>
+</ul>
+
+<h2 id="step-5-test-it">Step 5: Test It</h2>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ssh harlan
+</code></pre></div></div>
+
+<p>You should drop straight into a root shell with no password prompt. Verify the other nodes work too:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">for </span>node <span class="k">in </span>harlan kovacs poe edgar tanaka quell<span class="p">;</span> <span class="k">do
+    </span><span class="nb">echo</span> <span class="s2">"--- </span><span class="nv">$node</span><span class="s2"> ---"</span>
+    ssh <span class="nv">$node</span> <span class="s2">"hostname &amp;&amp; uptime"</span>
+<span class="k">done</span>
+</code></pre></div></div>
+
+<p>If everything is working, you’ll see the hostname and uptime for all six nodes scroll by with no password prompts.</p>
+
+<h2 id="optional-use-ssh-agent-for-passphrase-keys">Optional: Use ssh-agent for Passphrase Keys</h2>
+
+<p>If you set a passphrase on your key (and you should consider it), you can avoid retyping it by loading the key into <code class="language-plaintext highlighter-rouge">ssh-agent</code>:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">eval</span> <span class="s2">"</span><span class="si">$(</span>ssh-agent <span class="nt">-s</span><span class="si">)</span><span class="s2">"</span>
+ssh-add ~/.ssh/id_ed25519
+</code></pre></div></div>
+
+<p>On Ubuntu 24.04, the GNOME Keyring typically handles this automatically — you’ll be prompted for the passphrase once after login and it’s cached for the session.</p>
+
+<h2 id="optional-harden-ssh-on-the-cluster">Optional: Harden SSH on the Cluster</h2>
+
+<p>Once you’ve confirmed key authentication works on all nodes, you can disable password authentication entirely on the Proxmox side. SSH into any node and run:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">sed</span> <span class="nt">-i</span> <span class="s1">'s/^#\?PasswordAuthentication.*/PasswordAuthentication no/'</span> /etc/ssh/sshd_config
+systemctl restart sshd
+</code></pre></div></div>
+
+<p><strong>Warning:</strong> Do this carefully. Keep a session open as a safety net, or use the Proxmox web UI console (which doesn’t go through SSH) in case something goes wrong. Since this is <code class="language-plaintext highlighter-rouge">/etc/ssh/sshd_config</code> (a local file, not shared via <code class="language-plaintext highlighter-rouge">/etc/pve/</code>), you’ll need to repeat this on each node individually.</p>
+
+<h2 id="why-this-works-across-the-cluster">Why This Works Across the Cluster</h2>
+
+<p>Proxmox clusters use <code class="language-plaintext highlighter-rouge">pmxcfs</code> to share configuration across nodes. The root user’s <code class="language-plaintext highlighter-rouge">authorized_keys</code> lives under this shared filesystem, so any key you add to one node is immediately available on all nodes in the cluster. This is the same mechanism that lets you manage all nodes from a single Proxmox web UI.</p>
+
+<p>This is a Proxmox-specific convenience — on a non-clustered setup, you’d need to run <code class="language-plaintext highlighter-rouge">ssh-copy-id</code> against each host individually.</p>
+
+<h2 id="wrapping-up">Wrapping Up</h2>
+
+<p>Four commands to go from password prompts to passwordless access across an entire Proxmox cluster:</p>
+
+<ol>
+  <li><code class="language-plaintext highlighter-rouge">ssh-keygen -t ed25519</code> — generate the key</li>
+  <li><code class="language-plaintext highlighter-rouge">ssh-keyscan 192.168.86.{11..16} &gt;&gt; ~/.ssh/known_hosts</code> — pre-load host fingerprints</li>
+  <li><code class="language-plaintext highlighter-rouge">ssh-copy-id root@&lt;any-node&gt;</code> — copy it once</li>
+  <li>Create <code class="language-plaintext highlighter-rouge">~/.ssh/config</code> — name your nodes</li>
+</ol>
+
+<p>It’s a small quality-of-life improvement that pays off every single day when you’re managing a homelab cluster. In my case, it was the prerequisite that made running <a href="/ceph-wal-vs-db-performance-test/">Ceph WAL vs DB benchmarks</a> across all six nodes practical — scripting <code class="language-plaintext highlighter-rouge">ssh harlan 'ceph tell osd.0 bench'</code> is a lot more pleasant than typing passwords six times per test run.</p>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/proxmox/">proxmox</a>, 
+        
+          <a href="/tags/ssh/">ssh</a>, 
+        
+          <a href="/tags/homelab/">homelab</a>, 
+        
+          <a href="/tags/security/">security</a>, 
+        
+          <a href="/tags/clustering/">clustering</a>, 
+        
+          <a href="/tags/dell-optiplex-990/">dell-optiplex-990</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/proxmox/">proxmox</a>, 
+        
+          <a href="/categories/homelab/">homelab</a>, 
+        
+          <a href="/categories/security/">security</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

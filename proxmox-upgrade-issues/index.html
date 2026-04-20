@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Proxmox VE 8.1 to 8.2 upgrade issues in the Homelabs | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Proxmox VE 8.1 to 8.2 upgrade issues in the Homelabs" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="An extended power loss for my primary Proxmox 8 cluster, while I was remote, took half of my cluster nodes out of commission into an unbootable state. This unbootable half of the cluster would not show up on the network after the power came back even with manual physical rebooting. The other half would boot up and show on the network. All the nodes had a second problem that they would not open a PVE WebUI Console Shell or show any output on any of the video output ports for either the Nvidia PCIe GPU or the Intel iGPU. So I have to figure out what looks to be a set of overlapping issues and clean up this mess. There were several lessons learned and re-learned along the way. First, I need a “crash cart” to recover these to a bootable state. What is a “crash cart”, well that is usually a rolling cart found in a data center that you roll up to a broken server. They typically include some sort of serial terminal and/or a monitor, keyboard and mouse with a lot of connectors and adapters to hook up to random port for the equipment you are fixing. Mine includes adapters for VGA, DVI, DisplayPort, HDMI and both USB and PS/2 keyboard and mice. I’ve even thrown in a spare known good Nvidia K600 video card for troubleshooting graphic cards. A trusty and up to date Ventoy Bootable USB is sitting on there as well. I have a laptop that I could use for a serial terminal if we get to that point but I was hoping I didn’t need it since those are mostly for network equipment. Here is my quickly thrown together trash can crash cart (TC3) for this adventure." />
+<meta property="og:description" content="An extended power loss for my primary Proxmox 8 cluster, while I was remote, took half of my cluster nodes out of commission into an unbootable state. This unbootable half of the cluster would not show up on the network after the power came back even with manual physical rebooting. The other half would boot up and show on the network. All the nodes had a second problem that they would not open a PVE WebUI Console Shell or show any output on any of the video output ports for either the Nvidia PCIe GPU or the Intel iGPU. So I have to figure out what looks to be a set of overlapping issues and clean up this mess. There were several lessons learned and re-learned along the way. First, I need a “crash cart” to recover these to a bootable state. What is a “crash cart”, well that is usually a rolling cart found in a data center that you roll up to a broken server. They typically include some sort of serial terminal and/or a monitor, keyboard and mouse with a lot of connectors and adapters to hook up to random port for the equipment you are fixing. Mine includes adapters for VGA, DVI, DisplayPort, HDMI and both USB and PS/2 keyboard and mice. I’ve even thrown in a spare known good Nvidia K600 video card for troubleshooting graphic cards. A trusty and up to date Ventoy Bootable USB is sitting on there as well. I have a laptop that I could use for a serial terminal if we get to that point but I was hoping I didn’t need it since those are mostly for network equipment. Here is my quickly thrown together trash can crash cart (TC3) for this adventure." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/proxmox-upgrade-issues/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/proxmox-upgrade-issues/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2024-09-21T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Proxmox VE 8.1 to 8.2 upgrade issues in the Homelabs" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2025-09-11T00:00:00+00:00","datePublished":"2024-09-21T00:00:00+00:00","description":"An extended power loss for my primary Proxmox 8 cluster, while I was remote, took half of my cluster nodes out of commission into an unbootable state. This unbootable half of the cluster would not show up on the network after the power came back even with manual physical rebooting. The other half would boot up and show on the network. All the nodes had a second problem that they would not open a PVE WebUI Console Shell or show any output on any of the video output ports for either the Nvidia PCIe GPU or the Intel iGPU. So I have to figure out what looks to be a set of overlapping issues and clean up this mess. There were several lessons learned and re-learned along the way. First, I need a “crash cart” to recover these to a bootable state. What is a “crash cart”, well that is usually a rolling cart found in a data center that you roll up to a broken server. They typically include some sort of serial terminal and/or a monitor, keyboard and mouse with a lot of connectors and adapters to hook up to random port for the equipment you are fixing. Mine includes adapters for VGA, DVI, DisplayPort, HDMI and both USB and PS/2 keyboard and mice. I’ve even thrown in a spare known good Nvidia K600 video card for troubleshooting graphic cards. A trusty and up to date Ventoy Bootable USB is sitting on there as well. I have a laptop that I could use for a serial terminal if we get to that point but I was hoping I didn’t need it since those are mostly for network equipment. Here is my quickly thrown together trash can crash cart (TC3) for this adventure.","headline":"Proxmox VE 8.1 to 8.2 upgrade issues in the Homelabs","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/proxmox-upgrade-issues/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/proxmox-upgrade-issues/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+<link rel="alternate" href="/feed.xml" type="application/atom+xml" title="McGarrah Technical Blog">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/proxmox-upgrade-issues/">Proxmox VE 8.1 to 8.2 upgrade issues in the Homelabs</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2024-09-21T00:00:00+00:00">September 21, 2024</time><span class="reading-time">9 min read</span></header>
+
+  <p>An extended power loss for my primary Proxmox 8 cluster, while I was remote, took half of my cluster nodes out of commission into an unbootable state. This unbootable half of the cluster would not show up on the network after the power came back even with manual physical rebooting. The other half would boot up and show on the network. All the nodes had a second problem that they would not open a PVE WebUI Console Shell or show any output on any of the video output ports for either the Nvidia PCIe GPU or the Intel iGPU. So I have to figure out what looks to be a set of overlapping issues and clean up this mess. There were several lessons learned and re-learned along the way.</p>
+
+<p>First, I need a “crash cart” to recover these to a bootable state. What is a “crash cart”, well that is usually a rolling cart found in a data center that you roll up to a broken server. They typically include some sort of serial terminal and/or a monitor, keyboard and mouse with a lot of connectors and adapters to hook up to random port for the equipment you are fixing. Mine includes adapters for VGA, DVI, DisplayPort, HDMI and both USB and PS/2 keyboard and mice. I’ve even thrown in a spare <em>known good</em> Nvidia K600 video card for troubleshooting graphic cards. A trusty and up to date <strong>Ventoy Bootable USB</strong> is sitting on there as well. I have a laptop that I could use for a serial terminal if we get to that point but I was hoping I didn’t need it since those are mostly for network equipment.</p>
+
+<p><a href="/assets/images/proxmox-upgrade-001.jpg" target="_blank"><img src="/assets/images/proxmox-upgrade-001.jpg" alt="Crash Cart" width="20%" height="20%" style="display:block; margin-left:auto; margin-right:auto" /></a></p>
+
+<p>Here is my quickly thrown together <strong><em>trash can</em></strong> <strong>crash cart</strong> (TC<sup>3</sup>) for this adventure.</p>
+
+<!-- excerpt-end -->
+
+<p>Figuring out what was wrong took several steps, a couple blind alleys along with most of an evening, and into wee early morning.</p>
+
+<p>This mess came about after I took the above mentioned power hit for my primary cluster location after a series of bad thunderstorms while I was remote. My homelab UPS only covers primary network services not my entire six node cluster. I have some plans to mitigate some of this but not this year. To add to the complexity, in the last month or two, I upgraded the Proxmox cluster remotely to the latest Proxmox which included major kernel updates. Proxmox went from 8.0 to 8.1 late last year and I pushed forward to 8.2 with several minor updates this year. That took me from my initial Linux kernel 6.2 to 6.5 and recently 6.8. Somewhere along the line, I lost my access to the Proxmox webui shell (console) access on the boxes and something broke the video output.</p>
+
+<p>My first step was to just try using <code class="language-plaintext highlighter-rouge">ssh</code> into the boxes that had booted to the network and check for errors in the bootlogs. I did not see anything out of the ordinary in the logs but absolutely none of the video ports (VGA/DVI/DisplayPort) would start a usable session with a monitor plugged into it. Whatever this was, also impacted getting a webui console shell session as well for these boxes. I finally lost patience and was ready to pull the Nvidia Quadro P620 PCIe card but thought maybe I should just disable the Nvidia Nouveau Kernel Module and work from that direction looking at logs. Historically, you had to blacklist the Nouveau kernel module when setting up the Nvidia drivers. This was not the case but what I did find was something unexpected which was the Nouveau <code class="language-plaintext highlighter-rouge">nvidiafb</code> module was blacklisted.</p>
+
+<p>Here is the dump from <code class="language-plaintext highlighter-rouge">lspci</code> for the working system. I have an Intel HD 2000 integrated GPU (iGPU) and the Nvidia Quadro P620 GPU shown on the PCI bus.</p>
+
+<div class="language-shell highlighter-rouge"><div class="highlight"><pre class="highlight"><code>root@kovacs:~# lspci <span class="nt">-k</span> | <span class="nb">grep</span> <span class="nt">-EA3</span> <span class="s1">'VGA|3D|Display'</span>
+00:02.0 VGA compatible controller: Intel Corporation 2nd Generation Core Processor Family Integrated Graphics Controller <span class="o">(</span>rev 09<span class="o">)</span>
+        DeviceName:  Onboard IGD
+        Subsystem: Dell 2nd Generation Core Processor Family Integrated Graphics Controller
+        Kernel driver <span class="k">in </span>use: i915
+<span class="nt">--</span>
+01:00.0 VGA compatible controller: NVIDIA Corporation GP107GL <span class="o">[</span>Quadro P620] <span class="o">(</span>rev a1<span class="o">)</span>
+        Subsystem: NVIDIA Corporation GP107GL <span class="o">[</span>Quadro P620]
+        Kernel driver <span class="k">in </span>use: nouveau
+        Kernel modules: nvidiafb, nouveau
+</code></pre></div></div>
+
+<p><a href="/assets/images/proxmox-upgrade-024.png" target="_blank"><img src="/assets/images/proxmox-upgrade-024.png" alt="Optiplex 990 panel" width="50%" height="50%" style="display:block; margin-left:auto; margin-right:auto" /></a></p>
+
+<table>
+  <tbody>
+    <tr>
+      <td>1. mouse connector</td>
+      <td>2. link integrity light</td>
+      <td>3. network connector</td>
+    </tr>
+    <tr>
+      <td>4. network activity light</td>
+      <td>5. serial connector</td>
+      <td>6. line-out connector</td>
+    </tr>
+    <tr>
+      <td>7. keyboard connector</td>
+      <td>8. USB 2.0 connectors (6)</td>
+      <td>9. DisplayPort connector</td>
+    </tr>
+    <tr>
+      <td>10. VGA connector</td>
+      <td>11. line-in/microphone connector</td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Here is a picture of the back of the Dell Optiplex 990 nodes. We have four cards loaded up with three PCIe cards and a PCI card. Those are from left to right:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">Slot#</th>
+      <th>Bus</th>
+      <th>Card Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">1.</td>
+      <td>PCIe 8x</td>
+      <td>Nvidia Quadro P620 GPU</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">2.</td>
+      <td>PCIe 1x</td>
+      <td>Powered USB 3.0 four port card</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">3.</td>
+      <td>PCI</td>
+      <td>Dual Port 1Gbps NIC</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">4.</td>
+      <td>PCIe 4x</td>
+      <td>Dual Port 1Gbps NIC</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><a href="/assets/images/proxmox-upgrade-004.jpg" target="_blank"><img src="/assets/images/proxmox-upgrade-004.jpg" alt="Optiplex 990 back" width="30%" height="30%" style="display:block; margin-left:auto; margin-right:auto" /></a></p>
+
+<p>So you can see I have several monitor ports. There are four mini-DisplayPort on the Nvidia card, and both a VGA and full-sized DisplayPort on the motherboard.</p>
+
+<p>The next problem was something that I should have caught faster. I had an <a href="https://www.amazon.com/gp/product/B08QCR62VL/">AIMOS HDMI 8-port KVM Switch</a> in the middle of the connections to each of the boxes. For whatever reason, this KVM was not syncing the video signal on the Nvidia P620 mini-displayport (along with the K600s) and was not getting the keyboard and mouse to work either but without the monitor working I could not see that. This whole thing was part of a setup with a PiKVM and a display duplicator project that stalled out with some odd failures. The base KVM had been rock solid earlier so I considered it a solid piece of working infrastructure. As a random check, I pulled both out of the mix for one host and got an error from the iGPU VGA and DisplayPort on the motherboard which was my first video signal that worked. I have never been so happy to see error screens…</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: center"><a href="/assets/images/proxmox-upgrade-008.jpg" target="_blank"><img src="/assets/images/proxmox-upgrade-007.jpg" alt="Bad Boot #1" /></a></th>
+      <th style="text-align: center"><a href="/assets/images/proxmox-upgrade-010.jpg" target="_blank"><img src="/assets/images/proxmox-upgrade-009.jpg" alt="Bad Boot #2" /></a></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: center">VGA Test</td>
+      <td style="text-align: center">DisplayPort Test</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>I also had a second issue that conflated with the above KVM issue. The issue was that the full-sized DisplayPort connector on the motherboard of the first system I was testing was bad, and of course that is the one I used in my first tests. It looks like I, or someone before me, pulled the DisplayPort cable out hard without releasing the connector. This is part of why I kept not getting results on that first system from the motherboard video tests from that DisplayPort. Another issues that seemed to indicate a broader issue was related to Nvidia was that the Nvidia Quadro K600 GPUs had the same issues as the Nvidia Quadro P620. So I assumed it was something Nvidia related that was broken once I removed the KVM.</p>
+
+<p>With the above figured out, I switched back to using the first mini-DisplayPort from the Nvidia GPU directly hooked to crash cart monitor with an adapter from DVI to mini-DisplayPort and got a clean signal after a reboot. With this, I could now see errors that looked related to BIOS settings being cleared or missing date/time values that usually indicate a bad BIOS CMOS battery. So the below error was actually a good thing.</p>
+
+<p><a href="/assets/images/proxmox-upgrade-013.jpg" target="_blank"><img src="/assets/images/proxmox-upgrade-013.jpg" alt="Good Boot #0" width="45%" height="45%" style="display:block; margin-left:auto; margin-right:auto" /></a></p>
+
+<p>I had a path forward now and some hope things would come back up. My first step was to swap out the coin CR2032 battery on each system that had bad BIOS settings or missing date/time. Next step was to reset the BIOS configurations and date/time on each of those systems.</p>
+
+<p><a href="/assets/images/proxmox-upgrade-012.jpg" target="_blank"><img src="/assets/images/proxmox-upgrade-011.jpg" alt="Good Boot #1" width="45%" height="45%" style="display:block; margin-left:auto; margin-right:auto" /></a></p>
+
+<p>While going thru the BIOS settings, I remembered something I saw in my rummaging around on Google and Reddit, a reference to enabling both the PCIe GPU and integrated GPU (iGPU) on older Dell OptiPlex systems.</p>
+
+<p><a href="/assets/images/proxmox-upgrade-015.jpg" target="_blank"><img src="/assets/images/proxmox-upgrade-014.jpg" alt="Good Boot #1" width="45%" height="45%" style="display:block; margin-left:auto; margin-right:auto" /></a></p>
+
+<p>Enabling this “Multi-Display” option in the BIOS, made it so that I could use the built-in motherboard iGPU as well as the Nvidia GPU at the same time. This opens up options for me to fully virtualize the Nvidia GPU and making it available only for a VM or LXC while maintaining a console session. Keeping the option of a boot up session for cases like the BIOS issue I hit are important to me long term.</p>
+
+<p><img src="/assets/images/proxmox-upgrade-video-003.webp" alt="SAN switch video" width="55%" height="55%" style="display:block; margin-left:auto; margin-right:auto" /></p>
+
+<p>My next to last issue, was a bad CAT5 network cable on my SAN Network Switch that intermittantly fails when jiggled. I have been chasing this issue and finally found it while moving around the cluster nodes when I saw one of the ports go and stay dark occasionally. This has been immensely frustrating to find and should improve my Ceph stability. To add to the mess, I have a rats nest of cabling hooking this all together which is painful when I have to dig into the hardware.</p>
+
+<p><a href="/assets/images/proxmox-upgrade-020.jpg" target="_blank"><img src="/assets/images/proxmox-upgrade-020.jpg" alt="Rat Nest of Cables" width="45%" height="45%" style="display:block; margin-left:auto; margin-right:auto" /></a></p>
+
+<p>So to summarize, I had some borderline CMOS batteries in a couple hosts that left some BIOS settings cleared to their defaults, or left with inconsistent and/or just bad BIOS settings. Some of those bad settings could have been from the batteries or just me fumbling them at some point. A Nvidia FrameBuffer driver issues on a kernel upgrade likely caused some of the confusion. A bad SAN network cable took awhile to find as just general instability in Ceph. The bad motherboard DisplayPort connector almost had me scream at the ceiling when I found it as it stalled progress for almost an hour leaving me confused. I am still not sure about the bad luck with the KVM EDID settings after the power hit and reboot. I just left the KVM unplugged to diagnose later. All of which culminated in a very late evening digging apart the mess the extended power outage left behind.</p>
+
+<p>What have I learned or re-learned? Upgrades of the Linux Kernel should be respected as major events and <em>do not do them remote</em> and test everything after the upgrade. I thought I had mitigated those risks during upgrades with my <a href="/proxmox-8-dell-wyse-3040/">Dell Wyse 3040 Proxmox Cluster</a> but obviously not for everything. Another lesson is that old hardware needs better documentation for quirks, as you find them, like the bad DisplayPort, CMOS battery replacement dates, and odd events like Ceph network timeouts/errors.</p>
+
+<hr />
+
+<p><strong>Epilog</strong>: The nodes in the cluster are Mini-Tower Dell Optiplex 990 with Nvidia Quadro P620 with disabled Intel HD 2000 iGPU. Finding the “Multi-Display” option in the BIOS during this ordeal was a real find that will enable more features as I move forward with using the NVidia GPUs. The loss of the KVM is painful but I’ll circle back at it and see about getting it to work with the PiKVM as an IP KVM combo for multiple remote systems.</p>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/proxmox/">proxmox</a>, 
+        
+          <a href="/tags/upgrade/">upgrade</a>, 
+        
+          <a href="/tags/troubleshooting/">troubleshooting</a>, 
+        
+          <a href="/tags/homelab/">homelab</a>, 
+        
+          <a href="/tags/hardware/">hardware</a>, 
+        
+          <a href="/tags/dell-optiplex/">dell-optiplex</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/technical/">technical</a>, 
+        
+          <a href="/categories/troubleshooting/">troubleshooting</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>
