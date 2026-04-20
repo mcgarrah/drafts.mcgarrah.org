@@ -60,6 +60,92 @@
   <li><strong>Never merge <code class="language-plaintext highlighter-rouge">main</code> into <code class="language-plaintext highlighter-rouge">upstream-pr</code></strong> — the rename makes it un-PR-able</li>
 </ul>
 
+<h3 id="execution-model-deep-review-update">Execution Model (Deep Review Update)</h3>
+
+<ul>
+  <li><strong>Track A: <code class="language-plaintext highlighter-rouge">upstream-pr</code> (critical-only stabilization)</strong>
+    <ul>
+      <li>Goal: small, low-risk bug fixes that are easy to review and accept upstream</li>
+      <li>Include: crash/silent-failure fixes, deterministic error handling, and minimal CI/workflow modernization needed to validate fixes</li>
+      <li>Exclude: rename/rebrand, large refactors, new commands/features, behavior changes beyond bug scope</li>
+    </ul>
+  </li>
+  <li><strong>Track B: <code class="language-plaintext highlighter-rouge">main</code> (major improvements)</strong>
+    <ul>
+      <li>Goal: full overhaul (new features, deeper refactors, tests, Marketplace/publisher work)</li>
+      <li>Can include dependency upgrades and broader CI/CD enhancements not appropriate for upstream PR scope</li>
+    </ul>
+  </li>
+</ul>
+
+<hr />
+
+<h2 id="deep-review-findings-2026-04-20">Deep Review Findings (2026-04-20)</h2>
+
+<p>Additional findings from deep code review and local build/test validation in <code class="language-plaintext highlighter-rouge">mcgarrah/jekyll-run</code>.</p>
+
+<h3 id="critical-upstream-pr-candidates">Critical (upstream-pr candidates)</h3>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Dependency detection can misreport tools as installed</strong>
+    <ul>
+      <li><code class="language-plaintext highlighter-rouge">!(await lookpath(...))?.startsWith(...)</code> can pass when value is undefined, allowing run/build flow to proceed with missing dependencies</li>
+      <li>Files: <code class="language-plaintext highlighter-rouge">src/extension.ts</code> (run/build command checks)</li>
+    </ul>
+  </li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Restart race condition (stop not awaited before run)</strong>
+    <ul>
+      <li>Restart path calls stop and immediately starts new server, causing flaky port conflicts</li>
+      <li>File: <code class="language-plaintext highlighter-rouge">src/extension.ts</code></li>
+    </ul>
+  </li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Promise multi-settle and inconsistent rejection payloads in run/build/install</strong>
+    <ul>
+      <li><code class="language-plaintext highlighter-rouge">stderr</code> can reject while <code class="language-plaintext highlighter-rouge">close</code> still resolves, and rejection types vary (Buffer/string/regex array/undefined)</li>
+      <li>Files: <code class="language-plaintext highlighter-rouge">src/cmds/run.ts</code>, <code class="language-plaintext highlighter-rouge">src/cmds/build.ts</code>, <code class="language-plaintext highlighter-rouge">src/cmds/install.ts</code></li>
+    </ul>
+  </li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Existing-server open flow can use stale/undefined URL</strong>
+    <ul>
+      <li><code class="language-plaintext highlighter-rouge">openUrl(address)</code> may run before address is reliably initialized in already-running-server path</li>
+      <li>File: <code class="language-plaintext highlighter-rouge">src/extension.ts</code></li>
+    </ul>
+  </li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>Unprotected <code class="language-plaintext highlighter-rouge">_config.yml</code> parse path can crash flow</strong>
+    <ul>
+      <li>sync YAML parse has no guard for malformed config</li>
+      <li>File: <code class="language-plaintext highlighter-rouge">src/extension.ts</code></li>
+    </ul>
+  </li>
+</ul>
+
+<h3 id="highmedium-main-branch-first-unless-kept-very-small">High/Medium (main branch first unless kept very small)</h3>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Open command registration not added to disposables (<code class="language-plaintext highlighter-rouge">open</code> not pushed to <code class="language-plaintext highlighter-rouge">context.subscriptions</code>)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><code class="language-plaintext highlighter-rouge">stopServerOnExit</code> default type mismatch (<code class="language-plaintext highlighter-rouge">"false"</code> string vs boolean)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Unix kill path not awaited (<code class="language-plaintext highlighter-rouge">kill -9</code> fire-and-forget)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />lsof parser still assumes a data line exists (header-only output crash risk)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />whitespace parsing helpers are brittle (<code class="language-plaintext highlighter-rouge">split(' ')</code>, undefined-first-element assumptions)</li>
+</ul>
+
+<h3 id="testing-reality-check">Testing Reality Check</h3>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Build/compile passes and extension test harness runs, but test coverage is still effectively placeholder-level (<code class="language-plaintext highlighter-rouge">extension.test.ts</code> sample test only)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Critical paths above are not protected by focused unit tests yet (error handling, process parsing, restart flow)</li>
+</ul>
+
+<hr />
+
+<h2 id="open-questions-from-deep-review">Open Questions (from Deep Review)</h2>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Should command-line argument parsing support quoted/escaped arguments, or keep current simple split behavior with documented limitations?</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />In already-running-server detection, should URL always be derived from configured port/baseurl instead of reused runtime address state?</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />For upstream PR acceptance, should CI/workflow updates be bundled with bug fixes in one PR or split into two small PRs?</li>
+</ul>
+
 <h2 id="current-state">Current State</h2>
 
 <ul>
@@ -89,10 +175,21 @@
 <ul class="task-list">
   <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Open PR from <code class="language-plaintext highlighter-rouge">mcgarrah/jekyll-run:upstream-pr</code> → <code class="language-plaintext highlighter-rouge">Kanna727/jekyll-run:master</code>
     <ul>
-      <li>Include the 3 bug fixes and CI modernization</li>
-      <li>This is the goodwill gesture before diverging with the rename</li>
+      <li>Include only critical stabilization fixes and minimal CI/workflow updates needed to validate those fixes</li>
+      <li>Keep PR narrowly scoped and easy to review/merge</li>
+      <li>This is the goodwill gesture before diverging with rename/new features on <code class="language-plaintext highlighter-rouge">main</code></li>
     </ul>
   </li>
+</ul>
+
+<h3 id="phase-1-candidate-scope-critical-only">Phase 1 Candidate Scope (Critical Only)</h3>
+
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Fix dependency detection guard logic in run/build command prechecks</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Await stop in restart flow before launching new run</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Normalize run/build/install promise behavior to settle once with consistent <code class="language-plaintext highlighter-rouge">Error</code> objects</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Guard config parse path and report actionable errors</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Fix existing-server open URL derivation/initialization path</li>
 </ul>
 
 <h2 id="phase-2--fix-remaining-15-bugs-on-main">Phase 2 — Fix Remaining 15 Bugs (on <code class="language-plaintext highlighter-rouge">main</code>)</h2>
