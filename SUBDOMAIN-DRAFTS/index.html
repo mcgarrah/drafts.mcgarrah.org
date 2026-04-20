@@ -675,6 +675,20 @@ staticrypt _site/<span class="k">**</span>/<span class="k">*</span>.html <span c
   <li><strong>Build on every push</strong> — both triggers (push to <code class="language-plaintext highlighter-rouge">main</code> + <code class="language-plaintext highlighter-rouge">workflow_dispatch</code>) enabled</li>
 </ul>
 
+<h2 id="challenges-encountered-during-implementation">Challenges Encountered During Implementation</h2>
+
+<ul>
+  <li><strong>Empty-repo Pages trap</strong>: GitHub Pages could not be enabled until the drafts repo had a real <code class="language-plaintext highlighter-rouge">main</code> branch with an initial commit.</li>
+  <li><strong>Giscus setup friction</strong>: repository/category readiness and app criteria caused setup delays before IDs could be captured.</li>
+  <li><strong>Staticrypt runtime looked stalled</strong>: encrypting hundreds of generated HTML pages made the workflow appear hung for long stretches.</li>
+  <li><strong>No-password deploy after first successful run</strong>: workflow success did not guarantee in-place encrypted output was being deployed.</li>
+  <li><strong>Large binary artifacts in output</strong>: deployment surfaced GitHub warnings for oversized executables and reinforced pruning/LFS boundaries.</li>
+  <li><strong>Selective encryption became necessary</strong>: only draft and future article pages needed protection; encrypting the full site added avoidable churn.</li>
+  <li><strong>Verification false negatives</strong>: content-string checks failed even when files were transformed, requiring a more reliable verification method.</li>
+  <li><strong>Staticrypt <code class="language-plaintext highlighter-rouge">-o</code> flag doesn’t exist</strong>: version 3.5.4+ uses <code class="language-plaintext highlighter-rouge">-d &lt;directory&gt;</code> for output; the invalid <code class="language-plaintext highlighter-rouge">-o</code> flag caused silent failures with no error message.</li>
+  <li><strong>Staticrypt flattens directory structures</strong>: when processing multiple files with <code class="language-plaintext highlighter-rouge">-d &lt;directory&gt;</code>, all output goes to <code class="language-plaintext highlighter-rouge">&lt;directory&gt;/filename.html</code> (not preserving nested paths). Fixed by processing each file individually.</li>
+</ul>
+
 <h2 id="implementation-checklist">Implementation Checklist</h2>
 
 <p>Organized by where the work happens. Each step is independent enough to do in a spare 5-15 minutes.</p>
@@ -687,8 +701,8 @@ staticrypt _site/<span class="k">**</span>/<span class="k">*</span>.html <span c
   <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" checked="checked" /><strong>1.3</strong> Enable GitHub Discussions on the drafts repo (Settings → General → Features → Discussions)</li>
   <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>1.4</strong> Create a “Draft Reviews” category in Discussions (Discussions tab → Categories → New category)</li>
   <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>1.5</strong> Generate a GitHub PAT with <code class="language-plaintext highlighter-rouge">repo</code> scope for cross-repo push (Settings → Developer settings → Personal access tokens → Fine-grained tokens, scope to <code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code> repo only)</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>1.6</strong> Add <code class="language-plaintext highlighter-rouge">DRAFTS_DEPLOY_TOKEN</code> secret to <code class="language-plaintext highlighter-rouge">mcgarrah.github.io</code> repo (Settings → Secrets and variables → Actions → New repository secret)</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>1.7</strong> Pick a Staticrypt password and add <code class="language-plaintext highlighter-rouge">DRAFTS_PASSWORD</code> secret to <code class="language-plaintext highlighter-rouge">mcgarrah.github.io</code> repo</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" checked="checked" /><strong>1.6</strong> Add <code class="language-plaintext highlighter-rouge">DRAFTS_DEPLOY_TOKEN</code> secret to <code class="language-plaintext highlighter-rouge">mcgarrah.github.io</code> repo (Settings → Secrets and variables → Actions → New repository secret)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" checked="checked" /><strong>1.7</strong> Pick a Staticrypt password and add <code class="language-plaintext highlighter-rouge">DRAFTS_PASSWORD</code> secret to <code class="language-plaintext highlighter-rouge">mcgarrah.github.io</code> repo</li>
 </ul>
 
 <p><strong>Important gotcha:</strong> GitHub Pages cannot be configured for <code class="language-plaintext highlighter-rouge">main</code> until the repo has an initial commit and the <code class="language-plaintext highlighter-rouge">main</code> branch actually exists. Creating the repo as truly empty blocks Pages setup with an error. Initializing with a <code class="language-plaintext highlighter-rouge">README.md</code> (or creating any file and committing it) avoids that.</p>
@@ -714,8 +728,8 @@ staticrypt _site/<span class="k">**</span>/<span class="k">*</span>.html <span c
 <h3 id="phase-4-main-repo-files-ide-20-minutes-total">Phase 4: Main Repo Files (IDE, ~20 minutes total)</h3>
 
 <ul class="task-list">
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>4.1</strong> Create <code class="language-plaintext highlighter-rouge">_config_drafts.yml</code> in the main repo root with drafts URL, disabled analytics/ads, and Giscus config pointing to drafts repo (use IDs from Phase 3)</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>4.2</strong> Create <code class="language-plaintext highlighter-rouge">.github/workflows/deploy-drafts.yml</code> in the main repo (workflow sketch is in this document and Part 2)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" checked="checked" /><strong>4.1</strong> Create <code class="language-plaintext highlighter-rouge">_config_drafts.yml</code> in the main repo root with drafts URL, disabled analytics/ads, and Giscus config pointing to drafts repo (use IDs from Phase 3)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" checked="checked" /><strong>4.2</strong> Create <code class="language-plaintext highlighter-rouge">.github/workflows/deploy-drafts.yml</code> in the main repo (workflow sketch is in this document and Part 2)</li>
   <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>4.3</strong> Add the draft preview banner to <code class="language-plaintext highlighter-rouge">_layouts/default.html</code> (Liquid conditional on <code class="language-plaintext highlighter-rouge">site.url contains 'drafts'</code>)</li>
   <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><strong>4.4</strong> Commit and push to <code class="language-plaintext highlighter-rouge">main</code></li>
 </ul>
