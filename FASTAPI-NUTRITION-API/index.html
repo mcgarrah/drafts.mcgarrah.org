@@ -1,0 +1,476 @@
+<h1 id="fastapi-nutrition-api--project-planning--reference">FastAPI Nutrition API — Project Planning &amp; Reference</h1>
+
+<p>Extracted from: <code class="language-plaintext highlighter-rouge">Google Gemini - Building a FastAPI Nutrition API.pdf</code> (exported 4/22/2026, PDF deleted 7/29/2026)</p>
+
+<p>This convenience file preserves the full Gemini conversation and serves as the planning
+document for a blog article series and the project itself.</p>
+
+<hr />
+
+<h2 id="project-goal">Project Goal</h2>
+
+<p>Demonstrate to potential employers the ability to design and build a production-grade API
+that showcases architecture, development, infrastructure, and data engineering best
+practices. FastAPI is the preferred framework for exposing insights and content.</p>
+
+<p>The project bridges existing open-source Python packages (<code class="language-plaintext highlighter-rouge">usda_fdc_python</code>,
+<code class="language-plaintext highlighter-rouge">gs1_gpc_python</code>) with a modern async API gateway, deployed via container-native CI/CD.</p>
+
+<hr />
+
+<h2 id="why-fastapi">Why FastAPI</h2>
+
+<ul>
+  <li>Built on ASGI (Asynchronous Server Gateway Interface) — handles concurrent requests
+efficiently, critical for AI and Cloud Architecture roles</li>
+  <li>Type hints and Pydantic models auto-generate OpenAPI (Swagger) documentation</li>
+  <li>Async-native with <code class="language-plaintext highlighter-rouge">httpx</code> for non-blocking external API calls</li>
+  <li>Modern Python ecosystem alignment (vs Flask/Django for new API work)</li>
+</ul>
+
+<hr />
+
+<h2 id="architecture-the-unified-food-intelligence-api">Architecture: The “Unified Food Intelligence API”</h2>
+
+<p>A single FastAPI gateway that aggregates three free external data sources:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Service</th>
+      <th>Primary Strength</th>
+      <th>Role</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>USDA FoodData Central (FDC)</td>
+      <td>Scientifically validated nutrition</td>
+      <td>Gold standard for nutrient precision</td>
+    </tr>
+    <tr>
+      <td>Open Food Facts (OFF)</td>
+      <td>Crowdsourced, global, 3M+ products</td>
+      <td>Fallback for GTINs not in USDA; product images</td>
+    </tr>
+    <tr>
+      <td>GS1 GPC</td>
+      <td>Administrative classification</td>
+      <td>Source of truth for industry taxonomy</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="key-architectural-patterns">Key Architectural Patterns</h3>
+
+<ul>
+  <li><strong>Parallel Execution</strong>: <code class="language-plaintext highlighter-rouge">asyncio.gather</code> across all three sources to keep latency &lt;500ms</li>
+  <li><strong>Ranked Truth Model</strong>: USDA prioritized for precision, OFF for breadth/media, GS1 for classification</li>
+  <li><strong>Graceful Degradation / Circuit Breaker</strong>: If USDA is down, return OFF data with a <code class="language-plaintext highlighter-rouge">warning</code> flag — never crash</li>
+  <li><strong>Conflict Resolution</strong>: If USDA says 100 calories and OFF says 110, prefer USDA</li>
+  <li><strong>Schema Normalization</strong>: Map disparate field names (<code class="language-plaintext highlighter-rouge">energy-kcal_100g</code> vs <code class="language-plaintext highlighter-rouge">nutrients.calories</code>) into a single Pydantic <code class="language-plaintext highlighter-rouge">CanonicalProduct</code> model</li>
+</ul>
+
+<hr />
+
+<h2 id="the-engineering-trifecta">The Engineering Trifecta</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Discipline</th>
+      <th>How This Project Proves It</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Infrastructure / DevOps</td>
+      <td>Deploying via App Platform using <code class="language-plaintext highlighter-rouge">app.yaml</code> (IaC) and Dockerfile</td>
+    </tr>
+    <tr>
+      <td>Application Engineering</td>
+      <td>FastAPI with async endpoints for high-performance, scalable interfaces</td>
+    </tr>
+    <tr>
+      <td>Data Engineering</td>
+      <td>Aggregating disparate sources and mapping to a unified Pydantic model (ETL)</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="machine-learning-connection">Machine Learning Connection</h3>
+
+<ul>
+  <li><strong>Data Validation</strong>: Pydantic for the API = same logic used for ML pipeline feature validation</li>
+  <li><strong>Latency Management</strong>: <code class="language-plaintext highlighter-rouge">asyncio.gather</code> is critical in ML inference where you fetch user profile, product history, and model prediction simultaneously</li>
+  <li><strong>API as Interface</strong>: PyTorch/Scikit-learn models eventually get wrapped in FastAPI for business consumption</li>
+  <li>This project is a “Feature Engineering Pipeline-Lite” — raw external data → cleaned, normalized, structured format</li>
+</ul>
+
+<hr />
+
+<h2 id="resume-connections">Resume Connections</h2>
+
+<h3 id="drug-lookup-precedent-blue-cross-nc">Drug Lookup Precedent (Blue Cross NC)</h3>
+<ul>
+  <li>DLC project: enterprise-wide REST API for fast sub-string lookups and cost calculations for pharmaceuticals</li>
+  <li>Same “lookup logic” applied to food science and supply chain data using a modern async stack</li>
+</ul>
+
+<h3 id="microservices--service-mesh-envestnet">Microservices &amp; Service Mesh (Envestnet)</h3>
+<ul>
+  <li>UPA project: containerized microservices on a service mesh</li>
+  <li>Dockerfile and <code class="language-plaintext highlighter-rouge">app.yaml</code> designed with “microservice-first” mindset — architecturally ready for a larger service mesh or EKS cluster</li>
+</ul>
+
+<h3 id="serverless-etl-medicare-guided-selling-bcbsnc">Serverless ETL (Medicare Guided Selling, BCBSNC)</h3>
+<ul>
+  <li>SLS implementation: Python 3 REST API backed by custom event-driven ETL with DynamoDB/DAX</li>
+  <li>Mirrors the USDA/GS1 data aggregation pattern; in-memory caching replaces DynamoDB</li>
+</ul>
+
+<h3 id="data-engineering-at-scale-usps">Data Engineering at Scale (USPS)</h3>
+<ul>
+  <li>25-node SAS Viya cluster, 26TB RAM, 1PB Hadoop Data Lake</li>
+  <li>Python Fabric extensions and Ansible for cluster stabilization</li>
+  <li>This project is the modern, cloud-native evolution: building the “faucets” (APIs) that deliver intelligence</li>
+</ul>
+
+<h3 id="portfolio-summary-statement">Portfolio Summary Statement</h3>
+
+<blockquote>
+  <p>“Building on my experience developing enterprise lookup APIs for the healthcare sector
+(BCBSNC) and managing petabyte-scale data lakes (USPS), this project demonstrates a
+modern, asynchronous approach to supply chain data aggregation using FastAPI and
+container-native deployment.”</p>
+</blockquote>
+
+<hr />
+
+<h2 id="technical-implementation">Technical Implementation</h2>
+
+<h3 id="core-endpoint">Core Endpoint</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">fastapi</span> <span class="kn">import</span> <span class="n">FastAPI</span>
+<span class="kn">from</span> <span class="n">usda_fdc_python</span> <span class="kn">import</span> <span class="n">FDCClient</span>
+<span class="kn">from</span> <span class="n">gs1_gpc_python</span> <span class="kn">import</span> <span class="n">GPCClient</span>
+<span class="kn">import</span> <span class="n">asyncio</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="nc">FastAPI</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="sh">"</span><span class="s">Unified Food Intelligence API</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="n">fdc</span> <span class="o">=</span> <span class="nc">FDCClient</span><span class="p">(</span><span class="n">api_key</span><span class="o">=</span><span class="sh">"</span><span class="s">YOUR_FREE_USDA_KEY</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">gs1</span> <span class="o">=</span> <span class="nc">GPCClient</span><span class="p">()</span>
+
+<span class="nd">@app.get</span><span class="p">(</span><span class="sh">"</span><span class="s">/api/v1/lookup/{gtin}</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">lookup_product</span><span class="p">(</span><span class="n">gtin</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+    <span class="n">usda_task</span> <span class="o">=</span> <span class="n">asyncio</span><span class="p">.</span><span class="nf">create_task</span><span class="p">(</span><span class="n">fdc</span><span class="p">.</span><span class="nf">get_nutrition</span><span class="p">(</span><span class="n">gtin</span><span class="p">))</span>
+    <span class="n">off_task</span> <span class="o">=</span> <span class="n">asyncio</span><span class="p">.</span><span class="nf">create_task</span><span class="p">(</span><span class="n">off</span><span class="p">.</span><span class="nf">get_product</span><span class="p">(</span><span class="n">gtin</span><span class="p">))</span>
+    <span class="n">gs1_task</span> <span class="o">=</span> <span class="n">asyncio</span><span class="p">.</span><span class="nf">create_task</span><span class="p">(</span><span class="n">gs1</span><span class="p">.</span><span class="nf">get_brick</span><span class="p">(</span><span class="n">gtin</span><span class="p">))</span>
+
+    <span class="n">usda</span><span class="p">,</span> <span class="n">off_data</span><span class="p">,</span> <span class="n">gs1_data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="p">.</span><span class="nf">gather</span><span class="p">(</span><span class="n">usda_task</span><span class="p">,</span> <span class="n">off_task</span><span class="p">,</span> <span class="n">gs1_task</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="sh">"</span><span class="s">gtin</span><span class="sh">"</span><span class="p">:</span> <span class="n">gtin</span><span class="p">,</span>
+        <span class="sh">"</span><span class="s">name</span><span class="sh">"</span><span class="p">:</span> <span class="n">usda</span><span class="p">.</span><span class="n">name</span> <span class="ow">or</span> <span class="n">off_data</span><span class="p">.</span><span class="n">name</span> <span class="ow">or</span> <span class="sh">"</span><span class="s">Unknown Product</span><span class="sh">"</span><span class="p">,</span>
+        <span class="sh">"</span><span class="s">category</span><span class="sh">"</span><span class="p">:</span> <span class="n">gs1_data</span><span class="p">.</span><span class="n">category</span><span class="p">,</span>
+        <span class="sh">"</span><span class="s">nutrition</span><span class="sh">"</span><span class="p">:</span> <span class="nf">merge_nutrition</span><span class="p">(</span><span class="n">usda</span><span class="p">,</span> <span class="n">off_data</span><span class="p">),</span>
+        <span class="sh">"</span><span class="s">images</span><span class="sh">"</span><span class="p">:</span> <span class="n">off_data</span><span class="p">.</span><span class="n">images</span><span class="p">,</span>
+        <span class="sh">"</span><span class="s">data_sources</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="sh">"</span><span class="s">USDA</span><span class="sh">"</span> <span class="k">if</span> <span class="n">usda</span> <span class="k">else</span> <span class="bp">None</span><span class="p">,</span> <span class="sh">"</span><span class="s">OFF</span><span class="sh">"</span> <span class="k">if</span> <span class="n">off_data</span> <span class="k">else</span> <span class="bp">None</span><span class="p">]</span>
+    <span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="canonical-data-model-pydantic">Canonical Data Model (Pydantic)</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">pydantic</span> <span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">Field</span><span class="p">,</span> <span class="n">HttpUrl</span>
+<span class="kn">from</span> <span class="n">typing</span> <span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span>
+
+<span class="k">class</span> <span class="nc">NutrientValue</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">value</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">unit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="sh">"</span><span class="s">g</span><span class="sh">"</span>
+
+<span class="k">class</span> <span class="nc">CanonicalProduct</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Single Source of Truth model hiding upstream complexity.</span><span class="sh">"""</span>
+    <span class="n">gtin</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">product_name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">brand</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="c1"># GS1 classification
+</span>    <span class="n">category_hierarchy</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="nc">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="p">[],</span> <span class="n">description</span><span class="o">=</span><span class="sh">"</span><span class="s">GS1 GPC Bricks and Families</span><span class="sh">"</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Normalized nutrition (per 100g/ml)
+</span>    <span class="n">calories_kcal</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">protein</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">NutrientValue</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">fat</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">NutrientValue</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">carbohydrates</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">NutrientValue</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="c1"># Media &amp; labels from Open Food Facts
+</span>    <span class="n">image_url</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">HttpUrl</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">ingredients_text</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="c1"># Data governance metadata
+</span>    <span class="n">data_sources</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">upstream_latency_ms</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+</code></pre></div></div>
+
+<h3 id="data-orchestrator-mapper">Data Orchestrator (Mapper)</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">DataOrchestrator</span><span class="p">:</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">map_to_canonical</span><span class="p">(</span><span class="n">gtin</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">usda</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">off</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">gs1</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="bp">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CanonicalProduct</span><span class="p">:</span>
+        <span class="n">product</span> <span class="o">=</span> <span class="nc">CanonicalProduct</span><span class="p">(</span><span class="n">gtin</span><span class="o">=</span><span class="n">gtin</span><span class="p">,</span> <span class="n">product_name</span><span class="o">=</span><span class="sh">"</span><span class="s">Unknown</span><span class="sh">"</span><span class="p">)</span>
+
+        <span class="c1"># Layer 1: Open Food Facts (name, images, ingredients)
+</span>        <span class="k">if</span> <span class="n">off</span><span class="p">:</span>
+            <span class="n">product</span><span class="p">.</span><span class="n">product_name</span> <span class="o">=</span> <span class="n">off</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="sh">'</span><span class="s">product_name</span><span class="sh">'</span><span class="p">,</span> <span class="n">product</span><span class="p">.</span><span class="n">product_name</span><span class="p">)</span>
+            <span class="n">product</span><span class="p">.</span><span class="n">brand</span> <span class="o">=</span> <span class="n">off</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="sh">'</span><span class="s">brands</span><span class="sh">'</span><span class="p">)</span>
+            <span class="n">product</span><span class="p">.</span><span class="n">image_url</span> <span class="o">=</span> <span class="n">off</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="sh">'</span><span class="s">image_url</span><span class="sh">'</span><span class="p">)</span>
+            <span class="n">product</span><span class="p">.</span><span class="n">ingredients_text</span> <span class="o">=</span> <span class="n">off</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="sh">'</span><span class="s">ingredients_text</span><span class="sh">'</span><span class="p">)</span>
+            <span class="n">product</span><span class="p">.</span><span class="n">data_sources</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="sh">"</span><span class="s">OpenFoodFacts</span><span class="sh">"</span><span class="p">)</span>
+
+        <span class="c1"># Layer 2: USDA (scientific nutrient data — overrides OFF)
+</span>        <span class="k">if</span> <span class="n">usda</span><span class="p">:</span>
+            <span class="n">product</span><span class="p">.</span><span class="n">product_name</span> <span class="o">=</span> <span class="n">usda</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="sh">'</span><span class="s">description</span><span class="sh">'</span><span class="p">,</span> <span class="n">product</span><span class="p">.</span><span class="n">product_name</span><span class="p">)</span>
+            <span class="n">nutrients</span> <span class="o">=</span> <span class="n">usda</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="sh">'</span><span class="s">labelNutrients</span><span class="sh">'</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="n">product</span><span class="p">.</span><span class="n">calories_kcal</span> <span class="o">=</span> <span class="n">nutrients</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="sh">'</span><span class="s">calories</span><span class="sh">'</span><span class="p">,</span> <span class="p">{}).</span><span class="nf">get</span><span class="p">(</span><span class="sh">'</span><span class="s">value</span><span class="sh">'</span><span class="p">)</span>
+            <span class="n">product</span><span class="p">.</span><span class="n">protein</span> <span class="o">=</span> <span class="nc">NutrientValue</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">nutrients</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="sh">'</span><span class="s">protein</span><span class="sh">'</span><span class="p">,</span> <span class="p">{}).</span><span class="nf">get</span><span class="p">(</span><span class="sh">'</span><span class="s">value</span><span class="sh">'</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+            <span class="n">product</span><span class="p">.</span><span class="n">data_sources</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="sh">"</span><span class="s">USDA_FDC</span><span class="sh">"</span><span class="p">)</span>
+
+        <span class="c1"># Layer 3: GS1 (taxonomy)
+</span>        <span class="k">if</span> <span class="n">gs1</span><span class="p">:</span>
+            <span class="n">product</span><span class="p">.</span><span class="n">category_hierarchy</span> <span class="o">=</span> <span class="n">gs1</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="sh">'</span><span class="s">hierarchy</span><span class="sh">'</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="n">product</span><span class="p">.</span><span class="n">data_sources</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="sh">"</span><span class="s">GS1_GPC</span><span class="sh">"</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">product</span>
+</code></pre></div></div>
+
+<h3 id="why-this-design-shows-lead-level">Why This Design Shows “Lead” Level</h3>
+
+<ol>
+  <li><strong>Immutability &amp; Validation</strong>: Pydantic auto-returns 422 if upstream sends garbage data — protects downstream ML models from null values</li>
+  <li><strong>Graceful Fallbacks</strong>: <code class="language-plaintext highlighter-rouge">product.product_name = ... or product.product_name</code> ensures OFF fills gaps when USDA is missing</li>
+  <li><strong>Observability</strong>: <code class="language-plaintext highlighter-rouge">upstream_latency_ms</code> and <code class="language-plaintext highlighter-rouge">data_sources</code> in the response tell consumers exactly where data came from and if a provider is lagging</li>
+  <li><strong>SOC2/Compliance Ready</strong>: Single <code class="language-plaintext highlighter-rouge">CanonicalProduct</code> model provides one place to implement data masking or PII stripping</li>
+</ol>
+
+<hr />
+
+<h2 id="deployment-digitalocean-app-platform">Deployment: DigitalOcean App Platform</h2>
+
+<h3 id="cost-strategy">Cost Strategy</h3>
+<ul>
+  <li>App Platform Basic Tier: ~$5/mo</li>
+  <li>Container-native, mirrors K8s architectural patterns</li>
+  <li>GitHub repo connection with automatic builds on push</li>
+</ul>
+
+<h3 id="dockerfile">Dockerfile</h3>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">python:3.11-slim</code> base for lightweight, secure container</li>
+  <li>Binds to port 8080 (App Platform standard)</li>
+  <li>Multi-stage build to keep image lean</li>
+</ul>
+
+<h3 id="appyaml-iac">app.yaml (IaC)</h3>
+<ul>
+  <li>Placed in <code class="language-plaintext highlighter-rouge">.do/</code> directory at repo root</li>
+  <li>Defines GitHub repo connection, instance size, environment variables</li>
+  <li>USDA FDC API Key stored as a secret environment variable</li>
+  <li>Health check pointing to <code class="language-plaintext highlighter-rouge">/docs</code> for zero-downtime deployments</li>
+</ul>
+
+<h3 id="cicd">CI/CD</h3>
+<ul>
+  <li>GitHub Actions runs <code class="language-plaintext highlighter-rouge">pytest</code> and <code class="language-plaintext highlighter-rouge">flake8</code> before App Platform builds</li>
+  <li>Automatic deployment on push to main</li>
+</ul>
+
+<hr />
+
+<h2 id="day-2-operations-lead-principal-additions">“Day 2” Operations (Lead Principal Additions)</h2>
+
+<h3 id="1-advanced-observability-sre-flex">1. Advanced Observability (SRE Flex)</h3>
+<ul>
+  <li>OpenTelemetry middleware via <code class="language-plaintext highlighter-rouge">opentelemetry-instrumentation-fastapi</code></li>
+  <li>Distributed tracing: know whether USDA or GS1 caused slowness</li>
+  <li>Integration with self-hosted SigNoz/GlitchTip</li>
+</ul>
+
+<h3 id="2-graceful-degradation">2. Graceful Degradation</h3>
+<ul>
+  <li>Circuit breaker / fallback mechanism for partial failures</li>
+  <li>Return 200 OK with available data + metadata flag for unavailable sources</li>
+  <li>Demonstrates resiliency, data governance, and systemic thinking</li>
+</ul>
+
+<h3 id="3-api-versioning--documentation-polish">3. API Versioning &amp; Documentation Polish</h3>
+<ul>
+  <li>URL-based versioning (<code class="language-plaintext highlighter-rouge">/v1/</code>)</li>
+  <li>Rich OpenAPI metadata: custom logo, contact info linking to blog</li>
+  <li>Pydantic <code class="language-plaintext highlighter-rouge">Field(description="...")</code> for detailed field docs</li>
+  <li><code class="language-plaintext highlighter-rouge">/health</code> endpoint checking upstream connectivity</li>
+  <li><code class="language-plaintext highlighter-rouge">/version</code> endpoint pulling current Git hash from environment</li>
+</ul>
+
+<h3 id="4-data-freshness-telemetry">4. Data Freshness Telemetry</h3>
+<ul>
+  <li>Health check / telemetry endpoint reporting “Data Freshness” and “Upstream Latency”</li>
+  <li>Shows you care about data reliability, not just code execution</li>
+</ul>
+
+<hr />
+
+<h2 id="readme-structure-technical-decision-log--adr">README Structure (Technical Decision Log / ADR)</h2>
+
+<ol>
+  <li><strong>The Problem</strong>: High cost of proprietary supply chain data ($40k/yr OneWorldSync)</li>
+  <li><strong>The Solution</strong>: Asynchronous aggregator leveraging public data (USDA/GS1/OFF)</li>
+  <li><strong>The Architecture</strong>: Why FastAPI? Why DigitalOcean App Platform?</li>
+  <li><strong>The Security</strong>: SOC2-level concerns (environment secrets, TLS, least-privilege containers)</li>
+  <li><strong>The Data Engineering</strong>: Normalizing disparate schemas from three government/industry sources</li>
+</ol>
+
+<hr />
+
+<h2 id="existing-repositories">Existing Repositories</h2>
+
+<ul>
+  <li><a href="https://github.com/mcgarrah/usda_fdc_python">usda_fdc_python</a> — Python package for USDA FoodData Central</li>
+  <li><a href="https://github.com/mcgarrah/gs1_gpc_python">gs1_gpc_python</a> — Python package for GS1 Global Product Classification</li>
+  <li><a href="https://github.com/mcgarrah/oneworldsync_python">oneworldsync_python</a> — Python package (key expired, $40k/yr — dropped)</li>
+  <li><a href="https://github.com/mcgarrah/shiny-quiz">shiny-quiz</a> — Flask app deployed on DigitalOcean</li>
+  <li><a href="https://github.com/mcgarrah/legendary_quick_quiz">legendary_quick_quiz</a> — Django app</li>
+  <li><a href="https://github.com/mcgarrah/shiny-shop">shiny-shop</a> — Django shop app</li>
+  <li><a href="https://github.com/mcgarrah/jekyll-pandoc-exports">jekyll-pandoc-exports</a> — Ruby gem</li>
+</ul>
+
+<hr />
+
+<h2 id="proposed-article-series">Proposed Article Series</h2>
+
+<h3 id="article-1-architecture--design--building-a-unified-food-intelligence-api-with-fastapi">Article 1: Architecture &amp; Design — “Building a Unified Food Intelligence API with FastAPI”</h3>
+<ul>
+  <li>Problem statement: proprietary data costs vs free public APIs</li>
+  <li>Why FastAPI over Flask/Django for new API work</li>
+  <li>Three-source architecture: USDA FDC, Open Food Facts, GS1 GPC</li>
+  <li>Ranked Truth Model and conflict resolution strategy</li>
+  <li>Canonical Data Model design with Pydantic</li>
+  <li>Connection to resume experience (USPS data engineering, BCBSNC drug lookup, Envestnet microservices)</li>
+</ul>
+
+<h3 id="article-2-implementation--fastapi-async-patterns-data-orchestration-and-graceful-degradation">Article 2: Implementation — “FastAPI Async Patterns, Data Orchestration, and Graceful Degradation”</h3>
+<ul>
+  <li>Project scaffolding and dependency setup</li>
+  <li>Async endpoint implementation with <code class="language-plaintext highlighter-rouge">asyncio.gather</code></li>
+  <li>DataOrchestrator mapper: normalizing USDA, OFF, and GS1 schemas</li>
+  <li>Graceful degradation: circuit breaker pattern for partial upstream failures</li>
+  <li>Pydantic validation as a data quality gate</li>
+  <li>API versioning (<code class="language-plaintext highlighter-rouge">/v1/</code>) and OpenAPI documentation polish</li>
+</ul>
+
+<h3 id="article-3-infrastructure--deployment--container-native-cicd-on-digitalocean-app-platform">Article 3: Infrastructure &amp; Deployment — “Container-Native CI/CD on DigitalOcean App Platform”</h3>
+<ul>
+  <li>Dockerfile: multi-stage build with <code class="language-plaintext highlighter-rouge">python:3.11-slim</code></li>
+  <li><code class="language-plaintext highlighter-rouge">.do/app.yaml</code> as Infrastructure-as-Code</li>
+  <li>Secret management for USDA API key</li>
+  <li>GitHub Actions pipeline: <code class="language-plaintext highlighter-rouge">pytest</code>, <code class="language-plaintext highlighter-rouge">flake8</code>, automatic deploy</li>
+  <li>Health check and zero-downtime deployment strategy</li>
+  <li><code class="language-plaintext highlighter-rouge">/health</code> and <code class="language-plaintext highlighter-rouge">/version</code> operational endpoints</li>
+</ul>
+
+<h3 id="article-4-observability--production-readiness--day-2-operations-for-a-lead-engineer">Article 4: Observability &amp; Production Readiness — “Day 2 Operations for a Lead Engineer”</h3>
+<ul>
+  <li>OpenTelemetry instrumentation with <code class="language-plaintext highlighter-rouge">opentelemetry-instrumentation-fastapi</code></li>
+  <li>Distributed tracing: identifying which upstream source caused latency</li>
+  <li>Data freshness telemetry and upstream latency reporting</li>
+  <li>Prometheus metrics via <code class="language-plaintext highlighter-rouge">starlette-prometheus</code></li>
+  <li>Structured logging for production debugging</li>
+  <li>SOC2/compliance considerations: data masking, PII stripping, least-privilege containers</li>
+</ul>
+
+<hr />
+
+<h2 id="work-outline">Work Outline</h2>
+
+<h3 id="phase-1-foundation">Phase 1: Foundation</h3>
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Create new GitHub repository (<code class="language-plaintext highlighter-rouge">fastapi-nutrition-api</code> or similar)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Set up project structure: <code class="language-plaintext highlighter-rouge">pyproject.toml</code>, <code class="language-plaintext highlighter-rouge">requirements.txt</code>, <code class="language-plaintext highlighter-rouge">.gitignore</code></li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Define Pydantic models (<code class="language-plaintext highlighter-rouge">CanonicalProduct</code>, <code class="language-plaintext highlighter-rouge">NutrientValue</code>)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Implement <code class="language-plaintext highlighter-rouge">DataOrchestrator</code> mapper with layered merge logic</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Write basic FastAPI app with <code class="language-plaintext highlighter-rouge">/api/v1/lookup/{gtin}</code> endpoint</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Integrate <code class="language-plaintext highlighter-rouge">usda_fdc_python</code> and <code class="language-plaintext highlighter-rouge">gs1_gpc_python</code> packages</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Add Open Food Facts client (httpx async)</li>
+</ul>
+
+<h3 id="phase-2-robustness">Phase 2: Robustness</h3>
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Implement <code class="language-plaintext highlighter-rouge">asyncio.gather</code> for parallel upstream calls</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Add graceful degradation / circuit breaker for partial failures</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Add in-memory caching (<code class="language-plaintext highlighter-rouge">cachetools</code> LRU) for frequent lookups</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Pydantic input validation and 422 error handling</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />API versioning (<code class="language-plaintext highlighter-rouge">/v1/</code>)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><code class="language-plaintext highlighter-rouge">/health</code> endpoint (upstream connectivity check)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><code class="language-plaintext highlighter-rouge">/version</code> endpoint (Git hash from environment)</li>
+</ul>
+
+<h3 id="phase-3-deployment">Phase 3: Deployment</h3>
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Write Dockerfile (multi-stage, <code class="language-plaintext highlighter-rouge">python:3.11-slim</code>, port 8080)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Write <code class="language-plaintext highlighter-rouge">.do/app.yaml</code> for DigitalOcean App Platform</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Configure USDA FDC API key as environment secret</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />GitHub Actions workflow: <code class="language-plaintext highlighter-rouge">pytest</code>, <code class="language-plaintext highlighter-rouge">flake8</code>, deploy trigger</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Verify health check and zero-downtime deployment</li>
+</ul>
+
+<h3 id="phase-4-observability--polish">Phase 4: Observability &amp; Polish</h3>
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />OpenTelemetry middleware integration</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><code class="language-plaintext highlighter-rouge">upstream_latency_ms</code> tracking in responses</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Prometheus <code class="language-plaintext highlighter-rouge">/metrics</code> endpoint</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Rich OpenAPI metadata (logo, contact, field descriptions)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />README as Technical Decision Log (ADR format)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Write blog article series (4 articles, MWF cadence)</li>
+</ul>
+
+<h3 id="phase-5-stretch-goals">Phase 5: Stretch Goals</h3>
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Redis caching layer (if budget allows)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />CORS middleware for specific domain restriction</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Structured logging integration (SigNoz/GlitchTip)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />“Data Freshness” telemetry endpoint</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />USDA Branded Foods data (messier, bigger data engineering flex)</li>
+</ul>
+
+<hr />
+
+<h2 id="decisions-made">Decisions Made</h2>
+
+<ul>
+  <li><strong>Dropped OneWorldSync</strong>: $40k/yr, key expired — replaced with Open Food Facts (free, crowdsourced)</li>
+  <li><strong>DigitalOcean App Platform over Droplet</strong>: ~$5/mo, container-native, automatic deploys, no server management</li>
+  <li><strong>In-memory cache over Redis</strong>: Cost savings, sufficient for initial deployment</li>
+  <li><strong>Proxmox not public-exposed</strong>: Hosting on DigitalOcean, not homelab</li>
+  <li><strong>Three external sources minimum</strong>: Shows complex multi-vendor data management</li>
+</ul>
+
+<hr />
+
+<h2 id="raw-gemini-conversation">Raw Gemini Conversation</h2>
+
+<p>The sections above are organized from the full conversation. Key topics covered:</p>
+
+<ol>
+  <li>Why FastAPI over Flask/Django</li>
+  <li>Architectural strategy: “Lite Gateway” with async + in-memory caching</li>
+  <li>Implementation with existing Python packages (<code class="language-plaintext highlighter-rouge">usda_fdc_python</code>, <code class="language-plaintext highlighter-rouge">gs1_gpc_python</code>)</li>
+  <li>Cost-effective hosting on DigitalOcean App Platform (~$5/mo)</li>
+  <li>The “Engineering Trifecta”: Infrastructure, Application, Data Engineering</li>
+  <li>Machine Learning connection: Feature Engineering Pipeline-Lite</li>
+  <li>Resume connections: USPS, BCBSNC, Envestnet</li>
+  <li>Adding Open Food Facts as third source for complex management</li>
+  <li>Canonical Data Model with Pydantic and DataOrchestrator mapper</li>
+  <li>“Day 2” operations: observability, graceful degradation, API versioning</li>
+  <li>README structure as Technical Decision Log (ADR)</li>
+</ol>

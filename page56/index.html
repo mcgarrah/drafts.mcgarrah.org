@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <!-- Begin Jekyll SEO tag v2.8.0 -->
-<title>Page 56 of 56 for Home | McGarrah Technical Blog</title>
+<title>Page 56 of 57 for Home | McGarrah Technical Blog</title>
 <meta name="generator" content="Jekyll v4.4.1" />
 <meta property="og:title" content="Home" />
 <meta name="author" content="Michael McGarrah" />
@@ -14,6 +14,7 @@
 <meta property="og:site_name" content="McGarrah Technical Blog" />
 <meta property="og:type" content="website" />
 <link rel="prev" href="https://drafts.mcgarrah.org/page55" />
+<link rel="next" href="https://drafts.mcgarrah.org/page57" />
 <meta name="twitter:card" content="summary" />
 <meta property="twitter:title" content="Home" />
 <script type="application/ld+json">
@@ -439,16 +440,503 @@ git clone &lt;url&gt; &lt;repo&gt;-fresh
 <article class="post-preview-unpublished">
     <header>
   <h1>
+    <a href="/FASTAPI-NUTRITION-API/">Fastapi Nutrition Api</a>
+    <svg aria-label="Draft" class="icon icon-status" title="Draft"><use xlink:href="/assets/fontawesome/icons.svg#pencil-alt"></use></svg>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="1999-12-31T00:00:00+00:00">December 31, 1999</time><span class="reading-time">14 min read</span></header>
+
+    <h1 id="fastapi-nutrition-api--project-planning--reference">FastAPI Nutrition API — Project Planning &amp; Reference</h1>
+
+<p>Extracted from: <code class="language-plaintext highlighter-rouge">Google Gemini - Building a FastAPI Nutrition API.pdf</code> (exported 4/22/2026, PDF deleted 7/29/2026)</p>
+
+<p>This convenience file preserves the full Gemini conversation and serves as the planning
+document for a blog article series and the project itself.</p>
+
+<hr />
+
+<h2 id="project-goal">Project Goal</h2>
+
+<p>Demonstrate to potential employers the ability to design and build a production-grade API
+that showcases architecture, development, infrastructure, and data engineering best
+practices. FastAPI is the preferred framework for exposing insights and content.</p>
+
+<p>The project bridges existing open-source Python packages (<code class="language-plaintext highlighter-rouge">usda_fdc_python</code>,
+<code class="language-plaintext highlighter-rouge">gs1_gpc_python</code>) with a modern async API gateway, deployed via container-native CI/CD.</p>
+
+<hr />
+
+<h2 id="why-fastapi">Why FastAPI</h2>
+
+<ul>
+  <li>Built on ASGI (Asynchronous Server Gateway Interface) — handles concurrent requests
+efficiently, critical for AI and Cloud Architecture roles</li>
+  <li>Type hints and Pydantic models auto-generate OpenAPI (Swagger) documentation</li>
+  <li>Async-native with <code class="language-plaintext highlighter-rouge">httpx</code> for non-blocking external API calls</li>
+  <li>Modern Python ecosystem alignment (vs Flask/Django for new API work)</li>
+</ul>
+
+<hr />
+
+<h2 id="architecture-the-unified-food-intelligence-api">Architecture: The “Unified Food Intelligence API”</h2>
+
+<p>A single FastAPI gateway that aggregates three free external data sources:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Service</th>
+      <th>Primary Strength</th>
+      <th>Role</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>USDA FoodData Central (FDC)</td>
+      <td>Scientifically validated nutrition</td>
+      <td>Gold standard for nutrient precision</td>
+    </tr>
+    <tr>
+      <td>Open Food Facts (OFF)</td>
+      <td>Crowdsourced, global, 3M+ products</td>
+      <td>Fallback for GTINs not in USDA; product images</td>
+    </tr>
+    <tr>
+      <td>GS1 GPC</td>
+      <td>Administrative classification</td>
+      <td>Source of truth for industry taxonomy</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="key-architectural-patterns">Key Architectural Patterns</h3>
+
+<ul>
+  <li><strong>Parallel Execution</strong>: <code class="language-plaintext highlighter-rouge">asyncio.gather</code> across all three sources to keep latency &lt;500ms</li>
+  <li><strong>Ranked Truth Model</strong>: USDA prioritized for precision, OFF for breadth/media, GS1 for classification</li>
+  <li><strong>Graceful Degradation / Circuit Breaker</strong>: If USDA is down, return OFF data with a <code class="language-plaintext highlighter-rouge">warning</code> flag — never crash</li>
+  <li><strong>Conflict Resolution</strong>: If USDA says 100 calories and OFF says 110, prefer USDA</li>
+  <li><strong>Schema Normalization</strong>: Map disparate field names (<code class="language-plaintext highlighter-rouge">energy-kcal_100g</code> vs <code class="language-plaintext highlighter-rouge">nutrients.calories</code>) into a single Pydantic <code class="language-plaintext highlighter-rouge">CanonicalProduct</code> model</li>
+</ul>
+
+<hr />
+
+<h2 id="the-engineering-trifecta">The Engineering Trifecta</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Discipline</th>
+      <th>How This Project Proves It</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Infrastructure / DevOps</td>
+      <td>Deploying via App Platform using <code class="language-plaintext highlighter-rouge">app.yaml</code> (IaC) and Dockerfile</td>
+    </tr>
+    <tr>
+      <td>Application Engineering</td>
+      <td>FastAPI with async endpoints for high-performance, scalable interfaces</td>
+    </tr>
+    <tr>
+      <td>Data Engineering</td>
+      <td>Aggregating disparate sources and mapping to a unified Pydantic model (ETL)</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="machine-learning-connection">Machine Learning Connection</h3>
+
+<ul>
+  <li><strong>Data Validation</strong>: Pydantic for the API = same logic used for ML pipeline feature validation</li>
+  <li><strong>Latency Management</strong>: <code class="language-plaintext highlighter-rouge">asyncio.gather</code> is critical in ML inference where you fetch user profile, product history, and model prediction simultaneously</li>
+  <li><strong>API as Interface</strong>: PyTorch/Scikit-learn models eventually get wrapped in FastAPI for business consumption</li>
+  <li>This project is a “Feature Engineering Pipeline-Lite” — raw external data → cleaned, normalized, structured format</li>
+</ul>
+
+<hr />
+
+<h2 id="resume-connections">Resume Connections</h2>
+
+<h3 id="drug-lookup-precedent-blue-cross-nc">Drug Lookup Precedent (Blue Cross NC)</h3>
+<ul>
+  <li>DLC project: enterprise-wide REST API for fast sub-string lookups and cost calculations for pharmaceuticals</li>
+  <li>Same “lookup logic” applied to food science and supply chain data using a modern async stack</li>
+</ul>
+
+<h3 id="microservices--service-mesh-envestnet">Microservices &amp; Service Mesh (Envestnet)</h3>
+<ul>
+  <li>UPA project: containerized microservices on a service mesh</li>
+  <li>Dockerfile and <code class="language-plaintext highlighter-rouge">app.yaml</code> designed with “microservice-first” mindset — architecturally ready for a larger service mesh or EKS cluster</li>
+</ul>
+
+<h3 id="serverless-etl-medicare-guided-selling-bcbsnc">Serverless ETL (Medicare Guided Selling, BCBSNC)</h3>
+<ul>
+  <li>SLS implementation: Python 3 REST API backed by custom event-driven ETL with DynamoDB/DAX</li>
+  <li>Mirrors the USDA/GS1 data aggregation pattern; in-memory caching replaces DynamoDB</li>
+</ul>
+
+<h3 id="data-engineering-at-scale-usps">Data Engineering at Scale (USPS)</h3>
+<ul>
+  <li>25-node SAS Viya cluster, 26TB RAM, 1PB Hadoop Data Lake</li>
+  <li>Python Fabric extensions and Ansible for cluster stabilization</li>
+  <li>This project is the modern, cloud-native evolution: building the “faucets” (APIs) that deliver intelligence</li>
+</ul>
+
+<h3 id="portfolio-summary-statement">Portfolio Summary Statement</h3>
+
+<blockquote>
+  <p>“Building on my experience developing enterprise lookup APIs for the healthcare sector
+(BCBSNC) and managing petabyte-scale data lakes (USPS), this project demonstrates a
+modern, asynchronous approach to supply chain data aggregation using FastAPI and
+container-native deployment.”</p>
+</blockquote>
+
+<hr />
+
+<h2 id="technical-implementation">Technical Implementation</h2>
+
+<h3 id="core-endpoint">Core Endpoint</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">fastapi</span> <span class="kn">import</span> <span class="n">FastAPI</span>
+<span class="kn">from</span> <span class="n">usda_fdc_python</span> <span class="kn">import</span> <span class="n">FDCClient</span>
+<span class="kn">from</span> <span class="n">gs1_gpc_python</span> <span class="kn">import</span> <span class="n">GPCClient</span>
+<span class="kn">import</span> <span class="n">asyncio</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="nc">FastAPI</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="sh">"</span><span class="s">Unified Food Intelligence API</span><span class="sh">"</span><span class="p">)</span>
+
+<span class="n">fdc</span> <span class="o">=</span> <span class="nc">FDCClient</span><span class="p">(</span><span class="n">api_key</span><span class="o">=</span><span class="sh">"</span><span class="s">YOUR_FREE_USDA_KEY</span><span class="sh">"</span><span class="p">)</span>
+<span class="n">gs1</span> <span class="o">=</span> <span class="nc">GPCClient</span><span class="p">()</span>
+
+<span class="nd">@app.get</span><span class="p">(</span><span class="sh">"</span><span class="s">/api/v1/lookup/{gtin}</span><span class="sh">"</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">lookup_product</span><span class="p">(</span><span class="n">gtin</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+    <span class="n">usda_task</span> <span class="o">=</span> <span class="n">asyncio</span><span class="p">.</span><span class="nf">create_task</span><span class="p">(</span><span class="n">fdc</span><span class="p">.</span><span class="nf">get_nutrition</span><span class="p">(</span><span class="n">gtin</span><span class="p">))</span>
+    <span class="n">off_task</span> <span class="o">=</span> <span class="n">asyncio</span><span class="p">.</span><span class="nf">create_task</span><span class="p">(</span><span class="n">off</span><span class="p">.</span><span class="nf">get_product</span><span class="p">(</span><span class="n">gtin</span><span class="p">))</span>
+    <span class="n">gs1_task</span> <span class="o">=</span> <span class="n">asyncio</span><span class="p">.</span><span class="nf">create_task</span><span class="p">(</span><span class="n">gs1</span><span class="p">.</span><span class="nf">get_brick</span><span class="p">(</span><span class="n">gtin</span><span class="p">))</span>
+
+    <span class="n">usda</span><span class="p">,</span> <span class="n">off_data</span><span class="p">,</span> <span class="n">gs1_data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="p">.</span><span class="nf">gather</span><span class="p">(</span><span class="n">usda_task</span><span class="p">,</span> <span class="n">off_task</span><span class="p">,</span> <span class="n">gs1_task</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="sh">"</span><span class="s">gtin</span><span class="sh">"</span><span class="p">:</span> <span class="n">gtin</span><span class="p">,</span>
+        <span class="sh">"</span><span class="s">name</span><span class="sh">"</span><span class="p">:</span> <span class="n">usda</span><span class="p">.</span><span class="n">name</span> <span class="ow">or</span> <span class="n">off_data</span><span class="p">.</span><span class="n">name</span> <span class="ow">or</span> <span class="sh">"</span><span class="s">Unknown Product</span><span class="sh">"</span><span class="p">,</span>
+        <span class="sh">"</span><span class="s">category</span><span class="sh">"</span><span class="p">:</span> <span class="n">gs1_data</span><span class="p">.</span><span class="n">category</span><span class="p">,</span>
+        <span class="sh">"</span><span class="s">nutrition</span><span class="sh">"</span><span class="p">:</span> <span class="nf">merge_nutrition</span><span class="p">(</span><span class="n">usda</span><span class="p">,</span> <span class="n">off_data</span><span class="p">),</span>
+        <span class="sh">"</span><span class="s">images</span><span class="sh">"</span><span class="p">:</span> <span class="n">off_data</span><span class="p">.</span><span class="n">images</span><span class="p">,</span>
+        <span class="sh">"</span><span class="s">data_sources</span><span class="sh">"</span><span class="p">:</span> <span class="p">[</span><span class="sh">"</span><span class="s">USDA</span><span class="sh">"</span> <span class="k">if</span> <span class="n">usda</span> <span class="k">else</span> <span class="bp">None</span><span class="p">,</span> <span class="sh">"</span><span class="s">OFF</span><span class="sh">"</span> <span class="k">if</span> <span class="n">off_data</span> <span class="k">else</span> <span class="bp">None</span><span class="p">]</span>
+    <span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="canonical-data-model-pydantic">Canonical Data Model (Pydantic)</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">pydantic</span> <span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">Field</span><span class="p">,</span> <span class="n">HttpUrl</span>
+<span class="kn">from</span> <span class="n">typing</span> <span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span>
+
+<span class="k">class</span> <span class="nc">NutrientValue</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">value</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">unit</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="sh">"</span><span class="s">g</span><span class="sh">"</span>
+
+<span class="k">class</span> <span class="nc">CanonicalProduct</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="sh">"""</span><span class="s">Single Source of Truth model hiding upstream complexity.</span><span class="sh">"""</span>
+    <span class="n">gtin</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">product_name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">brand</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="c1"># GS1 classification
+</span>    <span class="n">category_hierarchy</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="nc">Field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="p">[],</span> <span class="n">description</span><span class="o">=</span><span class="sh">"</span><span class="s">GS1 GPC Bricks and Families</span><span class="sh">"</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Normalized nutrition (per 100g/ml)
+</span>    <span class="n">calories_kcal</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">protein</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">NutrientValue</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">fat</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">NutrientValue</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">carbohydrates</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">NutrientValue</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="c1"># Media &amp; labels from Open Food Facts
+</span>    <span class="n">image_url</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">HttpUrl</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+    <span class="n">ingredients_text</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="c1"># Data governance metadata
+</span>    <span class="n">data_sources</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">upstream_latency_ms</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+</code></pre></div></div>
+
+<h3 id="data-orchestrator-mapper">Data Orchestrator (Mapper)</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">class</span> <span class="nc">DataOrchestrator</span><span class="p">:</span>
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">map_to_canonical</span><span class="p">(</span><span class="n">gtin</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">usda</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">off</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">gs1</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="bp">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CanonicalProduct</span><span class="p">:</span>
+        <span class="n">product</span> <span class="o">=</span> <span class="nc">CanonicalProduct</span><span class="p">(</span><span class="n">gtin</span><span class="o">=</span><span class="n">gtin</span><span class="p">,</span> <span class="n">product_name</span><span class="o">=</span><span class="sh">"</span><span class="s">Unknown</span><span class="sh">"</span><span class="p">)</span>
+
+        <span class="c1"># Layer 1: Open Food Facts (name, images, ingredients)
+</span>        <span class="k">if</span> <span class="n">off</span><span class="p">:</span>
+            <span class="n">product</span><span class="p">.</span><span class="n">product_name</span> <span class="o">=</span> <span class="n">off</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="sh">'</span><span class="s">product_name</span><span class="sh">'</span><span class="p">,</span> <span class="n">product</span><span class="p">.</span><span class="n">product_name</span><span class="p">)</span>
+            <span class="n">product</span><span class="p">.</span><span class="n">brand</span> <span class="o">=</span> <span class="n">off</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="sh">'</span><span class="s">brands</span><span class="sh">'</span><span class="p">)</span>
+            <span class="n">product</span><span class="p">.</span><span class="n">image_url</span> <span class="o">=</span> <span class="n">off</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="sh">'</span><span class="s">image_url</span><span class="sh">'</span><span class="p">)</span>
+            <span class="n">product</span><span class="p">.</span><span class="n">ingredients_text</span> <span class="o">=</span> <span class="n">off</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="sh">'</span><span class="s">ingredients_text</span><span class="sh">'</span><span class="p">)</span>
+            <span class="n">product</span><span class="p">.</span><span class="n">data_sources</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="sh">"</span><span class="s">OpenFoodFacts</span><span class="sh">"</span><span class="p">)</span>
+
+        <span class="c1"># Layer 2: USDA (scientific nutrient data — overrides OFF)
+</span>        <span class="k">if</span> <span class="n">usda</span><span class="p">:</span>
+            <span class="n">product</span><span class="p">.</span><span class="n">product_name</span> <span class="o">=</span> <span class="n">usda</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="sh">'</span><span class="s">description</span><span class="sh">'</span><span class="p">,</span> <span class="n">product</span><span class="p">.</span><span class="n">product_name</span><span class="p">)</span>
+            <span class="n">nutrients</span> <span class="o">=</span> <span class="n">usda</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="sh">'</span><span class="s">labelNutrients</span><span class="sh">'</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="n">product</span><span class="p">.</span><span class="n">calories_kcal</span> <span class="o">=</span> <span class="n">nutrients</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="sh">'</span><span class="s">calories</span><span class="sh">'</span><span class="p">,</span> <span class="p">{}).</span><span class="nf">get</span><span class="p">(</span><span class="sh">'</span><span class="s">value</span><span class="sh">'</span><span class="p">)</span>
+            <span class="n">product</span><span class="p">.</span><span class="n">protein</span> <span class="o">=</span> <span class="nc">NutrientValue</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">nutrients</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="sh">'</span><span class="s">protein</span><span class="sh">'</span><span class="p">,</span> <span class="p">{}).</span><span class="nf">get</span><span class="p">(</span><span class="sh">'</span><span class="s">value</span><span class="sh">'</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+            <span class="n">product</span><span class="p">.</span><span class="n">data_sources</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="sh">"</span><span class="s">USDA_FDC</span><span class="sh">"</span><span class="p">)</span>
+
+        <span class="c1"># Layer 3: GS1 (taxonomy)
+</span>        <span class="k">if</span> <span class="n">gs1</span><span class="p">:</span>
+            <span class="n">product</span><span class="p">.</span><span class="n">category_hierarchy</span> <span class="o">=</span> <span class="n">gs1</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="sh">'</span><span class="s">hierarchy</span><span class="sh">'</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="n">product</span><span class="p">.</span><span class="n">data_sources</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span><span class="sh">"</span><span class="s">GS1_GPC</span><span class="sh">"</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">product</span>
+</code></pre></div></div>
+
+<h3 id="why-this-design-shows-lead-level">Why This Design Shows “Lead” Level</h3>
+
+<ol>
+  <li><strong>Immutability &amp; Validation</strong>: Pydantic auto-returns 422 if upstream sends garbage data — protects downstream ML models from null values</li>
+  <li><strong>Graceful Fallbacks</strong>: <code class="language-plaintext highlighter-rouge">product.product_name = ... or product.product_name</code> ensures OFF fills gaps when USDA is missing</li>
+  <li><strong>Observability</strong>: <code class="language-plaintext highlighter-rouge">upstream_latency_ms</code> and <code class="language-plaintext highlighter-rouge">data_sources</code> in the response tell consumers exactly where data came from and if a provider is lagging</li>
+  <li><strong>SOC2/Compliance Ready</strong>: Single <code class="language-plaintext highlighter-rouge">CanonicalProduct</code> model provides one place to implement data masking or PII stripping</li>
+</ol>
+
+<hr />
+
+<h2 id="deployment-digitalocean-app-platform">Deployment: DigitalOcean App Platform</h2>
+
+<h3 id="cost-strategy">Cost Strategy</h3>
+<ul>
+  <li>App Platform Basic Tier: ~$5/mo</li>
+  <li>Container-native, mirrors K8s architectural patterns</li>
+  <li>GitHub repo connection with automatic builds on push</li>
+</ul>
+
+<h3 id="dockerfile">Dockerfile</h3>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">python:3.11-slim</code> base for lightweight, secure container</li>
+  <li>Binds to port 8080 (App Platform standard)</li>
+  <li>Multi-stage build to keep image lean</li>
+</ul>
+
+<h3 id="appyaml-iac">app.yaml (IaC)</h3>
+<ul>
+  <li>Placed in <code class="language-plaintext highlighter-rouge">.do/</code> directory at repo root</li>
+  <li>Defines GitHub repo connection, instance size, environment variables</li>
+  <li>USDA FDC API Key stored as a secret environment variable</li>
+  <li>Health check pointing to <code class="language-plaintext highlighter-rouge">/docs</code> for zero-downtime deployments</li>
+</ul>
+
+<h3 id="cicd">CI/CD</h3>
+<ul>
+  <li>GitHub Actions runs <code class="language-plaintext highlighter-rouge">pytest</code> and <code class="language-plaintext highlighter-rouge">flake8</code> before App Platform builds</li>
+  <li>Automatic deployment on push to main</li>
+</ul>
+
+<hr />
+
+<h2 id="day-2-operations-lead-principal-additions">“Day 2” Operations (Lead Principal Additions)</h2>
+
+<h3 id="1-advanced-observability-sre-flex">1. Advanced Observability (SRE Flex)</h3>
+<ul>
+  <li>OpenTelemetry middleware via <code class="language-plaintext highlighter-rouge">opentelemetry-instrumentation-fastapi</code></li>
+  <li>Distributed tracing: know whether USDA or GS1 caused slowness</li>
+  <li>Integration with self-hosted SigNoz/GlitchTip</li>
+</ul>
+
+<h3 id="2-graceful-degradation">2. Graceful Degradation</h3>
+<ul>
+  <li>Circuit breaker / fallback mechanism for partial failures</li>
+  <li>Return 200 OK with available data + metadata flag for unavailable sources</li>
+  <li>Demonstrates resiliency, data governance, and systemic thinking</li>
+</ul>
+
+<h3 id="3-api-versioning--documentation-polish">3. API Versioning &amp; Documentation Polish</h3>
+<ul>
+  <li>URL-based versioning (<code class="language-plaintext highlighter-rouge">/v1/</code>)</li>
+  <li>Rich OpenAPI metadata: custom logo, contact info linking to blog</li>
+  <li>Pydantic <code class="language-plaintext highlighter-rouge">Field(description="...")</code> for detailed field docs</li>
+  <li><code class="language-plaintext highlighter-rouge">/health</code> endpoint checking upstream connectivity</li>
+  <li><code class="language-plaintext highlighter-rouge">/version</code> endpoint pulling current Git hash from environment</li>
+</ul>
+
+<h3 id="4-data-freshness-telemetry">4. Data Freshness Telemetry</h3>
+<ul>
+  <li>Health check / telemetry endpoint reporting “Data Freshness” and “Upstream Latency”</li>
+  <li>Shows you care about data reliability, not just code execution</li>
+</ul>
+
+<hr />
+
+<h2 id="readme-structure-technical-decision-log--adr">README Structure (Technical Decision Log / ADR)</h2>
+
+<ol>
+  <li><strong>The Problem</strong>: High cost of proprietary supply chain data ($40k/yr OneWorldSync)</li>
+  <li><strong>The Solution</strong>: Asynchronous aggregator leveraging public data (USDA/GS1/OFF)</li>
+  <li><strong>The Architecture</strong>: Why FastAPI? Why DigitalOcean App Platform?</li>
+  <li><strong>The Security</strong>: SOC2-level concerns (environment secrets, TLS, least-privilege containers)</li>
+  <li><strong>The Data Engineering</strong>: Normalizing disparate schemas from three government/industry sources</li>
+</ol>
+
+<hr />
+
+<h2 id="existing-repositories">Existing Repositories</h2>
+
+<ul>
+  <li><a href="https://github.com/mcgarrah/usda_fdc_python">usda_fdc_python</a> — Python package for USDA FoodData Central</li>
+  <li><a href="https://github.com/mcgarrah/gs1_gpc_python">gs1_gpc_python</a> — Python package for GS1 Global Product Classification</li>
+  <li><a href="https://github.com/mcgarrah/oneworldsync_python">oneworldsync_python</a> — Python package (key expired, $40k/yr — dropped)</li>
+  <li><a href="https://github.com/mcgarrah/shiny-quiz">shiny-quiz</a> — Flask app deployed on DigitalOcean</li>
+  <li><a href="https://github.com/mcgarrah/legendary_quick_quiz">legendary_quick_quiz</a> — Django app</li>
+  <li><a href="https://github.com/mcgarrah/shiny-shop">shiny-shop</a> — Django shop app</li>
+  <li><a href="https://github.com/mcgarrah/jekyll-pandoc-exports">jekyll-pandoc-exports</a> — Ruby gem</li>
+</ul>
+
+<hr />
+
+<h2 id="proposed-article-series">Proposed Article Series</h2>
+
+<h3 id="article-1-architecture--design--building-a-unified-food-intelligence-api-with-fastapi">Article 1: Architecture &amp; Design — “Building a Unified Food Intelligence API with FastAPI”</h3>
+<ul>
+  <li>Problem statement: proprietary data costs vs free public APIs</li>
+  <li>Why FastAPI over Flask/Django for new API work</li>
+  <li>Three-source architecture: USDA FDC, Open Food Facts, GS1 GPC</li>
+  <li>Ranked Truth Model and conflict resolution strategy</li>
+  <li>Canonical Data Model design with Pydantic</li>
+  <li>Connection to resume experience (USPS data engineering, BCBSNC drug lookup, Envestnet microservices)</li>
+</ul>
+
+<h3 id="article-2-implementation--fastapi-async-patterns-data-orchestration-and-graceful-degradation">Article 2: Implementation — “FastAPI Async Patterns, Data Orchestration, and Graceful Degradation”</h3>
+<ul>
+  <li>Project scaffolding and dependency setup</li>
+  <li>Async endpoint implementation with <code class="language-plaintext highlighter-rouge">asyncio.gather</code></li>
+  <li>DataOrchestrator mapper: normalizing USDA, OFF, and GS1 schemas</li>
+  <li>Graceful degradation: circuit breaker pattern for partial upstream failures</li>
+  <li>Pydantic validation as a data quality gate</li>
+  <li>API versioning (<code class="language-plaintext highlighter-rouge">/v1/</code>) and OpenAPI documentation polish</li>
+</ul>
+
+<h3 id="article-3-infrastructure--deployment--container-native-cicd-on-digitalocean-app-platform">Article 3: Infrastructure &amp; Deployment — “Container-Native CI/CD on DigitalOcean App Platform”</h3>
+<ul>
+  <li>Dockerfile: multi-stage build with <code class="language-plaintext highlighter-rouge">python:3.11-slim</code></li>
+  <li><code class="language-plaintext highlighter-rouge">.do/app.yaml</code> as Infrastructure-as-Code</li>
+  <li>Secret management for USDA API key</li>
+  <li>GitHub Actions pipeline: <code class="language-plaintext highlighter-rouge">pytest</code>, <code class="language-plaintext highlighter-rouge">flake8</code>, automatic deploy</li>
+  <li>Health check and zero-downtime deployment strategy</li>
+  <li><code class="language-plaintext highlighter-rouge">/health</code> and <code class="language-plaintext highlighter-rouge">/version</code> operational endpoints</li>
+</ul>
+
+<h3 id="article-4-observability--production-readiness--day-2-operations-for-a-lead-engineer">Article 4: Observability &amp; Production Readiness — “Day 2 Operations for a Lead Engineer”</h3>
+<ul>
+  <li>OpenTelemetry instrumentation with <code class="language-plaintext highlighter-rouge">opentelemetry-instrumentation-fastapi</code></li>
+  <li>Distributed tracing: identifying which upstream source caused latency</li>
+  <li>Data freshness telemetry and upstream latency reporting</li>
+  <li>Prometheus metrics via <code class="language-plaintext highlighter-rouge">starlette-prometheus</code></li>
+  <li>Structured logging for production debugging</li>
+  <li>SOC2/compliance considerations: data masking, PII stripping, least-privilege containers</li>
+</ul>
+
+<hr />
+
+<h2 id="work-outline">Work Outline</h2>
+
+<h3 id="phase-1-foundation">Phase 1: Foundation</h3>
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Create new GitHub repository (<code class="language-plaintext highlighter-rouge">fastapi-nutrition-api</code> or similar)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Set up project structure: <code class="language-plaintext highlighter-rouge">pyproject.toml</code>, <code class="language-plaintext highlighter-rouge">requirements.txt</code>, <code class="language-plaintext highlighter-rouge">.gitignore</code></li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Define Pydantic models (<code class="language-plaintext highlighter-rouge">CanonicalProduct</code>, <code class="language-plaintext highlighter-rouge">NutrientValue</code>)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Implement <code class="language-plaintext highlighter-rouge">DataOrchestrator</code> mapper with layered merge logic</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Write basic FastAPI app with <code class="language-plaintext highlighter-rouge">/api/v1/lookup/{gtin}</code> endpoint</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Integrate <code class="language-plaintext highlighter-rouge">usda_fdc_python</code> and <code class="language-plaintext highlighter-rouge">gs1_gpc_python</code> packages</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Add Open Food Facts client (httpx async)</li>
+</ul>
+
+<h3 id="phase-2-robustness">Phase 2: Robustness</h3>
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Implement <code class="language-plaintext highlighter-rouge">asyncio.gather</code> for parallel upstream calls</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Add graceful degradation / circuit breaker for partial failures</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Add in-memory caching (<code class="language-plaintext highlighter-rouge">cachetools</code> LRU) for frequent lookups</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Pydantic input validation and 422 error handling</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />API versioning (<code class="language-plaintext highlighter-rouge">/v1/</code>)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><code class="language-plaintext highlighter-rouge">/health</code> endpoint (upstream connectivity check)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><code class="language-plaintext highlighter-rouge">/version</code> endpoint (Git hash from environment)</li>
+</ul>
+
+<h3 id="phase-3-deployment">Phase 3: Deployment</h3>
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Write Dockerfile (multi-stage, <code class="language-plaintext highlighter-rouge">python:3.11-slim</code>, port 8080)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Write <code class="language-plaintext highlighter-rouge">.do/app.yaml</code> for DigitalOcean App Platform</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Configure USDA FDC API key as environment secret</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />GitHub Actions workflow: <code class="language-plaintext highlighter-rouge">pytest</code>, <code class="language-plaintext highlighter-rouge">flake8</code>, deploy trigger</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Verify health check and zero-downtime deployment</li>
+</ul>
+
+<h3 id="phase-4-observability--polish">Phase 4: Observability &amp; Polish</h3>
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />OpenTelemetry middleware integration</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><code class="language-plaintext highlighter-rouge">upstream_latency_ms</code> tracking in responses</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Prometheus <code class="language-plaintext highlighter-rouge">/metrics</code> endpoint</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Rich OpenAPI metadata (logo, contact, field descriptions)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />README as Technical Decision Log (ADR format)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Write blog article series (4 articles, MWF cadence)</li>
+</ul>
+
+<h3 id="phase-5-stretch-goals">Phase 5: Stretch Goals</h3>
+<ul class="task-list">
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Redis caching layer (if budget allows)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />CORS middleware for specific domain restriction</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Structured logging integration (SigNoz/GlitchTip)</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />“Data Freshness” telemetry endpoint</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />USDA Branded Foods data (messier, bigger data engineering flex)</li>
+</ul>
+
+<hr />
+
+<h2 id="decisions-made">Decisions Made</h2>
+
+<ul>
+  <li><strong>Dropped OneWorldSync</strong>: $40k/yr, key expired — replaced with Open Food Facts (free, crowdsourced)</li>
+  <li><strong>DigitalOcean App Platform over Droplet</strong>: ~$5/mo, container-native, automatic deploys, no server management</li>
+  <li><strong>In-memory cache over Redis</strong>: Cost savings, sufficient for initial deployment</li>
+  <li><strong>Proxmox not public-exposed</strong>: Hosting on DigitalOcean, not homelab</li>
+  <li><strong>Three external sources minimum</strong>: Shows complex multi-vendor data management</li>
+</ul>
+
+<hr />
+
+<h2 id="raw-gemini-conversation">Raw Gemini Conversation</h2>
+
+<p>The sections above are organized from the full conversation. Key topics covered:</p>
+
+<ol>
+  <li>Why FastAPI over Flask/Django</li>
+  <li>Architectural strategy: “Lite Gateway” with async + in-memory caching</li>
+  <li>Implementation with existing Python packages (<code class="language-plaintext highlighter-rouge">usda_fdc_python</code>, <code class="language-plaintext highlighter-rouge">gs1_gpc_python</code>)</li>
+  <li>Cost-effective hosting on DigitalOcean App Platform (~$5/mo)</li>
+  <li>The “Engineering Trifecta”: Infrastructure, Application, Data Engineering</li>
+  <li>Machine Learning connection: Feature Engineering Pipeline-Lite</li>
+  <li>Resume connections: USPS, BCBSNC, Envestnet</li>
+  <li>Adding Open Food Facts as third source for complex management</li>
+  <li>Canonical Data Model with Pydantic and DataOrchestrator mapper</li>
+  <li>“Day 2” operations: observability, graceful degradation, API versioning</li>
+  <li>README structure as Technical Decision Log (ADR)</li>
+</ol>
+
+    <div class="more"><a href="/FASTAPI-NUTRITION-API/" title="Fastapi Nutrition Api">read more…</a></div>
+  </article>
+<article class="post-preview-unpublished">
+    <header>
+  <h1>
     <a href="/DRAFTS/">Drafts</a>
     <svg aria-label="Draft" class="icon icon-status" title="Draft"><use xlink:href="/assets/fontawesome/icons.svg#pencil-alt"></use></svg>
   </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
-  <time datetime="1999-12-31T00:00:00+00:00">December 31, 1999</time><span class="reading-time">10 min read</span></header>
+  <time datetime="1999-12-31T00:00:00+00:00">December 31, 1999</time><span class="reading-time">11 min read</span></header>
 
     <h1 id="drafts--publish-readiness--planning">Drafts — Publish Readiness &amp; Planning</h1>
 
 <p>Working document for draft management. Focus: what needs work, what’s next, and how drafts cluster together.</p>
 
-<p>Last updated: 2026-07-28</p>
+<p>Last updated: 2026-07-29</p>
 
 <hr />
 
@@ -465,82 +953,112 @@ git clone &lt;url&gt; &lt;repo&gt;-fresh
   </thead>
   <tbody>
     <tr>
-      <td>07-01</td>
+      <td>07-30</td>
       <td>Wed</td>
       <td>StarVoyager: Legacy SDL to Cross-Platform</td>
       <td>Screenshots, verify repo links</td>
     </tr>
     <tr>
-      <td>07-03</td>
+      <td>08-01</td>
       <td>Fri</td>
       <td>Godot Tower Defense Game</td>
       <td>Retitle, verify repo, trim roadmap</td>
     </tr>
     <tr>
-      <td>07-06</td>
+      <td>08-04</td>
       <td>Mon</td>
+      <td>AASR Series Overview</td>
+      <td>Review, verify series links</td>
+    </tr>
+    <tr>
+      <td>08-06</td>
+      <td>Wed</td>
+      <td>AASR: AI Agent Cluster on Proxmox (Part 1)</td>
+      <td>Review, verify technical details</td>
+    </tr>
+    <tr>
+      <td>08-08</td>
+      <td>Fri</td>
+      <td>Git History Bloat Cleanup (Part 1)</td>
+      <td>Complete audit, document execution, console outputs</td>
+    </tr>
+    <tr>
+      <td>08-11</td>
+      <td>Mon</td>
+      <td>Git Repository Audit Methodology (Part 2)</td>
+      <td>Audit all repos, findings, decision matrix</td>
+    </tr>
+    <tr>
+      <td>08-13</td>
+      <td>Wed</td>
+      <td>Git Health Monitoring Outline (Part 3)</td>
+      <td>Convert outline after Parts 1-2 done</td>
+    </tr>
+    <tr>
+      <td>08-15</td>
+      <td>Fri</td>
+      <td>Claude Code Setup Guide</td>
+      <td>Fix front matter, fact-check claims</td>
+    </tr>
+    <tr>
+      <td>08-18</td>
+      <td>Mon</td>
+      <td>Photosynth: Open Source Alternatives</td>
+      <td>Split retrospective, verify links</td>
+    </tr>
+    <tr>
+      <td>08-20</td>
+      <td>Wed</td>
       <td>Jekyll GDPR Plugin Development</td>
       <td>Finish plugin, write companion article</td>
     </tr>
     <tr>
-      <td>07-08</td>
-      <td>Wed</td>
+      <td>08-22</td>
+      <td>Fri</td>
       <td>Jekyll Dark Mode Toggle</td>
       <td>Implement toggle, document</td>
     </tr>
     <tr>
-      <td>07-10</td>
-      <td>Fri</td>
+      <td>08-25</td>
+      <td>Mon</td>
       <td>Tag Sprawl Consolidation</td>
       <td>Audit, merge 138 singletons</td>
     </tr>
     <tr>
-      <td>07-13</td>
-      <td>Mon</td>
+      <td>08-27</td>
+      <td>Wed</td>
       <td>Front Matter Hygiene Audit</td>
       <td>Script + batch update 139 posts</td>
     </tr>
     <tr>
-      <td>07-15</td>
-      <td>Wed</td>
+      <td>08-29</td>
+      <td>Fri</td>
       <td>Security Hardening (CSP, SRI)</td>
       <td>Add integrity hashes, CSP meta tag</td>
     </tr>
     <tr>
-      <td>07-17</td>
-      <td>Fri</td>
+      <td>09-01</td>
+      <td>Mon</td>
       <td>Plausible vs Google Analytics</td>
       <td>Evaluate, decide, document</td>
     </tr>
     <tr>
-      <td>07-20</td>
-      <td>Mon</td>
+      <td>09-03</td>
+      <td>Wed</td>
       <td>Post Series Navigation</td>
       <td>Implement prev/next for multi-part series</td>
     </tr>
     <tr>
-      <td>07-08</td>
-      <td>Wed</td>
-      <td>Git History Bloat Cleanup (Part 1): drafts.mcgarrah.org</td>
-      <td>Complete audit, document execution, console outputs</td>
-    </tr>
-    <tr>
-      <td>07-09</td>
-      <td>Thu</td>
-      <td>Git Repository Audit Methodology &amp; Findings (Part 2)</td>
-      <td>Audit all repos, findings, decision matrix</td>
-    </tr>
-    <tr>
-      <td>07-22</td>
-      <td>Wed</td>
-      <td>Execute drafts.mcgarrah.org cleanup (if Part 1 ready)</td>
-      <td>Validate rewrite runbook, re-clone, measure improvement</td>
-    </tr>
-    <tr>
-      <td>07-28</td>
-      <td>Mon</td>
+      <td>09-05</td>
+      <td>Fri</td>
       <td>Vanity URLs for AWS QuickSight with Terraform</td>
       <td>Review, add real-world context</td>
+    </tr>
+    <tr>
+      <td>TBD</td>
+      <td>—</td>
+      <td>FastAPI Nutrition API (4-part series)</td>
+      <td>Build project first, then write articles</td>
     </tr>
   </tbody>
 </table>
@@ -616,6 +1134,11 @@ git clone &lt;url&gt; &lt;repo&gt;-fresh
       <td>CloudFront vanity URL redirect for QuickSight</td>
     </tr>
     <tr>
+      <td>🍎 <strong>FastAPI Nutrition API</strong></td>
+      <td>See <code class="language-plaintext highlighter-rouge">FASTAPI-NUTRITION-API.md</code></td>
+      <td>4-article series: architecture, implementation, deployment, observability. Unified Food Intelligence API with USDA FDC, Open Food Facts, GS1 GPC</td>
+    </tr>
+    <tr>
       <td>🔌 <strong>Run Jekyll Extension</strong></td>
       <td>See <code class="language-plaintext highlighter-rouge">RUNJEKYLL-EXTENSION.md</code></td>
       <td>All 7 articles published</td>
@@ -673,6 +1196,10 @@ git clone &lt;url&gt; &lt;repo&gt;-fresh
     <tr>
       <td><code class="language-plaintext highlighter-rouge">AME-GPT-EXPLORATION.md</code></td>
       <td>Autonomous Model Evolution — GPT deep dive extending the AASR project</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">FASTAPI-NUTRITION-API.md</code></td>
+      <td>FastAPI Nutrition API — project planning, Gemini conversation archive, 4-article series outline</td>
     </tr>
   </tbody>
 </table>
@@ -979,6 +1506,18 @@ git clone &lt;url&gt; &lt;repo&gt;-fresh
   <li><strong>Effort:</strong> 1 hour (roundup) or 3-4 hours (with experiments)</li>
 </ul>
 
+<h3 id="fastapi-nutrition-api-series-4-articles---fastapi-nutrition-api">FastAPI Nutrition API Series (4 articles) — 🍎 FastAPI Nutrition API</h3>
+
+<ul>
+  <li><strong>Article 1:</strong> Architecture &amp; Design — Ranked Truth Model, Canonical Data Model, resume connections</li>
+  <li><strong>Article 2:</strong> Implementation — async patterns, DataOrchestrator mapper, graceful degradation</li>
+  <li><strong>Article 3:</strong> Infrastructure &amp; Deployment — Dockerfile, <code class="language-plaintext highlighter-rouge">.do/app.yaml</code>, GitHub Actions CI/CD on DigitalOcean App Platform</li>
+  <li><strong>Article 4:</strong> Observability &amp; Production Readiness — OpenTelemetry, Prometheus, data freshness telemetry</li>
+  <li><strong>What’s needed:</strong> Build the project repo first (<code class="language-plaintext highlighter-rouge">fastapi-nutrition-api</code>), then write articles from working code. Requires <code class="language-plaintext highlighter-rouge">usda_fdc_python</code> and <code class="language-plaintext highlighter-rouge">gs1_gpc_python</code> async wrappers.</li>
+  <li><strong>Effort:</strong> 3-4 hours per article (12-16 hours total), plus project implementation time</li>
+  <li><strong>Tracker:</strong> <code class="language-plaintext highlighter-rouge">FASTAPI-NUTRITION-API.md</code></li>
+</ul>
+
 <hr />
 
 <h2 id="tier-4-too-raw--hold--archive">Tier 4: Too Raw / Hold / Archive</h2>
@@ -1091,12 +1630,12 @@ git clone &lt;url&gt; &lt;repo&gt;-fresh
       <td>3</td>
     </tr>
     <tr>
-      <td>Scheduled (July)</td>
-      <td>12</td>
+      <td>Scheduled (upcoming)</td>
+      <td>18</td>
     </tr>
     <tr>
       <td>Tracker files</td>
-      <td>6 (<code class="language-plaintext highlighter-rouge">DRAFTS.md</code>, <code class="language-plaintext highlighter-rouge">RUNJEKYLL-EXTENSION.md</code>, <code class="language-plaintext highlighter-rouge">JEKYLLGDPR-PLUGIN.md</code>, <code class="language-plaintext highlighter-rouge">GITREPO-CLEAN.md</code>, <code class="language-plaintext highlighter-rouge">AASR-PROJECT.md</code>, <code class="language-plaintext highlighter-rouge">AME-GPT-EXPLORATION.md</code>)</td>
+      <td>7 (<code class="language-plaintext highlighter-rouge">DRAFTS.md</code>, <code class="language-plaintext highlighter-rouge">RUNJEKYLL-EXTENSION.md</code>, <code class="language-plaintext highlighter-rouge">JEKYLLGDPR-PLUGIN.md</code>, <code class="language-plaintext highlighter-rouge">GITREPO-CLEAN.md</code>, <code class="language-plaintext highlighter-rouge">AASR-PROJECT.md</code>, <code class="language-plaintext highlighter-rouge">AME-GPT-EXPLORATION.md</code>, <code class="language-plaintext highlighter-rouge">FASTAPI-NUTRITION-API.md</code>)</td>
     </tr>
   </tbody>
 </table>
@@ -2108,1499 +2647,13 @@ AASR Part 1 draft exists (<code class="language-plaintext highlighter-rouge">202
 
     <div class="more"><a href="/AME-GPT-EXPLORATION/" title="Ame Gpt Exploration">read more…</a></div>
   </article>
-<article class="post-preview-unpublished">
-    <header>
-  <h1>
-    <a href="/AASR-PROJECT/">Aasr Project</a>
-    <svg aria-label="Draft" class="icon icon-status" title="Draft"><use xlink:href="/assets/fontawesome/icons.svg#pencil-alt"></use></svg>
-  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
-  <time datetime="1999-12-31T00:00:00+00:00">December 31, 1999</time><span class="reading-time">33 min read</span></header>
-
-    <h1 id="autonomous-ai-scientific-research-aasr--project-tracker">Autonomous AI Scientific Research (AASR) — Project Tracker</h1>
-
-<p>Canonical reference for the AASR project on the AlteredCarbon Proxmox cluster.
-Consolidated from: AASR-PROXMOX.md, AASR-PROXMOX-AMAZONQ.md, AASR-PROXMOX-COPILOT.md,
-AASR-PROXMOX-CONSOLIDATED-COPILOT.md, AARC_Project_Manifest.md, and two Gemini conversation PDFs.</p>
-
-<p>Inspired by Andrej Karpathy’s <a href="https://github.com/karpathy/autoresearch">AutoResearch</a>.
-See also: <code class="language-plaintext highlighter-rouge">AME-GPT-EXPLORATION.md</code> for the GPT deep-dive companion project.</p>
-
-<p>Last updated: 2026-07-28</p>
-
-<hr />
-
-<h2 id="1-origin-story">1. Origin Story</h2>
-
-<p>This project emerged from a Gemini conversation on April 20, 2026, exploring the AutoResearch
-project by Andrej Karpathy and how it could be adapted to run on the AlteredCarbon homelab cluster.</p>
-
-<h3 id="11-the-autoresearch-concept">1.1 The AutoResearch Concept</h3>
-
-<p>AutoResearch (github.com/karpathy/autoresearch) is an intentionally minimalist open-source project
-released by Andrej Karpathy (co-founder of OpenAI, former Tesla AI Director) in early 2026.
-It shifts AI from “coding assistant” to “autonomous researcher” that independently improves its own
-performance while you sleep.</p>
-
-<p><strong>The three-file architecture:</strong></p>
-
-<table>
-  <thead>
-    <tr>
-      <th>File</th>
-      <th>Role</th>
-      <th>Editable by AI?</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><code class="language-plaintext highlighter-rouge">prepare.py</code></td>
-      <td>Data loading, tokenization, evaluation ground truth</td>
-      <td>No — locked</td>
-    </tr>
-    <tr>
-      <td><code class="language-plaintext highlighter-rouge">train.py</code></td>
-      <td>Model architecture, optimizer, hyperparameters — the mutation sandbox</td>
-      <td>Yes — only this file</td>
-    </tr>
-    <tr>
-      <td><code class="language-plaintext highlighter-rouge">program.md</code></td>
-      <td>Human goals, hardware constraints, scoring objective</td>
-      <td>No — human-controlled</td>
-    </tr>
-  </tbody>
-</table>
-
-<p><strong>The ReAct loop (Reasoning and Acting):</strong></p>
-
-<ol>
-  <li><strong>Read</strong> — Agent reads current <code class="language-plaintext highlighter-rouge">train.py</code> and <code class="language-plaintext highlighter-rouge">results.tsv</code> from previous attempts</li>
-  <li><strong>Hypothesize</strong> — Writes reasoning: “Run #12 failed with OOM. I will reduce batch size but increase gradient accumulation steps.”</li>
-  <li><strong>Edit</strong> — Uses diff/search-replace to rewrite specific lines in <code class="language-plaintext highlighter-rouge">train.py</code></li>
-  <li><strong>Execute</strong> — Triggers <code class="language-plaintext highlighter-rouge">uv run train.py</code>, pipes output to log file</li>
-  <li><strong>Observe</strong> — Parses log for <code class="language-plaintext highlighter-rouge">val_bpb</code> (bits per byte) — lower = model is smarter</li>
-</ol>
-
-<p><strong>“Survival of the Fittest” git logic:</strong></p>
-<ul>
-  <li>If code improves <code class="language-plaintext highlighter-rouge">val_bpb</code> → <code class="language-plaintext highlighter-rouge">git commit</code> — this version becomes the new frontier</li>
-  <li>If code fails or regresses → <code class="language-plaintext highlighter-rouge">git reset --hard HEAD~1</code> — bad code wiped, start from last success</li>
-</ul>
-
-<p><strong>Why this matters in 2026:</strong> Unlike AutoML (which tunes numbers within a predefined box),
-AutoResearch lets the agent rewrite the box itself — changing neural network layer math,
-inventing new activation functions, restructuring the training pipeline entirely.</p>
-
-<h3 id="12-broader-context-ai-automating-research-2026">1.2 Broader Context: AI Automating Research (2026)</h3>
-
-<table>
-  <thead>
-    <tr>
-      <th>Project</th>
-      <th>Organization</th>
-      <th>Milestone</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>AI Scientist v2</td>
-      <td>Sakana AI</td>
-      <td>First fully AI-generated paper to pass peer review, published in Nature</td>
-    </tr>
-    <tr>
-      <td>AI Researcher Roadmap</td>
-      <td>OpenAI</td>
-      <td>“AI intern” planned Sept 2026; multi-agent platform by 2028</td>
-    </tr>
-    <tr>
-      <td>Weak-to-Strong Research</td>
-      <td>Anthropic</td>
-      <td>Autonomous agents outperforming humans on targeted alignment tasks</td>
-    </tr>
-    <tr>
-      <td>AutoDiscovery</td>
-      <td>AI2 (Allen Institute)</td>
-      <td>Bayesian surprise algorithms for hypothesis generation in climate science and biology</td>
-    </tr>
-  </tbody>
-</table>
-
-<h3 id="13-portfolio-framing">1.3 Portfolio Framing</h3>
-
-<p>This project sits at the intersection of two domains:</p>
-<ul>
-  <li><strong>As a Platform Engineer:</strong> Solving legacy hardware constraints (no AVX2, 2GB VRAM) by offloading
-the “Brain” to an API and using LXC for clean-room execution. Managing a distributed Ceph/Proxmox
-environment with a custom Flask orchestrator.</li>
-  <li><strong>As a Data Scientist:</strong> Implementing an Evolutionary Search algorithm. Not manually tuning a model
-but engineering a system that understands Bits Per Byte (BPB) and uses LLMs to optimize those metrics.</li>
-</ul>
-
-<p>“Poor Man’s H100” — aggregating VRAM and compute across 5 OptiPlex nodes turns a collection of
-$50 office PCs into a sophisticated AI R&amp;D laboratory.</p>
-
-<hr />
-
-<h2 id="2-project-summary">2. Project Summary</h2>
-
-<p>Build a Manager-Worker system on the AlteredCarbon cluster that automates the ML research lifecycle:</p>
-
-<ol>
-  <li>Manager composes a prompt from <code class="language-plaintext highlighter-rouge">program.md</code> + compressed experiment history and calls an LLM</li>
-  <li>LLM proposes a code mutation to <code class="language-plaintext highlighter-rouge">train.py</code></li>
-  <li>Manager validates the mutation (syntax, policy) and commits it to an experiment branch in Forgejo</li>
-  <li>Manager clones an ephemeral GPU-enabled worker LXC on an idle P620 node</li>
-  <li>Worker runs a bounded training burst (15 min wall clock, target 500 steps)</li>
-  <li>Worker posts structured metrics JSON to Manager</li>
-  <li>Manager compares against frontier baseline — merges winners, discards losers</li>
-  <li>Manager destroys worker, records audit trail, waits 3-minute cooldown, repeats</li>
-</ol>
-
-<hr />
-
-<h2 id="3-hardware-inventory">3. Hardware Inventory</h2>
-
-<p>From <code class="language-plaintext highlighter-rouge">k8s-proxmox/docs/CLUSTER-SUMMARY.md</code> (January 2026):</p>
-
-<table>
-  <thead>
-    <tr>
-      <th>Node</th>
-      <th>CPU</th>
-      <th>RAM</th>
-      <th>GPU</th>
-      <th>GPU Arch</th>
-      <th>VRAM</th>
-      <th>AASR Role</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>harlan</td>
-      <td>i7-2600 (8 cores)</td>
-      <td>31 GiB</td>
-      <td>Quadro P620</td>
-      <td>Pascal (GP107GL)</td>
-      <td>2 GB GDDR5</td>
-      <td>Primary GPU worker</td>
-    </tr>
-    <tr>
-      <td>kovacs</td>
-      <td>i7-2600 (8 cores)</td>
-      <td>31 GiB</td>
-      <td>Quadro P620</td>
-      <td>Pascal (GP107GL)</td>
-      <td>2 GB GDDR5</td>
-      <td>GPU worker</td>
-    </tr>
-    <tr>
-      <td>poe</td>
-      <td>i7-2600 (8 cores)</td>
-      <td>31 GiB</td>
-      <td>Quadro P620</td>
-      <td>Pascal (GP107GL)</td>
-      <td>2 GB GDDR5</td>
-      <td>GPU worker</td>
-    </tr>
-    <tr>
-      <td>quell</td>
-      <td>i7-2600 (8 cores)</td>
-      <td>31 GiB</td>
-      <td>Quadro P620</td>
-      <td>Pascal (GP107GL)</td>
-      <td>2 GB GDDR5</td>
-      <td>GPU worker</td>
-    </tr>
-    <tr>
-      <td>edgar</td>
-      <td>i7-2600 (8 cores)</td>
-      <td>31 GiB</td>
-      <td>Quadro K600</td>
-      <td>Kepler (GK107GL)</td>
-      <td>1 GB GDDR3</td>
-      <td>CPU-only comparison</td>
-    </tr>
-    <tr>
-      <td>tanaka</td>
-      <td>i7-2600 (4 cores)</td>
-      <td>15 GiB</td>
-      <td>Quadro K600</td>
-      <td>Kepler (GK107GL)</td>
-      <td>1 GB GDDR3</td>
-      <td>Excluded</td>
-    </tr>
-  </tbody>
-</table>
-
-<p><strong>Totals:</strong> 44 CPU cores, ~173 GiB RAM, 4× P620 (2 GB), 2× K600 (1 GB)</p>
-
-<p><strong>Hard constraints:</strong></p>
-<ul>
-  <li>i7-2600 = Sandy Bridge (2011). AVX supported, <strong>AVX2 not supported</strong>. All binaries (torch,
-llama.cpp) must be compiled AVX-only. Modern pre-built wheels will crash with <code class="language-plaintext highlighter-rouge">Illegal instruction</code>.</li>
-  <li>P620 = Pascal, no Tensor Cores. FP32/FP16 only. 2 GB VRAM is the hard ceiling for active weights.</li>
-  <li>K600 = Kepler, 1 GB VRAM. Useful only for CPU-offload-only or smallest experiments.</li>
-  <li>PCIe 2.0 on all nodes — slower GPU↔RAM transfers than modern hardware.</li>
-  <li>OptiPlex 990 SFF chassis — thermal throttling under sustained load. Enforce 3-minute cooldown.</li>
-</ul>
-
-<p><strong>AVX-only build for llama.cpp:</strong></p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>cmake <span class="nt">-B</span> build <span class="nt">-DGGML_AVX2</span><span class="o">=</span>OFF <span class="nt">-DGGML_AVX</span><span class="o">=</span>ON
-</code></pre></div></div>
-
-<p><strong>Node policy for AASR:</strong></p>
-<ul>
-  <li>GPU workers: harlan, kovacs, poe, quell (P620)</li>
-  <li>CPU-only optional comparison worker: edgar (skip GPU passthrough, use 31 GiB RAM)</li>
-  <li>Exclude tanaka (4 cores, 15 GiB — insufficient for worker LXC)</li>
-</ul>
-
-<h3 id="31-the-32gb-ram-advantage">3.1 The 32GB RAM Advantage</h3>
-
-<p>Having 32GB system RAM on each node dramatically changes available techniques even with 2GB VRAM:</p>
-
-<ul>
-  <li><strong>CPU Offloading:</strong> Use DeepSpeed ZeRO-2 or Hugging Face Accelerate to offload optimizer states
-and gradients to system RAM. Allows models 4–8× larger than VRAM alone would permit (slower due
-to PCIe 2.0 transfer overhead).</li>
-  <li><strong>Unsloth library:</strong> Optimizes kernels for 70% less VRAM with zero accuracy loss. Combined with
-32GB RAM, a P620 can handle models that normally require 6–8GB VRAM.</li>
-  <li><strong>Large dataset buffering:</strong> Use 32GB RAM as a massive pre-fetch buffer. Workers pull data from
-system RAM at local speeds rather than hitting CephFS on every batch.</li>
-</ul>
-
-<p><strong>program.md hardware manifest (feed this to the AI researcher):</strong></p>
-<div class="language-markdown highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gu">## Hardware Context</span>
-<span class="p">-</span> Node: Dell OptiPlex 990 (i7-2600 Sandy Bridge, 32GB DDR3)
-<span class="p">-</span> Accelerator: NVIDIA Quadro P620 (2GB GDDR5, Pascal, no Tensor Cores)
-<span class="p">-</span> Bus: PCIe 2.0 (slower GPU↔RAM transfers)
-<span class="p">-</span> Constraint: 2GB VRAM for active weights. 32GB system RAM for offloading.
-<span class="p">-</span> Objective: Prioritize micro-architectures (3-4 layers, small embedding dims).
-  Use system RAM for gradient offloading and large data shuffling.
-<span class="p">-</span> AVX: Supported. AVX2: NOT supported. Do not use AVX2-dependent code paths.
-<span class="p">-</span> Each experiment: 15 minutes max, 500 training steps target.
-<span class="p">-</span> Dataset: TinyStories
-</code></pre></div></div>
-
-<h3 id="32-k600-nodes-edgar-tanaka">3.2 K600 Nodes (edgar, tanaka)</h3>
-
-<p>The Quadro K600 has only 1 GB GDDR3 (Kepler architecture):</p>
-<ul>
-  <li><strong>edgar:</strong> CPU-only worker — skip GPU passthrough, use 31 GiB RAM for CPU-based training.
-Useful for comparison experiments against P620 GPU results.</li>
-  <li><strong>tanaka:</strong> Only 4 cores and 15 GiB RAM — exclude from AASR workers entirely.</li>
-</ul>
-
-<hr />
-
-<h2 id="4-storage">4. Storage</h2>
-
-<table>
-  <thead>
-    <tr>
-      <th>Pool</th>
-      <th>Type</th>
-      <th>Available</th>
-      <th>Purpose</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>cephfs</td>
-      <td>CephFS</td>
-      <td>6.5 TiB</td>
-      <td>Shared datasets, experiment logs, results</td>
-    </tr>
-    <tr>
-      <td>cephrbd</td>
-      <td>RBD</td>
-      <td>6.5 TiB</td>
-      <td>K8s PVs (not used for AASR)</td>
-    </tr>
-  </tbody>
-</table>
-
-<ul>
-  <li>Total raw: 69 TiB across 15 OSDs on 5 hosts (3× replication)</li>
-  <li>CephFS mount: <code class="language-plaintext highlighter-rouge">/mnt/pve/cephfs/</code> on all Proxmox hosts — workers mount for zero-copy dataset access</li>
-  <li>Ceph public network: 192.168.86.0/23</li>
-  <li>Ceph cluster/SAN network: 10.10.10.0/23 (OSD replication, isolated from client traffic)</li>
-</ul>
-
-<hr />
-
-<h2 id="5-network">5. Network</h2>
-
-<table>
-  <thead>
-    <tr>
-      <th>Network</th>
-      <th>CIDR</th>
-      <th>Purpose</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>Raleigh LAN</td>
-      <td>192.168.86.0/23</td>
-      <td>Management, LXC IPs, Flask dashboard</td>
-    </tr>
-    <tr>
-      <td>SAN</td>
-      <td>10.10.10.0/23</td>
-      <td>Ceph OSD replication (isolated)</td>
-    </tr>
-    <tr>
-      <td>DNS</td>
-      <td>192.168.86.3</td>
-      <td>Technitium split-horizon DNS</td>
-    </tr>
-  </tbody>
-</table>
-
-<p><strong>LXC IP allocation (static services range):</strong></p>
-<ul>
-  <li>192.168.86.201 — Forgejo LXC</li>
-  <li>192.168.86.202 — Manager LXC</li>
-  <li>192.168.86.203+ — reserved for future core services</li>
-</ul>
-
-<hr />
-
-<h2 id="6-architecture">6. Architecture</h2>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌─────────────────────────────────────────────────────────────┐
-│                    Proxmox Cluster                          │
-│                                                             │
-│  ┌──────────────────┐    ┌──────────────────┐               │
-│  │  Manager LXC     │    │  Forgejo LXC     │               │
-│  │  Flask + HTMX    │◄──►│  Git Server      │               │
-│  │  AI Provider     │    │  Branch-per-     │               │
-│  │  proxmoxer       │    │  Experiment      │               │
-│  └────────┬─────────┘    └──────────────────┘               │
-│           │ Proxmox API (clone/push/exec/destroy)           │
-│           │                                                 │
-│  ┌────────▼─────────┐  ┌─────────────────┐  ┌────────────┐  │
-│  │ Worker LXC       │  │ Worker LXC      │  │ Worker LXC │  │
-│  │ harlan (P620)    │  │ kovacs (P620)   │  │ poe (P620) │  │
-│  │ Gradio UI :7860  │  │ Gradio UI :7860 │  │ Gradio     │  │
-│  │ train.py (15min) │  │ train.py (15min)│  │ train.py   │  │
-│  └──────────────────┘  └─────────────────┘  └────────────┘  │
-│                                                             │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │              CephFS (shared datasets + results)      │   │
-│  └──────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
-
-External:
-  Developer workstation
-    └── VS Code + Copilot agent mode (builds Manager/Worker code)
-    └── Gemini CLI / Amazon Q (alternative agent modes)
-</code></pre></div></div>
-
-<h3 id="61-component-roles">6.1 Component Roles</h3>
-
-<table>
-  <thead>
-    <tr>
-      <th>Component</th>
-      <th>LXC Type</th>
-      <th>GPU?</th>
-      <th>Purpose</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>Manager</td>
-      <td>Persistent</td>
-      <td>No</td>
-      <td>Flask dashboard, AI calls, Proxmox API orchestration, experiment history</td>
-    </tr>
-    <tr>
-      <td>Forgejo</td>
-      <td>Persistent</td>
-      <td>No</td>
-      <td>Git server for versioned experiment code, branch-per-experiment model</td>
-    </tr>
-    <tr>
-      <td>Worker</td>
-      <td>Ephemeral</td>
-      <td>Yes</td>
-      <td>Runs mutated <code class="language-plaintext highlighter-rouge">train.py</code> for 15 minutes, reports metrics, self-destructs</td>
-    </tr>
-    <tr>
-      <td>CephFS</td>
-      <td>Shared</td>
-      <td>—</td>
-      <td>Dataset access, logs, checkpoints, experiment artifacts</td>
-    </tr>
-  </tbody>
-</table>
-
-<h3 id="62-hybrid-ui-architecture">6.2 Hybrid UI Architecture</h3>
-
-<ul>
-  <li><strong>Flask + HTMX</strong> — Central “Ground Control” dashboard. Manages Proxmox API calls, tracks global
-leaderboard, stores all experiment metadata. Runs on Manager LXC (no GPU needed).</li>
-  <li><strong>Gradio</strong> — Per-worker “Lab Interface.” Each spawned worker LXC runs a Gradio app on port 7860
-for real-time visualization of loss curves, GPU temperature, memory usage. Ephemeral — born with
-the worker, destroyed with it.</li>
-  <li><strong>IFrame Gallery</strong> — Flask dashboard embeds each active worker’s Gradio UI via iframe:
-    <div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nt">&lt;iframe</span> <span class="na">src=</span><span class="s">"http://192.168.86.x:7860"</span> <span class="na">width=</span><span class="s">"100%"</span> <span class="na">height=</span><span class="s">"500px"</span><span class="nt">&gt;&lt;/iframe&gt;</span>
-</code></pre></div>    </div>
-    <p>When Flask spawns a worker on a node, it knows the Gradio app will be at <code class="language-plaintext highlighter-rouge">http://&lt;node-ip&gt;:7860</code>
-and dynamically adds the card to the dashboard.</p>
-  </li>
-</ul>
-
-<hr />
-
-<h2 id="7-the-research-loop">7. The Research Loop</h2>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. HYPOTHESIZE
-   Manager sends experiment history + current train.py + program.md to AI provider.
-   AI proposes a code mutation with one-line hypothesis comment.
-   ↓
-2. VALIDATE
-   Manager syntax-checks (ast.parse) and policy-checks the mutation.
-   Reject malformed or forbidden code (shell side effects, package installs, network calls).
-   ↓
-3. MUTATE
-   Manager commits new train.py to experiment branch in Forgejo.
-   Branch name: experiment-&lt;YYYYMMDD-HHMMSS&gt;-&lt;hypothesis-slug&gt;
-   ↓
-4. EXECUTE
-   Manager uses Proxmox API to:
-     a. Clone "Gold Template" LXC to an idle P620 node
-     b. Push train.py into the worker via pct push (or CephFS shared path)
-     c. Start the 15-minute training burst via pct exec
-   ↓
-5. EVALUATE
-   Worker trains for 15 minutes (or 500 steps, whichever first).
-   Worker POSTs structured results JSON to Manager /api/results.
-   Gradio UI shows live loss curves on the worker.
-   ↓
-6. SELECT
-   If val_loss improved → merge experiment branch into "frontier" branch.
-   If val_loss regressed or OOM → discard branch, destroy worker.
-   ↓
-7. COOL DOWN
-   3-minute thermal pause before next experiment.
-   ↓
-   Loop back to step 1.
-</code></pre></div></div>
-
-<h3 id="71-why-15-minutes-not-5">7.1 Why 15 Minutes (Not 5)</h3>
-
-<p>The original AutoResearch uses 5-minute windows on RTX 3090/H100. On i7-2600 + P620:</p>
-<ul>
-  <li>JIT compilation and kernel warm-up: 60–90 seconds</li>
-  <li>CPU offloading over PCIe 2.0 adds latency per step</li>
-  <li>5 minutes yields too few iterations for val_loss to stabilize</li>
-</ul>
-
-<p><strong>Rule:</strong> 15-minute max wall clock. Primary metric is val_loss after <strong>500 training steps</strong>.
-If hardware can’t complete 500 steps in 15 minutes, the experiment is a failure (code too slow or OOM).</p>
-
-<h3 id="72-why-3-minute-cooldown">7.2 Why 3-Minute Cooldown</h3>
-
-<p>OptiPlex 990 SFF chassis was designed for spreadsheets, not sustained matrix multiplication.
-Continuous 15-minute training bursts will trigger thermal throttling on both the P620 and i7-2600.
-The 3-minute cooldown ensures each experiment starts with the same thermal headroom, keeping
-scientific results consistent across runs.</p>
-
-<h3 id="73-worker-results-json-schema">7.3 Worker Results JSON Schema</h3>
-
-<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
-  </span><span class="nl">"experiment_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"20260601-143022-reduce-layers"</span><span class="p">,</span><span class="w">
-  </span><span class="nl">"steps_completed"</span><span class="p">:</span><span class="w"> </span><span class="mi">500</span><span class="p">,</span><span class="w">
-  </span><span class="nl">"duration_seconds"</span><span class="p">:</span><span class="w"> </span><span class="mi">847</span><span class="p">,</span><span class="w">
-  </span><span class="nl">"val_loss"</span><span class="p">:</span><span class="w"> </span><span class="mf">1.2341</span><span class="p">,</span><span class="w">
-  </span><span class="nl">"val_bpb"</span><span class="p">:</span><span class="w"> </span><span class="mf">1.7812</span><span class="p">,</span><span class="w">
-  </span><span class="nl">"peak_vram_mb"</span><span class="p">:</span><span class="w"> </span><span class="mi">1820</span><span class="p">,</span><span class="w">
-  </span><span class="nl">"peak_ram_mb"</span><span class="p">:</span><span class="w"> </span><span class="mi">14200</span><span class="p">,</span><span class="w">
-  </span><span class="nl">"temperature_max_c"</span><span class="p">:</span><span class="w"> </span><span class="mi">78</span><span class="p">,</span><span class="w">
-  </span><span class="nl">"success"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">
-  </span><span class="nl">"error"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="w">
-</span><span class="p">}</span><span class="w">
-</span></code></pre></div></div>
-
-<hr />
-
-<h2 id="8-training-parameters-for-p620-2-gb-vram">8. Training Parameters for P620 (2 GB VRAM)</h2>
-
-<table>
-  <thead>
-    <tr>
-      <th>Setting</th>
-      <th>Default (H100)</th>
-      <th>P620 (2 GB VRAM)</th>
-      <th>Notes</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>Dataset</td>
-      <td>enwik8</td>
-      <td>TinyStories</td>
-      <td>Lower entropy, learns faster</td>
-    </tr>
-    <tr>
-      <td>Max Seq Len</td>
-      <td>1024</td>
-      <td>128–256</td>
-      <td>Fits in 2 GB</td>
-    </tr>
-    <tr>
-      <td>Batch Size</td>
-      <td>128</td>
-      <td>8–16</td>
-      <td>Prevents OOM</td>
-    </tr>
-    <tr>
-      <td>Model Depth</td>
-      <td>8–12 layers</td>
-      <td>3–4 layers</td>
-      <td>Micro-architecture</td>
-    </tr>
-    <tr>
-      <td>Vocab Size</td>
-      <td>8192</td>
-      <td>1024–2048</td>
-      <td>Smaller embedding table</td>
-    </tr>
-    <tr>
-      <td>Experiment Window</td>
-      <td>5 min</td>
-      <td>15 min</td>
-      <td>Compensates for slower hardware</td>
-    </tr>
-    <tr>
-      <td>Step Target</td>
-      <td>N/A</td>
-      <td>500 steps</td>
-      <td>Normalizes across nodes</td>
-    </tr>
-    <tr>
-      <td>Cool Down</td>
-      <td>None</td>
-      <td>3 min</td>
-      <td>Thermal management</td>
-    </tr>
-  </tbody>
-</table>
-
-<p><strong>CPU offloading strategy:</strong></p>
-<ul>
-  <li>Use DeepSpeed ZeRO Stage 2 or Hugging Face Accelerate to offload optimizer states and gradients</li>
-  <li>Consider Unsloth library for 70% VRAM reduction with zero accuracy loss</li>
-  <li>The 32 GB system RAM acts as a large pre-fetch buffer for dataset batches from CephFS</li>
-  <li>Treat repeated OOM for the same mutation class as a negative learned pattern</li>
-</ul>
-
-<hr />
-
-<h2 id="9-ai-provider-strategy">9. AI Provider Strategy</h2>
-
-<h3 id="91-default-provider-github-models-copilot-path">9.1 Default Provider: GitHub Models (Copilot path)</h3>
-
-<ul>
-  <li>Endpoint: <code class="language-plaintext highlighter-rouge">https://models.inference.ai.azure.com</code></li>
-  <li>Client: OpenAI-compatible SDK (<code class="language-plaintext highlighter-rouge">openai</code> Python package)</li>
-  <li>Auth: fine-grained GitHub PAT with <code class="language-plaintext highlighter-rouge">models:read</code> scope only</li>
-</ul>
-
-<p><strong>Recommended models (as of mid-2026):</strong></p>
-
-<table>
-  <thead>
-    <tr>
-      <th>Model</th>
-      <th>Context</th>
-      <th>Best For</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><code class="language-plaintext highlighter-rouge">claude-sonnet-4-5</code></td>
-      <td>200K</td>
-      <td>Primary — large context, strong code reasoning</td>
-    </tr>
-    <tr>
-      <td><code class="language-plaintext highlighter-rouge">gpt-4o</code></td>
-      <td>128K</td>
-      <td>Secondary — faster iteration cycles</td>
-    </tr>
-    <tr>
-      <td><code class="language-plaintext highlighter-rouge">gpt-4o-mini</code></td>
-      <td>128K</td>
-      <td>Summarization / compression tasks (cheap)</td>
-    </tr>
-    <tr>
-      <td><code class="language-plaintext highlighter-rouge">meta-llama-3-70b-instruct</code></td>
-      <td>128K</td>
-      <td>Open-weights alternative</td>
-    </tr>
-  </tbody>
-</table>
-
-<p>Check current availability: <code class="language-plaintext highlighter-rouge">https://github.com/marketplace/models</code></p>
-
-<h3 id="92-optional-providers">9.2 Optional Providers</h3>
-
-<table>
-  <thead>
-    <tr>
-      <th>Provider</th>
-      <th>SDK</th>
-      <th>Context</th>
-      <th>Notes</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>Gemini API</td>
-      <td><code class="language-plaintext highlighter-rouge">google-generativeai</code></td>
-      <td>2M</td>
-      <td>Largest context; best for very long experiment history</td>
-    </tr>
-    <tr>
-      <td>Local Ollama</td>
-      <td><code class="language-plaintext highlighter-rouge">ollama</code> / <code class="language-plaintext highlighter-rouge">openai</code></td>
-      <td>varies</td>
-      <td>No API cost; needs AVX-only builds for i7-2600</td>
-    </tr>
-  </tbody>
-</table>
-
-<p><strong>Gemini advantage:</strong> 2M token context window means the entire experiment history (results.tsv,
-git diffs, logs) can be fed in every prompt. Gemini learns the hardware’s quirks over weeks, not
-just hours — identifying patterns like “every time we increase dropout on the third layer, the
-i7-2600 CPU bottlenecks.”</p>
-
-<h3 id="93-copilot-vs-gemini-trade-offs">9.3 Copilot vs Gemini Trade-offs</h3>
-
-<table>
-  <thead>
-    <tr>
-      <th>Dimension</th>
-      <th>Gemini 3 Pro</th>
-      <th>GitHub Copilot / Models</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>Context window</td>
-      <td>2M tokens</td>
-      <td>128K–200K (model-dependent)</td>
-    </tr>
-    <tr>
-      <td>Long-term memory</td>
-      <td>Feed entire history in one shot</td>
-      <td>Requires chunking/summarization</td>
-    </tr>
-    <tr>
-      <td>API access</td>
-      <td><code class="language-plaintext highlighter-rouge">google-generativeai</code> SDK</td>
-      <td><code class="language-plaintext highlighter-rouge">openai</code>-compatible, GitHub PAT</td>
-    </tr>
-    <tr>
-      <td>Cost model</td>
-      <td>Per-token (pay-as-you-go)</td>
-      <td>Included in Copilot subscription</td>
-    </tr>
-    <tr>
-      <td>Best for</td>
-      <td>Long research sessions (weeks)</td>
-      <td>Interactive development</td>
-    </tr>
-  </tbody>
-</table>
-
-<h3 id="94-provider-abstraction-config-swap-not-code-swap">9.4 Provider Abstraction (config-swap, not code-swap)</h3>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># manager/ai_provider.py
-</span><span class="k">class</span> <span class="nc">ResearchModel</span><span class="p">:</span>
-    <span class="k">def</span> <span class="nf">generate_mutation</span><span class="p">(</span><span class="n">self</span><span class="p">,</span> <span class="n">history_summary</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">train_code</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">constraints</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="nb">NotImplementedError</span>
-
-<span class="k">class</span> <span class="nc">GitHubModelsResearchModel</span><span class="p">(</span><span class="n">ResearchModel</span><span class="p">):</span>
-    <span class="bp">...</span>
-
-<span class="k">class</span> <span class="nc">GeminiResearchModel</span><span class="p">(</span><span class="n">ResearchModel</span><span class="p">):</span>
-    <span class="bp">...</span>
-</code></pre></div></div>
-
-<h3 id="95-multi-model-ab-testing">9.5 Multi-Model A/B Testing</h3>
-
-<p>Assign different AI models to different P620 nodes to compare which produces better val_loss
-improvements on the same hardware:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">MODEL_ROTATION</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="sh">"</span><span class="s">harlan</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">claude-sonnet-4-5</span><span class="sh">"</span><span class="p">,</span>
-    <span class="sh">"</span><span class="s">kovacs</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">gpt-4o</span><span class="sh">"</span><span class="p">,</span>
-    <span class="sh">"</span><span class="s">poe</span><span class="sh">"</span><span class="p">:</span>    <span class="sh">"</span><span class="s">claude-sonnet-4-5</span><span class="sh">"</span><span class="p">,</span>
-    <span class="sh">"</span><span class="s">quell</span><span class="sh">"</span><span class="p">:</span>  <span class="sh">"</span><span class="s">gpt-4o</span><span class="sh">"</span><span class="p">,</span>
-<span class="p">}</span>
-
-<span class="k">def</span> <span class="nf">get_model_for_node</span><span class="p">(</span><span class="n">node_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-    <span class="k">return</span> <span class="n">MODEL_ROTATION</span><span class="p">.</span><span class="nf">get</span><span class="p">(</span><span class="n">node_name</span><span class="p">,</span> <span class="sh">"</span><span class="s">claude-sonnet-4-5</span><span class="sh">"</span><span class="p">)</span>
-</code></pre></div></div>
-
-<p>Track <code class="language-plaintext highlighter-rouge">model_name</code> in the <code class="language-plaintext highlighter-rouge">experiments</code> table alongside <code class="language-plaintext highlighter-rouge">val_loss</code> to analyze which model writes
-more hardware-efficient training code for P620 constraints.</p>
-
-<h3 id="96-context-window-management">9.6 Context Window Management</h3>
-
-<p>With claude-sonnet-4-5 at 200K tokens, context budget per hypothesis request:</p>
-
-<table>
-  <thead>
-    <tr>
-      <th>Item</th>
-      <th>Est. tokens</th>
-      <th>Notes</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>System prompt + hardware context</td>
-      <td>~400</td>
-      <td>Fixed</td>
-    </tr>
-    <tr>
-      <td>Current <code class="language-plaintext highlighter-rouge">train.py</code></td>
-      <td>~1,500–3,000</td>
-      <td>Grows as code evolves</td>
-    </tr>
-    <tr>
-      <td>Rolling history (last 30 experiments)</td>
-      <td>~3,000–6,000</td>
-      <td>~100–200 tokens/experiment (compact format)</td>
-    </tr>
-    <tr>
-      <td>Summarized older history prefix</td>
-      <td>~600</td>
-      <td>Replace oldest runs with summary at &gt;50</td>
-    </tr>
-    <tr>
-      <td>Response buffer</td>
-      <td>~2,048</td>
-      <td>For diff + reasoning</td>
-    </tr>
-    <tr>
-      <td><strong>Total typical</strong></td>
-      <td><strong>~8,000–12,000</strong></td>
-      <td>Well within 200K window</td>
-    </tr>
-  </tbody>
-</table>
-
-<p><strong>Summarization trigger:</strong> When <code class="language-plaintext highlighter-rouge">len(experiments) &gt; 50</code>, run <code class="language-plaintext highlighter-rouge">summarize_experiment_history()</code> on
-experiments 1–30, store in <code class="language-plaintext highlighter-rouge">MetaInsight</code> table, clear those rows from main history.</p>
-
-<p><strong>Rolling window helper:</strong></p>
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">def</span> <span class="nf">build_history_summary</span><span class="p">(</span><span class="n">db_session</span><span class="p">,</span> <span class="n">max_experiments</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-    <span class="n">experiments</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">db_session</span><span class="p">.</span><span class="nf">query</span><span class="p">(</span><span class="n">Experiment</span><span class="p">)</span>
-        <span class="p">.</span><span class="nf">order_by</span><span class="p">(</span><span class="n">Experiment</span><span class="p">.</span><span class="n">created_at</span><span class="p">.</span><span class="nf">desc</span><span class="p">())</span>
-        <span class="p">.</span><span class="nf">limit</span><span class="p">(</span><span class="n">max_experiments</span><span class="p">)</span>
-        <span class="p">.</span><span class="nf">all</span><span class="p">()</span>
-    <span class="p">)</span>
-    <span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="k">for</span> <span class="n">exp</span> <span class="ow">in</span> <span class="nf">reversed</span><span class="p">(</span><span class="n">experiments</span><span class="p">):</span>
-        <span class="n">outcome</span> <span class="o">=</span> <span class="sh">"</span><span class="s">SUCCESS</span><span class="sh">"</span> <span class="k">if</span> <span class="n">exp</span><span class="p">.</span><span class="n">improved</span> <span class="k">else</span> <span class="sh">"</span><span class="s">FAILURE</span><span class="sh">"</span>
-        <span class="n">lines</span><span class="p">.</span><span class="nf">append</span><span class="p">(</span>
-            <span class="sa">f</span><span class="sh">"</span><span class="s">[</span><span class="si">{</span><span class="n">exp</span><span class="p">.</span><span class="nb">id</span><span class="si">}</span><span class="s">] </span><span class="si">{</span><span class="n">outcome</span><span class="si">}</span><span class="s"> | val_loss=</span><span class="si">{</span><span class="n">exp</span><span class="p">.</span><span class="n">val_loss</span><span class="si">:</span><span class="p">.</span><span class="mi">4</span><span class="n">f</span><span class="si">}</span><span class="s"> | </span><span class="sh">"</span>
-            <span class="sa">f</span><span class="sh">"</span><span class="s">steps=</span><span class="si">{</span><span class="n">exp</span><span class="p">.</span><span class="n">steps_completed</span><span class="si">}</span><span class="s"> | model=</span><span class="si">{</span><span class="n">exp</span><span class="p">.</span><span class="n">model_name</span><span class="si">}</span><span class="s"> | </span><span class="sh">"</span>
-            <span class="sa">f</span><span class="sh">"</span><span class="s">hypothesis=</span><span class="si">{</span><span class="n">exp</span><span class="p">.</span><span class="n">hypothesis_slug</span><span class="si">}</span><span class="sh">"</span>
-        <span class="p">)</span>
-    <span class="k">return</span> <span class="sh">"</span><span class="se">\n</span><span class="sh">"</span><span class="p">.</span><span class="nf">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
-</code></pre></div></div>
-
-<hr />
-
-<h2 id="10-implementation-code">10. Implementation Code</h2>
-
-<h3 id="101-manager-ai_brainpy">10.1 Manager: ai_brain.py</h3>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="sh">"""</span><span class="s">
-AI brain module — abstracts the LLM provider.
-Swap COPILOT_MODEL env var to change models without touching other code.
-Supported via GitHub Models API: gpt-4o, gpt-4o-mini, claude-sonnet-4-5,
-  meta-llama-3-70b-instruct
-</span><span class="sh">"""</span>
-<span class="kn">import</span> <span class="n">os</span>
-<span class="kn">from</span> <span class="n">openai</span> <span class="kn">import</span> <span class="n">OpenAI</span>
-
-<span class="n">HARDWARE_CONTEXT</span> <span class="o">=</span> <span class="sh">"""</span><span class="s">
-Hardware: Dell OptiPlex 990 cluster (AlteredCarbon)
-- CPU: Intel i7-2600 Sandy Bridge, 8 cores, 32GB DDR3
-- GPU: NVIDIA Quadro P620, 2GB GDDR5, Pascal (GP107GL), no Tensor Cores
-- Bus: PCIe 2.0
-- AVX: Yes. AVX2: NO. All binaries must be AVX-only compiled.
-Experiment constraints:
-- VRAM ceiling: 2GB. Active model weights must fit.
-- System RAM: 32GB — use for gradient offloading (DeepSpeed ZeRO-2, Accelerate).
-- Max seq len: 128-256. Batch size: 8-16. Model depth: 3-4 layers.
-- Experiment window: 15 min wall clock or 500 steps (whichever first).
-- Cooldown: 3 min between experiments (thermal management).
-- Dataset: TinyStories (not enwik8).
-</span><span class="sh">"""</span>
-
-<span class="n">_client</span> <span class="o">=</span> <span class="bp">None</span>
-
-<span class="k">def</span> <span class="nf">get_client</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">OpenAI</span><span class="p">:</span>
-    <span class="k">global</span> <span class="n">_client</span>
-    <span class="k">if</span> <span class="n">_client</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
-        <span class="n">_client</span> <span class="o">=</span> <span class="nc">OpenAI</span><span class="p">(</span>
-            <span class="n">base_url</span><span class="o">=</span><span class="sh">"</span><span class="s">https://models.inference.ai.azure.com</span><span class="sh">"</span><span class="p">,</span>
-            <span class="n">api_key</span><span class="o">=</span><span class="n">os</span><span class="p">.</span><span class="n">environ</span><span class="p">[</span><span class="sh">"</span><span class="s">GITHUB_TOKEN</span><span class="sh">"</span><span class="p">],</span>
-        <span class="p">)</span>
-    <span class="k">return</span> <span class="n">_client</span>
-
-
-<span class="k">def</span> <span class="nf">generate_hypothesis</span><span class="p">(</span><span class="n">history_summary</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">current_train_py</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="n">os</span><span class="p">.</span><span class="nf">getenv</span><span class="p">(</span><span class="sh">"</span><span class="s">COPILOT_MODEL</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">claude-sonnet-4-5</span><span class="sh">"</span><span class="p">)</span>
-    <span class="n">client</span> <span class="o">=</span> <span class="nf">get_client</span><span class="p">()</span>
-    <span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="p">.</span><span class="n">chat</span><span class="p">.</span><span class="n">completions</span><span class="p">.</span><span class="nf">create</span><span class="p">(</span>
-        <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
-        <span class="n">messages</span><span class="o">=</span><span class="p">[</span>
-            <span class="p">{</span>
-                <span class="sh">"</span><span class="s">role</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">system</span><span class="sh">"</span><span class="p">,</span>
-                <span class="sh">"</span><span class="s">content</span><span class="sh">"</span><span class="p">:</span> <span class="p">(</span>
-                    <span class="sh">"</span><span class="s">You are an AI research agent optimizing neural network training </span><span class="sh">"</span>
-                    <span class="sh">"</span><span class="s">code for a specific legacy hardware cluster. Propose minimal, </span><span class="sh">"</span>
-                    <span class="sh">"</span><span class="s">targeted code mutations to train.py based on past experiment results.</span><span class="se">\n\n</span><span class="sh">"</span>
-                    <span class="o">+</span> <span class="n">HARDWARE_CONTEXT</span>
-                <span class="p">),</span>
-            <span class="p">},</span>
-            <span class="p">{</span>
-                <span class="sh">"</span><span class="s">role</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span>
-                <span class="sh">"</span><span class="s">content</span><span class="sh">"</span><span class="p">:</span> <span class="p">(</span>
-                    <span class="sa">f</span><span class="sh">"</span><span class="s">## Past experiment history (most recent first):</span><span class="se">\n</span><span class="si">{</span><span class="n">history_summary</span><span class="si">}</span><span class="se">\n\n</span><span class="sh">"</span>
-                    <span class="sa">f</span><span class="sh">"</span><span class="s">## Current train.py (frontier branch):</span><span class="se">\n</span><span class="s">```python</span><span class="se">\n</span><span class="si">{</span><span class="n">current_train_py</span><span class="si">}</span><span class="se">\n</span><span class="s">```</span><span class="se">\n\n</span><span class="sh">"</span>
-                    <span class="sh">"</span><span class="s">Propose a single code mutation. Output the diff only. </span><span class="sh">"</span>
-                    <span class="sh">"</span><span class="s">Start your response with a one-line hypothesis comment.</span><span class="sh">"</span>
-                <span class="p">),</span>
-            <span class="p">},</span>
-        <span class="p">],</span>
-        <span class="n">max_tokens</span><span class="o">=</span><span class="mi">2048</span><span class="p">,</span>
-        <span class="n">temperature</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="k">return</span> <span class="n">response</span><span class="p">.</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">message</span><span class="p">.</span><span class="n">content</span>
-
-
-<span class="k">def</span> <span class="nf">summarize_experiment_history</span><span class="p">(</span><span class="n">full_history</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-    <span class="sh">"""</span><span class="s">Compress old experiment logs. Use cheap model for this housekeeping task.</span><span class="sh">"""</span>
-    <span class="n">client</span> <span class="o">=</span> <span class="nf">get_client</span><span class="p">()</span>
-    <span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="p">.</span><span class="n">chat</span><span class="p">.</span><span class="n">completions</span><span class="p">.</span><span class="nf">create</span><span class="p">(</span>
-        <span class="n">model</span><span class="o">=</span><span class="sh">"</span><span class="s">gpt-4o-mini</span><span class="sh">"</span><span class="p">,</span>
-        <span class="n">messages</span><span class="o">=</span><span class="p">[</span>
-            <span class="p">{</span>
-                <span class="sh">"</span><span class="s">role</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">user</span><span class="sh">"</span><span class="p">,</span>
-                <span class="sh">"</span><span class="s">content</span><span class="sh">"</span><span class="p">:</span> <span class="p">(</span>
-                    <span class="sh">"</span><span class="s">Summarize the following experiment results into bullet-point </span><span class="sh">"</span>
-                    <span class="sh">"</span><span class="s">learnings about what works and what fails on this specific hardware </span><span class="sh">"</span>
-                    <span class="sh">"</span><span class="s">(i7-2600, P620 2GB VRAM, PCIe 2.0 bus, 32GB DDR3). </span><span class="sh">"</span>
-                    <span class="sh">"</span><span class="s">Focus on patterns, not individual runs. Max 400 words.</span><span class="se">\n\n</span><span class="sh">"</span>
-                    <span class="o">+</span> <span class="n">full_history</span>
-                <span class="p">),</span>
-            <span class="p">}</span>
-        <span class="p">],</span>
-        <span class="n">max_tokens</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
-    <span class="p">)</span>
-    <span class="k">return</span> <span class="n">response</span><span class="p">.</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">message</span><span class="p">.</span><span class="n">content</span>
-</code></pre></div></div>
-
-<p><strong>To switch to Gemini:</strong> use <code class="language-plaintext highlighter-rouge">google-generativeai</code> SDK instead:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">google.generativeai</span> <span class="k">as</span> <span class="n">genai</span>
-
-<span class="n">genai</span><span class="p">.</span><span class="nf">configure</span><span class="p">(</span><span class="n">api_key</span><span class="o">=</span><span class="n">os</span><span class="p">.</span><span class="n">environ</span><span class="p">[</span><span class="sh">"</span><span class="s">GEMINI_API_KEY</span><span class="sh">"</span><span class="p">])</span>
-<span class="n">model</span> <span class="o">=</span> <span class="n">genai</span><span class="p">.</span><span class="nc">GenerativeModel</span><span class="p">(</span><span class="sh">'</span><span class="s">gemini-3-pro</span><span class="sh">'</span><span class="p">)</span>
-
-<span class="k">def</span> <span class="nf">generate_hypothesis</span><span class="p">(</span><span class="n">history_logs</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-    <span class="n">prompt</span> <span class="o">=</span> <span class="sa">f</span><span class="sh">"""</span><span class="s">Review these past experiments: </span><span class="si">{</span><span class="n">history_logs</span><span class="si">}</span><span class="s">
-    Hardware: Dell OptiPlex 990, i7-2600, 32GB DDR3, NVIDIA P620 (2GB GDDR5 Pascal).
-    Constraint: 2GB VRAM max for active weights. Use 32GB system RAM for gradient offloading.
-    Objective: Propose a code change to train.py that improves val_loss.
-    Prioritize micro-architectures (3-4 layers, small embedding dims).</span><span class="sh">"""</span>
-    <span class="n">response</span> <span class="o">=</span> <span class="n">model</span><span class="p">.</span><span class="nf">generate_content</span><span class="p">(</span><span class="n">prompt</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">response</span><span class="p">.</span><span class="n">text</span>
-</code></pre></div></div>
-
-<h3 id="102-ai-output-validation">10.2 AI Output Validation</h3>
-
-<p>Before applying any AI-generated diff to <code class="language-plaintext highlighter-rouge">train.py</code>:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">import</span> <span class="n">ast</span>
-
-<span class="k">def</span> <span class="nf">validate_python</span><span class="p">(</span><span class="n">code</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-    <span class="k">try</span><span class="p">:</span>
-        <span class="n">ast</span><span class="p">.</span><span class="nf">parse</span><span class="p">(</span><span class="n">code</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">True</span>
-    <span class="k">except</span> <span class="nb">SyntaxError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="n">app</span><span class="p">.</span><span class="n">logger</span><span class="p">.</span><span class="nf">warning</span><span class="p">(</span><span class="sa">f</span><span class="sh">"</span><span class="s">AI generated invalid Python: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="sh">"</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">False</span>
-</code></pre></div></div>
-
-<p>Also check for forbidden patterns: shell side effects, package installs, network calls outside
-allowed endpoints (Manager IP and Forgejo IP only).</p>
-
-<h3 id="103-manager-proxmox-spawning-logic">10.3 Manager: Proxmox Spawning Logic</h3>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">proxmoxer</span> <span class="kn">import</span> <span class="n">ProxmoxAPI</span>
-
-<span class="n">proxmox</span> <span class="o">=</span> <span class="nc">ProxmoxAPI</span><span class="p">(</span>
-    <span class="sh">"</span><span class="s">192.168.86.11</span><span class="sh">"</span><span class="p">,</span>
-    <span class="n">user</span><span class="o">=</span><span class="sh">"</span><span class="s">root@pam</span><span class="sh">"</span><span class="p">,</span>
-    <span class="n">token_id</span><span class="o">=</span><span class="sh">"</span><span class="s">aasr-manager</span><span class="sh">"</span><span class="p">,</span>
-    <span class="n">token_secret</span><span class="o">=</span><span class="sh">"</span><span class="s">&lt;token&gt;</span><span class="sh">"</span><span class="p">,</span>
-    <span class="n">verify_ssl</span><span class="o">=</span><span class="bp">False</span>
-<span class="p">)</span>
-
-<span class="n">GOLD_TEMPLATE_ID</span> <span class="o">=</span> <span class="mi">9100</span>
-<span class="n">GPU_NODES</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="sh">"</span><span class="s">harlan</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">192.168.86.11</span><span class="sh">"</span><span class="p">,</span>
-    <span class="sh">"</span><span class="s">kovacs</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">192.168.86.12</span><span class="sh">"</span><span class="p">,</span>
-    <span class="sh">"</span><span class="s">poe</span><span class="sh">"</span><span class="p">:</span>    <span class="sh">"</span><span class="s">192.168.86.13</span><span class="sh">"</span><span class="p">,</span>
-    <span class="sh">"</span><span class="s">quell</span><span class="sh">"</span><span class="p">:</span>  <span class="sh">"</span><span class="s">192.168.86.16</span><span class="sh">"</span><span class="p">,</span>
-<span class="p">}</span>
-
-<span class="k">def</span> <span class="nf">find_idle_gpu_node</span><span class="p">():</span>
-    <span class="k">for</span> <span class="n">node_name</span> <span class="ow">in</span> <span class="n">GPU_NODES</span><span class="p">:</span>
-        <span class="n">containers</span> <span class="o">=</span> <span class="n">proxmox</span><span class="p">.</span><span class="nf">nodes</span><span class="p">(</span><span class="n">node_name</span><span class="p">).</span><span class="n">lxc</span><span class="p">.</span><span class="nf">get</span><span class="p">()</span>
-        <span class="n">active</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">containers</span> <span class="k">if</span> <span class="n">c</span><span class="p">[</span><span class="sh">'</span><span class="s">name</span><span class="sh">'</span><span class="p">].</span><span class="nf">startswith</span><span class="p">(</span><span class="sh">'</span><span class="s">aasr-worker</span><span class="sh">'</span><span class="p">)]</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">active</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">node_name</span>
-    <span class="k">return</span> <span class="bp">None</span>
-
-<span class="k">def</span> <span class="nf">run_experiment</span><span class="p">(</span><span class="n">node_name</span><span class="p">,</span> <span class="n">experiment_id</span><span class="p">):</span>
-    <span class="n">vmid</span> <span class="o">=</span> <span class="mi">9200</span> <span class="o">+</span> <span class="n">experiment_id</span>
-    <span class="n">proxmox</span><span class="p">.</span><span class="nf">nodes</span><span class="p">(</span><span class="n">node_name</span><span class="p">).</span><span class="n">lxc</span><span class="p">.</span><span class="nf">post</span><span class="p">(</span>
-        <span class="n">vmid</span><span class="o">=</span><span class="n">vmid</span><span class="p">,</span>
-        <span class="n">clone</span><span class="o">=</span><span class="n">GOLD_TEMPLATE_ID</span><span class="p">,</span>
-        <span class="n">hostname</span><span class="o">=</span><span class="sa">f</span><span class="sh">"</span><span class="s">aasr-worker-</span><span class="si">{</span><span class="n">experiment_id</span><span class="si">}</span><span class="sh">"</span><span class="p">,</span>
-        <span class="n">target</span><span class="o">=</span><span class="n">node_name</span>
-    <span class="p">)</span>
-    <span class="n">proxmox</span><span class="p">.</span><span class="nf">nodes</span><span class="p">(</span><span class="n">node_name</span><span class="p">).</span><span class="nf">lxc</span><span class="p">(</span><span class="n">vmid</span><span class="p">).</span><span class="n">status</span><span class="p">.</span><span class="n">start</span><span class="p">.</span><span class="nf">post</span><span class="p">()</span>
-    <span class="n">proxmox</span><span class="p">.</span><span class="nf">nodes</span><span class="p">(</span><span class="n">node_name</span><span class="p">).</span><span class="nf">lxc</span><span class="p">(</span><span class="n">vmid</span><span class="p">).</span><span class="k">exec</span><span class="p">.</span><span class="nf">post</span><span class="p">(</span>
-        <span class="n">command</span><span class="o">=</span><span class="p">[</span><span class="sh">"</span><span class="s">bash</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">/app/start.sh</span><span class="sh">"</span><span class="p">]</span>
-    <span class="p">)</span>
-    <span class="k">return</span> <span class="n">vmid</span>
-
-<span class="k">def</span> <span class="nf">cleanup_worker</span><span class="p">(</span><span class="n">node_name</span><span class="p">,</span> <span class="n">vmid</span><span class="p">):</span>
-    <span class="n">proxmox</span><span class="p">.</span><span class="nf">nodes</span><span class="p">(</span><span class="n">node_name</span><span class="p">).</span><span class="nf">lxc</span><span class="p">(</span><span class="n">vmid</span><span class="p">).</span><span class="n">status</span><span class="p">.</span><span class="n">stop</span><span class="p">.</span><span class="nf">post</span><span class="p">()</span>
-    <span class="n">proxmox</span><span class="p">.</span><span class="nf">nodes</span><span class="p">(</span><span class="n">node_name</span><span class="p">).</span><span class="nf">lxc</span><span class="p">(</span><span class="n">vmid</span><span class="p">).</span><span class="nf">delete</span><span class="p">(</span><span class="n">purge</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-</code></pre></div></div>
-
-<h3 id="104-manager-key-flask-routes">10.4 Manager: Key Flask Routes</h3>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="n">flask</span> <span class="kn">import</span> <span class="n">Flask</span><span class="p">,</span> <span class="n">request</span>
-<span class="kn">import</span> <span class="n">os</span>
-
-<span class="n">app</span> <span class="o">=</span> <span class="nc">Flask</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
-
-<span class="nd">@app.route</span><span class="p">(</span><span class="sh">"</span><span class="s">/</span><span class="sh">"</span><span class="p">)</span>
-<span class="k">def</span> <span class="nf">dashboard</span><span class="p">():</span>
-    <span class="c1"># Cluster grid, leaderboard, live console, audit log
-</span>    <span class="bp">...</span>
-
-<span class="nd">@app.route</span><span class="p">(</span><span class="sh">"</span><span class="s">/node-status</span><span class="sh">"</span><span class="p">)</span>
-<span class="k">def</span> <span class="nf">node_status</span><span class="p">():</span>
-    <span class="c1"># HTMX fragment: node temps, GPU idle/busy — polled every 5s
-</span>    <span class="bp">...</span>
-
-<span class="nd">@app.route</span><span class="p">(</span><span class="sh">"</span><span class="s">/start-research</span><span class="sh">"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="sh">"</span><span class="s">POST</span><span class="sh">"</span><span class="p">])</span>
-<span class="k">def</span> <span class="nf">start_research</span><span class="p">():</span>
-    <span class="c1"># Trigger new experiment cycle
-</span>    <span class="bp">...</span>
-
-<span class="nd">@app.route</span><span class="p">(</span><span class="sh">"</span><span class="s">/kill/&lt;int:vmid&gt;</span><span class="sh">"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="sh">"</span><span class="s">POST</span><span class="sh">"</span><span class="p">])</span>
-<span class="k">def</span> <span class="nf">kill_worker</span><span class="p">(</span><span class="n">vmid</span><span class="p">):</span>
-    <span class="c1"># Emergency destroy of a rogue worker via pct destroy
-</span>    <span class="bp">...</span>
-
-<span class="nd">@app.route</span><span class="p">(</span><span class="sh">"</span><span class="s">/api/results</span><span class="sh">"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="sh">"</span><span class="s">POST</span><span class="sh">"</span><span class="p">])</span>
-<span class="k">def</span> <span class="nf">receive_results</span><span class="p">():</span>
-    <span class="c1"># Worker callback with final metrics JSON
-</span>    <span class="n">data</span> <span class="o">=</span> <span class="n">request</span><span class="p">.</span><span class="nf">get_json</span><span class="p">()</span>
-    <span class="c1"># Store in DB, compare against frontier, merge or discard
-</span>    <span class="bp">...</span>
-
-<span class="nd">@app.route</span><span class="p">(</span><span class="sh">"</span><span class="s">/config/model</span><span class="sh">"</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="sh">"</span><span class="s">POST</span><span class="sh">"</span><span class="p">])</span>
-<span class="k">def</span> <span class="nf">set_model</span><span class="p">():</span>
-    <span class="n">allowed</span> <span class="o">=</span> <span class="p">{</span><span class="sh">"</span><span class="s">claude-sonnet-4-5</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">gpt-4o</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">gpt-4o-mini</span><span class="sh">"</span><span class="p">,</span> <span class="sh">"</span><span class="s">meta-llama-3-70b-instruct</span><span class="sh">"</span><span class="p">}</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="n">request</span><span class="p">.</span><span class="n">form</span><span class="p">[</span><span class="sh">"</span><span class="s">model</span><span class="sh">"</span><span class="p">]</span>
-    <span class="k">if</span> <span class="n">model</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">allowed</span><span class="p">:</span>
-        <span class="k">return</span> <span class="sh">"</span><span class="s">Invalid model</span><span class="sh">"</span><span class="p">,</span> <span class="mi">400</span>
-    <span class="n">os</span><span class="p">.</span><span class="n">environ</span><span class="p">[</span><span class="sh">"</span><span class="s">COPILOT_MODEL</span><span class="sh">"</span><span class="p">]</span> <span class="o">=</span> <span class="n">model</span>
-    <span class="k">return</span> <span class="sa">f</span><span class="sh">'</span><span class="s">&lt;span class=</span><span class="sh">"</span><span class="s">badge</span><span class="sh">"</span><span class="s">&gt;Model: </span><span class="si">{</span><span class="n">model</span><span class="si">}</span><span class="s">&lt;/span&gt;</span><span class="sh">'</span>
-</code></pre></div></div>
-
-<p><strong>HTMX live polling (no JavaScript frameworks needed):</strong></p>
-<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">&lt;!-- Poll node status every 5 seconds --&gt;</span>
-<span class="nt">&lt;div</span> <span class="na">hx-get=</span><span class="s">"/node-status"</span> <span class="na">hx-trigger=</span><span class="s">"every 5s"</span><span class="nt">&gt;</span>
-  Loading cluster status...
-<span class="nt">&lt;/div&gt;</span>
-</code></pre></div></div>
-
-<p><strong>Model selector HTMX fragment:</strong></p>
-<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nt">&lt;form</span> <span class="na">hx-post=</span><span class="s">"/config/model"</span> <span class="na">hx-target=</span><span class="s">"#model-status"</span><span class="nt">&gt;</span>
-  <span class="nt">&lt;select</span> <span class="na">name=</span><span class="s">"model"</span><span class="nt">&gt;</span>
-    <span class="nt">&lt;option</span> <span class="na">value=</span><span class="s">"claude-sonnet-4-5"</span><span class="nt">&gt;</span>claude-sonnet-4-5 (200K)<span class="nt">&lt;/option&gt;</span>
-    <span class="nt">&lt;option</span> <span class="na">value=</span><span class="s">"gpt-4o"</span><span class="nt">&gt;</span>gpt-4o (128K, faster)<span class="nt">&lt;/option&gt;</span>
-    <span class="nt">&lt;option</span> <span class="na">value=</span><span class="s">"gpt-4o-mini"</span><span class="nt">&gt;</span>gpt-4o-mini (128K, cheapest)<span class="nt">&lt;/option&gt;</span>
-    <span class="nt">&lt;option</span> <span class="na">value=</span><span class="s">"meta-llama-3-70b-instruct"</span><span class="nt">&gt;</span>llama-3-70b (open weights)<span class="nt">&lt;/option&gt;</span>
-  <span class="nt">&lt;/select&gt;</span>
-  <span class="nt">&lt;button</span> <span class="na">type=</span><span class="s">"submit"</span><span class="nt">&gt;</span>Apply<span class="nt">&lt;/button&gt;</span>
-<span class="nt">&lt;/form&gt;</span>
-<span class="nt">&lt;div</span> <span class="na">id=</span><span class="s">"model-status"</span><span class="nt">&gt;&lt;/div&gt;</span>
-</code></pre></div></div>
-
-<h3 id="105-manager-requirementstxt">10.5 Manager: requirements.txt</h3>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>flask&gt;=3.0
-flask-sqlalchemy&gt;=3.1
-openai&gt;=1.30
-proxmoxer&gt;=2.0
-requests&gt;=2.31
-python-dotenv&gt;=1.0
-</code></pre></div></div>
-
-<h3 id="106-manager-env-never-committed">10.6 Manager: .env (never committed)</h3>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">GITHUB_TOKEN</span><span class="o">=</span>ghp_xxxxxxxxxxxxxxxxxxxx
-<span class="nv">COPILOT_MODEL</span><span class="o">=</span>claude-sonnet-4-5
-<span class="nv">PROXMOX_HOST</span><span class="o">=</span>192.168.86.11
-<span class="nv">PROXMOX_TOKEN_ID</span><span class="o">=</span>aasr-manager
-<span class="nv">PROXMOX_TOKEN_SECRET</span><span class="o">=</span>xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-<span class="nv">FORGEJO_URL</span><span class="o">=</span>http://192.168.86.201:3000
-<span class="nv">FORGEJO_TOKEN</span><span class="o">=</span>xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-<span class="nv">MANAGER_IP</span><span class="o">=</span>192.168.86.202
-</code></pre></div></div>
-
-<h3 id="107-worker-gold-template-lxc-config">10.7 Worker: Gold Template LXC Config</h3>
-
-<div class="language-conf highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># /etc/pve/lxc/&lt;TEMPLATE_ID&gt;.conf
-</span><span class="n">lxc</span>.<span class="n">cgroup2</span>.<span class="n">devices</span>.<span class="n">allow</span>: <span class="n">c</span> <span class="m">195</span>:* <span class="n">rwm</span>
-<span class="n">lxc</span>.<span class="n">cgroup2</span>.<span class="n">devices</span>.<span class="n">allow</span>: <span class="n">c</span> <span class="m">234</span>:* <span class="n">rwm</span>
-<span class="n">lxc</span>.<span class="n">mount</span>.<span class="n">entry</span>: /<span class="n">dev</span>/<span class="n">nvidia0</span> <span class="n">dev</span>/<span class="n">nvidia0</span> <span class="n">none</span> <span class="n">bind</span>,<span class="n">optional</span>,<span class="n">create</span>=<span class="n">file</span>
-<span class="n">lxc</span>.<span class="n">mount</span>.<span class="n">entry</span>: /<span class="n">dev</span>/<span class="n">nvidiactl</span> <span class="n">dev</span>/<span class="n">nvidiactl</span> <span class="n">none</span> <span class="n">bind</span>,<span class="n">optional</span>,<span class="n">create</span>=<span class="n">file</span>
-<span class="n">lxc</span>.<span class="n">mount</span>.<span class="n">entry</span>: /<span class="n">dev</span>/<span class="n">nvidia</span>-<span class="n">uvm</span> <span class="n">dev</span>/<span class="n">nvidia</span>-<span class="n">uvm</span> <span class="n">none</span> <span class="n">bind</span>,<span class="n">optional</span>,<span class="n">create</span>=<span class="n">file</span>
-<span class="n">lxc</span>.<span class="n">cgroup2</span>.<span class="n">cpuset</span>.<span class="n">cpus</span>: <span class="m">0</span>-<span class="m">3</span>
-<span class="n">lxc</span>.<span class="n">cgroup2</span>.<span class="n">memory</span>.<span class="n">max</span>: <span class="m">28</span><span class="n">G</span>
-</code></pre></div></div>
-
-<h3 id="108-worker-boot-script-startsh">10.8 Worker: Boot Script (start.sh)</h3>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
-<span class="nb">cd</span> /app
-uv run train.py <span class="nt">--max-time</span> 900 &amp;
-uv run gradio_monitor.py &amp;
-<span class="nb">wait
-</span>curl <span class="nt">-X</span> POST http://192.168.86.202/api/results <span class="se">\</span>
-  <span class="nt">-H</span> <span class="s2">"Content-Type: application/json"</span> <span class="se">\</span>
-  <span class="nt">-d</span> @/app/results.json
-</code></pre></div></div>
-
-<h3 id="109-vs-code-copilot-agent-mode-development-workflow">10.9 VS Code Copilot Agent Mode (Development Workflow)</h3>
-
-<p>While the Manager LXC uses GitHub Models API for automated research cycles, the developer uses
-VS Code Copilot agent mode to build the system itself:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Developer → VS Code + Copilot agent → edits Flask/proxmoxer code
-                                    → pushes to Forgejo
-                                    → Manager runs next experiment cycle
-                                    → results feed back into Copilot context
-</code></pre></div></div>
-
-<p><strong>Useful agent mode prompts:</strong></p>
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"Using proxmoxer, write a function that finds the first P620 node
-(harlan .11, kovacs .12, poe .13, quell .16) with no active aasr-worker
-LXC and returns the node name and IP."
-
-"Write the LXC .conf GPU passthrough stanzas for an NVIDIA Quadro P620
-on Proxmox 8.4 with kernel 6.8.12-18-pve."
-
-"Write a Flask route /api/results that receives val_loss, steps_completed,
-experiment_id from a worker LXC and updates the SQLAlchemy Experiment table,
-then triggers a Forgejo API merge if val_loss improved."
-</code></pre></div></div>
-
-<p><strong><code class="language-plaintext highlighter-rouge">gh copilot</code> CLI for quick tasks:</strong></p>
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>gh extension <span class="nb">install </span>github/gh-copilot
-gh copilot suggest <span class="s2">"proxmox pct clone command to clone VMID 9100 to VMID 9201 targeting node kovacs"</span>
-gh copilot explain <span class="s2">"proxmoxer.backends.https.AuthenticationError: 401"</span>
-</code></pre></div></div>
-
-<hr />
-
-<h2 id="11-git-model-branch-per-experiment">11. Git Model: Branch-per-Experiment</h2>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>main ──────────────────────────────────────────────►  (stable, human-controlled)
-  │
-  ├── frontier ──────────┬──────────┬──────────────►  (best machine-evolved code)
-  │                      │          │
-  │   experiment-001 ────┘          │
-  │   (merged: improved val_loss)   │
-  │                                 │
-  │   experiment-002 ───── X        │
-  │   (discarded: regression)       │
-  │                                 │
-  │   experiment-003 ───────────────┘
-  │   (merged: improved val_loss)
-</code></pre></div></div>
-
-<p><strong>Promotion rules:</strong></p>
-<ol>
-  <li>Mutation must pass syntax and policy checks</li>
-  <li>Run must complete with valid metrics payload</li>
-  <li>val_loss must improve relative to frontier baseline</li>
-  <li>Only then merge to frontier and delete experiment branch</li>
-</ol>
-
-<p>Workers never touch git directly — the Manager drives all Forgejo API calls.</p>
-
-<p><strong>Forgejo API actions used by Manager:</strong></p>
-
-<table>
-  <thead>
-    <tr>
-      <th>Action</th>
-      <th>API Call</th>
-      <th>Result</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>New hypothesis</td>
-      <td><code class="language-plaintext highlighter-rouge">POST /api/v1/repos/{owner}/{repo}/branches</code></td>
-      <td>New sandbox branch created</td>
-    </tr>
-    <tr>
-      <td>Inject code</td>
-      <td><code class="language-plaintext highlighter-rouge">PUT /api/v1/repos/{owner}/{repo}/contents/{filepath}</code></td>
-      <td>Mutated train.py committed</td>
-    </tr>
-    <tr>
-      <td>Success</td>
-      <td><code class="language-plaintext highlighter-rouge">POST /api/v1/repos/{owner}/{repo}/pulls</code></td>
-      <td>PR opened and auto-merged into frontier</td>
-    </tr>
-  </tbody>
-</table>
-
-<hr />
-
-<h2 id="12-core-service-lxc-setup">12. Core Service LXC Setup</h2>
-
-<h3 id="121-forgejo-git-server-19216886201">12.1 Forgejo Git Server (192.168.86.201)</h3>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pct create 201 <span class="nb">local</span>:vztmpl/debian-13-standard_13.0-1_amd64.tar.zst <span class="se">\</span>
-  <span class="nt">--hostname</span> forgejo <span class="se">\</span>
-  <span class="nt">--cores</span> 1 <span class="nt">--memory</span> 1024 <span class="nt">--swap</span> 512 <span class="se">\</span>
-  <span class="nt">--net0</span> <span class="nv">name</span><span class="o">=</span>eth0,bridge<span class="o">=</span>vmbr0,ip<span class="o">=</span>192.168.86.201/23,gw<span class="o">=</span>192.168.86.1 <span class="se">\</span>
-  <span class="nt">--nameserver</span> 192.168.86.3 <span class="se">\</span>
-  <span class="nt">--mp0</span> /mnt/pve/cephfs/aasr/forgejo,mp<span class="o">=</span>/var/lib/gitea
-
-pct start 201
-pct <span class="nb">exec </span>201 <span class="nt">--</span> bash <span class="nt">-c</span> <span class="s2">"
-  apt-get update &amp;&amp; apt-get install -y wget git
-  wget -O /tmp/forgejo.deb https://codeberg.org/forgejo/forgejo/releases/download/v11/forgejo_11-linux-amd64.deb
-  dpkg -i /tmp/forgejo.deb
-  systemctl enable --now forgejo
-"</span>
-</code></pre></div></div>
-
-<p>Post-setup: create API token for Flask orchestrator; create <code class="language-plaintext highlighter-rouge">autoresearch</code> repo with <code class="language-plaintext highlighter-rouge">main</code> and
-<code class="language-plaintext highlighter-rouge">frontier</code> branches.</p>
-
-<h3 id="122-manager-lxc-19216886202">12.2 Manager LXC (192.168.86.202)</h3>
-
-<ul>
-  <li>OS: Debian 13, 2 vCPU, 4 GB RAM</li>
-  <li>CephFS mount: <code class="language-plaintext highlighter-rouge">/mnt/data</code> for shared datasets and results</li>
-  <li>Proxmox API token: needs <code class="language-plaintext highlighter-rouge">PVEVMAdmin</code> permissions to clone/start/stop/destroy LXCs</li>
-</ul>
-
-<h3 id="123-gold-template-worker-lxc">12.3 Gold Template Worker LXC</h3>
-
-<ul>
-  <li>OS: Debian 13, 4 vCPU, 28 GB RAM</li>
-  <li>GPU passthrough: NVIDIA P620 device nodes (see LXC config in §10.7)</li>
-  <li>Pre-installed: NVIDIA production drivers (match host kernel), <code class="language-plaintext highlighter-rouge">uv</code>, <code class="language-plaintext highlighter-rouge">git</code>, <code class="language-plaintext highlighter-rouge">gradio</code>,
-PyTorch (AVX-only compiled)</li>
-  <li>CephFS mount: <code class="language-plaintext highlighter-rouge">/data</code> (read-only for workers)</li>
-</ul>
-
-<hr />
-
-<h2 id="13-manager-database-schema">13. Manager Database Schema</h2>
-
-<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">-- experiments</span>
-<span class="n">id</span><span class="p">,</span> <span class="n">created_at</span><span class="p">,</span> <span class="n">provider</span><span class="p">,</span> <span class="n">model_name</span><span class="p">,</span> <span class="n">node_name</span><span class="p">,</span> <span class="n">vmid</span><span class="p">,</span>
-<span class="n">branch_name</span><span class="p">,</span> <span class="n">hypothesis_slug</span><span class="p">,</span> <span class="n">hypothesis_summary</span><span class="p">,</span> <span class="n">status</span>
-
-<span class="c1">-- results</span>
-<span class="n">experiment_id</span><span class="p">,</span> <span class="n">steps_completed</span><span class="p">,</span> <span class="n">duration_seconds</span><span class="p">,</span>
-<span class="n">val_loss</span><span class="p">,</span> <span class="n">val_bpb</span><span class="p">,</span> <span class="n">peak_vram_mb</span><span class="p">,</span> <span class="n">peak_ram_mb</span><span class="p">,</span>
-<span class="n">temperature_max_c</span><span class="p">,</span> <span class="n">success_flag</span>
-
-<span class="c1">-- insights (compressed history summaries)</span>
-<span class="n">generated_at</span><span class="p">,</span> <span class="n">summary_text</span><span class="p">,</span> <span class="n">applies_to_hardware</span><span class="p">,</span> <span class="n">source_run_range</span>
-
-<span class="c1">-- artifacts</span>
-<span class="n">experiment_id</span><span class="p">,</span> <span class="n">log_path</span><span class="p">,</span> <span class="n">plot_path</span><span class="p">,</span> <span class="n">diff_path</span><span class="p">,</span> <span class="n">checkpoint_path</span>
-</code></pre></div></div>
-
-<hr />
-
-<h2 id="14-security-and-isolation">14. Security and Isolation</h2>
-
-<ul>
-  <li>Worker LXC network egress restricted to Manager (192.168.86.202) and Forgejo (192.168.86.201)
-only — no internet access</li>
-  <li>Worker git credentials scoped to experiment branches only — no write access to <code class="language-plaintext highlighter-rouge">main</code> or <code class="language-plaintext highlighter-rouge">frontier</code></li>
-  <li>Manager Proxmox API token scoped to <code class="language-plaintext highlighter-rouge">PVEVMAdmin</code> for LXC lifecycle only — workers have no
-Proxmox API access</li>
-  <li>AI token (<code class="language-plaintext highlighter-rouge">GITHUB_TOKEN</code>) scoped to <code class="language-plaintext highlighter-rouge">models:read</code> only — no repo write access</li>
-  <li>AI output validated before execution: syntax parse → forbidden API/path check → optional static lint</li>
-  <li>Strict CPU pinning (4 cores) and memory caps (28 GB) per worker — prevents rogue experiment from
-crashing host</li>
-  <li>Fresh LXC clone for every experiment — no state leaks between runs (“Clean Room” benefit)</li>
-  <li>Every mutation logged with diff, reasoning, and metrics in Flask DB and Forgejo commit history
-(Traceable AI Development Platform — useful for SOC2/audit trail purposes)</li>
-  <li><code class="language-plaintext highlighter-rouge">GITHUB_TOKEN</code> stored in <code class="language-plaintext highlighter-rouge">.env</code> on Manager LXC with <code class="language-plaintext highlighter-rouge">chmod 600</code> — never embedded in source code</li>
-</ul>
-
-<hr />
-
-<h2 id="15-phase-plan-with-acceptance-criteria">15. Phase Plan with Acceptance Criteria</h2>
-
-<h3 id="phase-1-core-services">Phase 1: Core Services</h3>
-<ul>
-  <li>Deploy Forgejo LXC (192.168.86.201) and Manager LXC (192.168.86.202)</li>
-  <li><strong>Acceptance:</strong> Manager can create branch in Forgejo via API; Manager DB is writable and queryable</li>
-</ul>
-
-<h3 id="phase-2-gold-worker-template">Phase 2: Gold Worker Template</h3>
-<ul>
-  <li>Build and snapshot worker template with NVIDIA drivers, uv, AVX-only PyTorch, Gradio</li>
-  <li><strong>Acceptance:</strong> <code class="language-plaintext highlighter-rouge">nvidia-smi</code> works inside worker clone; train bootstrap script executes without
-manual fixes</li>
-</ul>
-
-<h3 id="phase-3-single-manual-experiment">Phase 3: Single Manual Experiment</h3>
-<ul>
-  <li>Run one mutation end-to-end with manual trigger</li>
-  <li><strong>Acceptance:</strong> metrics callback received and stored; worker destroyed after run</li>
-</ul>
-
-<h3 id="phase-4-automated-loop">Phase 4: Automated Loop</h3>
-<ul>
-  <li>Enable repeated experiment loop with cooldown</li>
-  <li><strong>Acceptance:</strong> at least 5 consecutive runs complete; no orphan worker containers</li>
-</ul>
-
-<h3 id="phase-5-promotion-and-leaderboard">Phase 5: Promotion and Leaderboard</h3>
-<ul>
-  <li>Wire merge/discard logic and dashboard views</li>
-  <li><strong>Acceptance:</strong> successful run merges into frontier automatically; leaderboard updates from DB
-without manual refresh</li>
-</ul>
-
-<h3 id="phase-6-parallel-workers">Phase 6: Parallel Workers</h3>
-<ul>
-  <li>Add controlled parallel experiments across P620 nodes</li>
-  <li><strong>Acceptance:</strong> scheduler avoids node collisions; aggregate throughput improves without thermal
-instability</li>
-</ul>
-
-<hr />
-
-<h2 id="16-quick-start-checklist">16. Quick Start Checklist</h2>
-
-<ol>
-  <li>Build Forgejo LXC and create repository with <code class="language-plaintext highlighter-rouge">main</code> and <code class="language-plaintext highlighter-rouge">frontier</code> branches</li>
-  <li>Build Manager LXC with Flask, SQLAlchemy, proxmoxer, and OpenAI SDK</li>
-  <li>Configure GitHub token with <code class="language-plaintext highlighter-rouge">models:read</code> and verify inference call works</li>
-  <li>Build worker gold template and verify GPU visibility in LXC clone (<code class="language-plaintext highlighter-rouge">nvidia-smi</code>)</li>
-  <li>Run one manual mutation cycle and confirm artifact capture in DB</li>
-  <li>Enable automated loop and monitor first 10 runs</li>
-</ol>
-
-<hr />
-
-<h2 id="17-implementation-order">17. Implementation Order</h2>
-
-<ol>
-  <li><strong>Forgejo LXC</strong> — Git server on CephFS (§12.1)</li>
-  <li><strong>Gold Template LXC</strong> — Worker template with NVIDIA drivers, uv, AVX-only PyTorch, Gradio (§12.3)</li>
-  <li><strong>Manual GPU test</strong> — Clone template on harlan, verify P620 accessible in LXC, run <code class="language-plaintext highlighter-rouge">nvidia-smi</code></li>
-  <li><strong>Manager LXC</strong> — Flask app with proxmoxer, basic spawn/destroy cycle (§12.2)</li>
-  <li><strong>AI integration</strong> — Wire <code class="language-plaintext highlighter-rouge">ai_brain.py</code>, test <code class="language-plaintext highlighter-rouge">generate_hypothesis()</code> interactively</li>
-  <li><strong>Dashboard</strong> — HTMX live updates, leaderboard, model selector, audit log</li>
-  <li><strong>Parallel experiments</strong> — Spawn workers on multiple P620 nodes with model rotation (§9.5)</li>
-  <li><strong>Blog articles</strong> — Document the build on mcgarrah.org (§20)</li>
-</ol>
-
-<hr />
-
-<h2 id="18-k8s-coexistence">18. K8s Coexistence</h2>
-
-<p>If the K8s cluster from <code class="language-plaintext highlighter-rouge">k8s-proxmox</code> is deployed simultaneously, AASR and K8s workers compete
-for the same nodes and resources.</p>
-
-<p>Options:</p>
-<ol>
-  <li><strong>Time-share:</strong> Run AASR experiments during off-hours when K8s is idle</li>
-  <li><strong>Dedicated nodes:</strong> Reserve 2 P620 nodes for AASR, 2 for K8s workers</li>
-  <li><strong>Sequential:</strong> Deploy AASR first as standalone, add K8s later</li>
-</ol>
-
-<p><strong>Recommendation:</strong> Start with AASR standalone. Both projects share the same Ceph storage and
-network infrastructure.</p>
-
-<hr />
-
-<h2 id="19-repository-layout">19. Repository Layout</h2>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>aasr/
-  manager/
-    app.py                  # Flask + HTMX dashboard
-    ai_brain.py             # Provider abstraction (GitHub Models / Gemini)
-    scheduler.py            # Experiment orchestration loop
-    evaluator.py            # val_loss comparison and frontier promotion
-    models.py               # SQLAlchemy schema
-    templates/              # HTMX dashboard templates
-  worker/
-    train.py                # Training script (mutation sandbox)
-    prepare.py              # TinyStories data pipeline
-    gradio_monitor.py       # Live visualization (loss curves, GPU stats)
-    start.sh                # Worker boot: train → report → exit
-    requirements.txt
-  prompts/
-    program.md              # Human goals, hardware constraints, scoring objective
-    hardware_manifest.md    # AlteredCarbon hardware context for AI researcher
-  ops/
-    proxmox/
-      lxc-template.conf     # Gold Template LXC config (GPU passthrough)
-      create-core-services.sh
-    forgejo/
-      bootstrap-repo.sh
-  docs/
-    runbook.md
-    troubleshooting.md
-</code></pre></div></div>
-
-<hr />
-
-<h2 id="20-open-questions">20. Open Questions</h2>
-
-<ul class="task-list">
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Exact NVIDIA host + container driver version combination for Proxmox 8.4 kernel (6.8.12-18-pve)</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Whether <code class="language-plaintext highlighter-rouge">pct push</code> / <code class="language-plaintext highlighter-rouge">pct exec</code> is sufficient long-term or SSH-based orchestration is more reliable</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />CephFS read amplification impact on parallel worker throughput during training</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />GitHub Models rate limits per hour — max experiment frequency before throttling</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Whether <code class="language-plaintext highlighter-rouge">claude-sonnet-4-5</code> remains consistently available via GitHub Models</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Token cost accounting: monitor via <code class="language-plaintext highlighter-rouge">gh api user/copilot_usage</code></li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Whether K600 nodes (edgar) deliver enough signal to justify maintenance overhead</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Thermal telemetry source — can Proxmox sensor data be read from within an LXC, or must
-    Manager query host API?</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Parallel experiment git strategy — linear frontier vs. branching tournament selection</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Streaming responses: GitHub Models supports <code class="language-plaintext highlighter-rouge">stream=True</code> — consider surfacing reasoning
-    tokens in real-time on dashboard</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Dynamic memory balancing between system RAM and GPU VRAM across different models on older
-    hardware, especially with multiple AI providers in the mix</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Security of autonomously running AI-generated code on the cluster, even with LXC isolation —
-    review best practices periodically</li>
-</ul>
-
-<hr />
-
-<h2 id="21-blog-article-series">21. Blog Article Series</h2>
-
-<table>
-  <thead>
-    <tr>
-      <th>Part</th>
-      <th>Topic</th>
-      <th>Angle</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>1</td>
-      <td>Architecture</td>
-      <td>Manager-Worker pattern on legacy hardware</td>
-    </tr>
-    <tr>
-      <td>2</td>
-      <td>GPU Passthrough in LXC</td>
-      <td>NVIDIA P620 on Proxmox with ephemeral containers</td>
-    </tr>
-    <tr>
-      <td>3</td>
-      <td>The Evolutionary Git Loop</td>
-      <td>AutoResearch + Forgejo + Flask orchestration</td>
-    </tr>
-    <tr>
-      <td>4</td>
-      <td>Training on 2 GB VRAM</td>
-      <td>CPU offloading, micro-architectures, hardware-aware optimization</td>
-    </tr>
-    <tr>
-      <td>5</td>
-      <td>AI Provider Abstraction</td>
-      <td>GitHub Models, Gemini, and local models via one interface</td>
-    </tr>
-    <tr>
-      <td>6</td>
-      <td>Results</td>
-      <td>What the AI researcher actually discovered</td>
-    </tr>
-  </tbody>
-</table>
-
-<p>See <code class="language-plaintext highlighter-rouge">AME-GPT-EXPLORATION.md</code> for the companion AME series (GPT deep dive, 5 additional articles).</p>
-
-<hr />
-
-<h2 id="22-related-files">22. Related Files</h2>
-
-<table>
-  <thead>
-    <tr>
-      <th>File</th>
-      <th>Purpose</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><code class="language-plaintext highlighter-rouge">AME-GPT-EXPLORATION.md</code></td>
-      <td>AME companion project — GPT architecture deep dive</td>
-    </tr>
-    <tr>
-      <td><code class="language-plaintext highlighter-rouge">2026-07-01-aasr-project-series-overview.md</code></td>
-      <td>Series index article — five-part outline with key decisions per part</td>
-    </tr>
-    <tr>
-      <td><code class="language-plaintext highlighter-rouge">2026-07-01-aasr-proxmox-overview.md</code></td>
-      <td>Article draft — AASR Part 1 prose (nearest to publishable)</td>
-    </tr>
-  </tbody>
-</table>
-
-    <div class="more"><a href="/AASR-PROJECT/" title="Aasr Project">read more…</a></div>
-  </article>
 
 
 
   <footer>
     <a href="/page55">« newer posts</a>
-    <span>page 56 of 56</span>
-    <span class="disabled">older posts »</span>
+    <span>page 56 of 57</span>
+    <a href="/page57">older posts »</a>
   </footer>
 
 
@@ -3615,17 +2668,17 @@ network infrastructure.</p>
     <li>
       <time datetime="1999-12-31T00:00:00+00:00">1999-12-31</time>
       <svg aria-label="Draft" class="icon icon-status" title="Draft"><use xlink:href="/assets/fontawesome/icons.svg#pencil-alt"></use></svg>
+      <em><a href="/FASTAPI-NUTRITION-API/">Fastapi Nutrition Api</a></em>
+    </li>
+    <li>
+      <time datetime="1999-12-31T00:00:00+00:00">1999-12-31</time>
+      <svg aria-label="Draft" class="icon icon-status" title="Draft"><use xlink:href="/assets/fontawesome/icons.svg#pencil-alt"></use></svg>
       <em><a href="/DRAFTS/">Drafts</a></em>
     </li>
     <li>
       <time datetime="1999-12-31T00:00:00+00:00">1999-12-31</time>
       <svg aria-label="Draft" class="icon icon-status" title="Draft"><use xlink:href="/assets/fontawesome/icons.svg#pencil-alt"></use></svg>
       <em><a href="/AME-GPT-EXPLORATION/">Ame Gpt Exploration</a></em>
-    </li>
-    <li>
-      <time datetime="1999-12-31T00:00:00+00:00">1999-12-31</time>
-      <svg aria-label="Draft" class="icon icon-status" title="Draft"><use xlink:href="/assets/fontawesome/icons.svg#pencil-alt"></use></svg>
-      <em><a href="/AASR-PROJECT/">Aasr Project</a></em>
     </li>
     
   </ul>
@@ -3634,8 +2687,8 @@ network infrastructure.</p>
 
 <footer class="">
   <a class="gray" href="/page55">« newer posts</a>
-  <span>page 56 of 56</span>
-  <span class="disabled">older posts »</span>
+  <span>page 56 of 57</span>
+  <a class="gray" href="/page57">older posts »</a>
 </footer>
 
 
