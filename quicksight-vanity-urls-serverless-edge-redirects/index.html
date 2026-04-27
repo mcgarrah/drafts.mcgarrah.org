@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>QuickSight Vanity URLs: Serverless Edge Redirects with Terraform and CloudFront | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="QuickSight Vanity URLs: Serverless Edge Redirects with Terraform and CloudFront" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="A platform engineering case study — solving enterprise QuickSight login friction with a zero-origin CloudFront Function, packaged as a reusable Terraform module that costs pennies and requires zero maintenance." />
+<meta property="og:description" content="A platform engineering case study — solving enterprise QuickSight login friction with a zero-origin CloudFront Function, packaged as a reusable Terraform module that costs pennies and requires zero maintenance." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/quicksight-vanity-urls-serverless-edge-redirects/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/quicksight-vanity-urls-serverless-edge-redirects/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-04-25T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="QuickSight Vanity URLs: Serverless Edge Redirects with Terraform and CloudFront" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2026-04-26T00:00:00+00:00","datePublished":"2026-04-25T00:00:00+00:00","description":"A platform engineering case study — solving enterprise QuickSight login friction with a zero-origin CloudFront Function, packaged as a reusable Terraform module that costs pennies and requires zero maintenance.","headline":"QuickSight Vanity URLs: Serverless Edge Redirects with Terraform and CloudFront","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/quicksight-vanity-urls-serverless-edge-redirects/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/quicksight-vanity-urls-serverless-edge-redirects/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+
+
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = isDarkMode ? 'dark' : 'default';
+  mermaid.initialize({ startOnLoad: true, theme: theme });
+  await mermaid.run({ querySelector: '.language-mermaid' });
+</script>
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+
+<div style="background:#e67e00;color:#fff;text-align:center;padding:0.5em 1em;font-size:0.9em;font-weight:bold;">
+  ⚠ DRAFT PREVIEW SITE — unpublished content, may change.
+  <a href="https://mcgarrah.org" style="color:#fff;text-decoration:underline;margin-left:0.5em;">Go to the main site →</a>
+</div>
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/quicksight-vanity-urls-serverless-edge-redirects/">QuickSight Vanity URLs: Serverless Edge Redirects with Terraform and CloudFront</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-04-25T00:00:00+00:00">April 25, 2026</time><span class="reading-time">12 min read</span></header>
+
+  <p>In a large enterprise with multiple AWS accounts and regions, “Where do I log in to QuickSight?” generates more support tickets than it should. Users mix up environments, bookmark the wrong region, and ask which account alias to type every single time. Multiply that across hundreds of business analysts and data scientists, and you have real friction — the kind that erodes adoption of a platform you spent months building.</p>
+
+<p>As an IT Architect, I wasn’t looking for a quick fix. I wanted a <strong>zero-maintenance, zero-origin, near-zero-cost</strong> entry point that any team could adopt without becoming AWS networking experts. What makes this project personally satisfying is that it sits at the intersection of everything I do — Networking (Route 53), Security (CloudFront and ACM with zero attack surface), DevOps (Terraform module design), and Programming (dynamically generated JavaScript). It’s the kind of elegant solution that just feels right. What started as a manual proof-of-concept became a battle-tested Terraform module that has been running in production for over a year.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="the-identity-friction-problem">The Identity Friction Problem</h2>
+
+<p>QuickSight’s default sign-in page asks users to type their account name on every visit:</p>
+
+<p><img src="/assets/images/amazon-quicksight-sign-in.png" alt="QuickSight sign-in page requiring users to type their account name" /></p>
+
+<p>Without a vanity URL, users have to remember their directory alias, type it into this field, and then authenticate. With multiple QuickSight instances across regions or accounts, each one gets its own URL with the alias baked into query parameters. Sharing these with non-technical stakeholders is friction you don’t need.</p>
+
+<p>The goal: turn that manual step into a clean vanity domain that skips the account name prompt entirely with a 301 redirect:</p>
+
+<pre><code class="language-mermaid">flowchart LR
+    A["analytics.example.com"] --&gt;|301| B["quicksight.aws.amazon.com\n?region=us-east-1\n&amp;directory_alias=analytics"]
+    style A fill:#2d8659,color:#fff
+    style B fill:#ff9900,color:#fff
+</code></pre>
+
+<p>HTTPS, custom domain, no servers. The user bookmarks <code class="language-plaintext highlighter-rouge">analytics.example.com</code> and lands on the correct login page — right region, right directory — without ever seeing the account alias prompt.</p>
+
+<h2 id="the-journey-from-manual-to-module">The Journey: From Manual to Module</h2>
+
+<p>This solution didn’t start as a Terraform module. It evolved through three stages, each one paying down operational debt from the last.</p>
+
+<p><strong>Stage 1 — The Prototype.</strong> When we added a second QuickSight instance for non-prod testing alongside production, the URL problem went from annoying to unworkable. I manually configured a CloudFront distribution with a simple JavaScript function to prove the concept worked. It did — but it was a single point of knowledge with no version control and no way for other teams to replicate it.</p>
+
+<p><strong>Stage 2 — The Hardening.</strong> I moved the infrastructure into Terraform with static JavaScript embedded in the configuration. This eliminated drift and made the deployment reproducible, but the redirect map was still hand-coded. Adding a new domain meant editing JavaScript by hand inside HCL — error-prone and not something I’d hand to another team.</p>
+
+<p><strong>Stage 3 — The Platform Primitive.</strong> The final step was abstracting the entire pattern into a reusable Terraform module. The redirect map is now generated dynamically from HCL variables using <code class="language-plaintext highlighter-rouge">jsonencode()</code>. Input validation catches misconfigurations before <code class="language-plaintext highlighter-rouge">terraform apply</code>. Any team in the company can deploy a professional vanity URL in minutes without understanding CloudFront internals.</p>
+
+<p>After a year in production with multiple QuickSight instances, this architecture has required <strong>zero maintenance windows</strong>, zero patching, and zero manual intervention. While other teams were patching Nginx vulnerabilities or rotating Lambda runtimes, this CloudFront Function sat silently at the edge handling every request.</p>
+
+<h2 id="why-not-ec2-lambda-or-lambdaedge">Why Not EC2, Lambda, or Lambda@Edge?</h2>
+
+<p>Before landing on CloudFront Functions, I evaluated the alternatives. Each one solves the redirect problem but carries costs — in dollars, in maintenance, or both — that don’t match the simplicity of the task.</p>
+
+<p><strong>EC2 with Nginx or Caddy</strong> was the first suggestion from the team. A reverse proxy can certainly issue 301 redirects. But a VM running 24/7 for a handful of HTTP redirects is wasteful. To make it production-grade, you need an Auto Scaling Group behind an Application Load Balancer — suddenly your “simple redirect” costs $20+/month in idle ALB fees alone, plus the ongoing burden of OS patching, security group audits, SSH key management, and AMI updates. Every EC2 instance is a liability: it has an OS to exploit, ports to scan, and a patching cycle that never ends.</p>
+
+<p><strong>API Gateway with Lambda</strong> eliminates the server but introduces its own complexity. You’re paying for API Gateway request pricing, Lambda invocation and duration, and you’re managing a deployment pipeline for a function whose entire job is to return a Location header. Cold starts add latency to what should be an instantaneous redirect.</p>
+
+<p><strong>Lambda@Edge</strong> gets closer — it runs at CloudFront edge locations — but it’s still heavier than needed. Lambda@Edge functions run in a full Node.js or Python runtime, have cold start penalties, cost more per invocation than CloudFront Functions, and are limited to specific CloudFront events. For a stateless 301 redirect that inspects a single header, it’s overkill.</p>
+
+<p><strong>CloudFront Functions</strong> are purpose-built for this. They run at the viewer-request stage in a lightweight JavaScript runtime, execute in sub-millisecond time, have no cold starts, and cost a fraction of Lambda@Edge. There is no origin to contact, no runtime to patch, and no concurrency limits to worry about.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Approach</th>
+      <th>Monthly Cost</th>
+      <th>Maintenance</th>
+      <th>Latency</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>EC2 + Nginx/Caddy (with ALB)</td>
+      <td>~$20+</td>
+      <td>OS patching, security audits, AMI updates</td>
+      <td>Milliseconds (origin round-trip)</td>
+    </tr>
+    <tr>
+      <td>API Gateway + Lambda</td>
+      <td>~$1-3</td>
+      <td>Runtime updates, deployment pipeline</td>
+      <td>Variable (cold starts)</td>
+    </tr>
+    <tr>
+      <td>Lambda@Edge</td>
+      <td>~$0.50-2</td>
+      <td>Runtime updates, regional replication</td>
+      <td>Low (but cold starts)</td>
+    </tr>
+    <tr>
+      <td><strong>CloudFront Function</strong></td>
+      <td><strong>$0.00 - $0.06</strong></td>
+      <td><strong>None</strong></td>
+      <td><strong>Sub-millisecond</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>CloudFront pricing for HTTPS requests in North America and Europe is $0.01 per 10,000 requests. The Always Free tier covers the first 10 million requests per month. For redirect traffic, you will likely never leave the free tier. ACM certificates are free. Route 53 hosted zone costs $0.50/month (which you’re already paying if you have the domain).</p>
+
+<p>After a year of production use, the CloudFront costs for all redirects combined were under <strong>$0.06 per month</strong>. Most months it rounds to zero.</p>
+
+<h2 id="architecture-the-no-origin-pattern">Architecture: The No-Origin Pattern</h2>
+
+<pre><code class="language-mermaid">flowchart LR
+    Browser --&gt;|HTTPS| R53["Route 53\nA + AAAA records"]
+    R53 --&gt;|alias| CF["CloudFront\nDistribution"]
+    CF --&gt;|viewer-request| CFF["CloudFront Function\n301 redirect"]
+    ACM["ACM Certificate\nus-east-1"] -.-&gt;|TLS| CF
+    CFF --&gt;|Location header| QS["QuickSight"]
+</code></pre>
+
+<p>The architecture is deliberately minimal:</p>
+
+<ol>
+  <li>Route 53 A and AAAA records alias your custom domains to a single CloudFront distribution (dual-stack IPv4/IPv6).</li>
+  <li>ACM provides HTTPS for all configured domains. The certificate must be in <code class="language-plaintext highlighter-rouge">us-east-1</code> because CloudFront is a global service.</li>
+  <li>The CloudFront Function inspects the <code class="language-plaintext highlighter-rouge">Host</code> header and returns a 301 redirect to the appropriate QuickSight URL.</li>
+  <li>The origin is set to a dummy value (<code class="language-plaintext highlighter-rouge">none.none</code>) — <strong>it is never contacted</strong>.</li>
+</ol>
+
+<p>That last point is the key architectural decision. CloudFront requires an origin to be configured, but since the function intercepts every request at the viewer-request stage and returns a redirect before the request ever reaches an origin, no origin server exists. Setting it to <code class="language-plaintext highlighter-rouge">none.none</code> makes this explicit.</p>
+
+<p>From a security perspective, this is ideal: <strong>if there is no server, there is no attack surface.</strong> No OS to exploit, no ports to scan, no containers to escape, no patching cycle. The entire redirect engine exists as a few lines of JavaScript running in an isolated edge runtime managed by AWS.</p>
+
+<h2 id="dynamic-logic-generation">Dynamic Logic Generation</h2>
+
+<p>The CloudFront Function itself is minimal. What makes the module work is how Terraform generates it. The redirect map is built at deploy time using <code class="language-plaintext highlighter-rouge">jsonencode()</code>, which safely escapes all values and prevents injection:</p>
+
+<div class="language-javascript highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">function</span> <span class="nf">handler</span><span class="p">(</span><span class="nx">event</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">redirects</span> <span class="o">=</span> <span class="p">{</span><span class="dl">"</span><span class="s2">analytics.example.com</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">https://quicksight.aws.amazon.com/?region=us-east-1&amp;directory_alias=analytics</span><span class="dl">"</span><span class="p">,</span><span class="dl">"</span><span class="s2">reporting.example.com</span><span class="dl">"</span><span class="p">:</span><span class="dl">"</span><span class="s2">https://quicksight.aws.amazon.com/?region=us-west-2&amp;directory_alias=reporting</span><span class="dl">"</span><span class="p">};</span>
+    <span class="kd">var</span> <span class="nx">host</span> <span class="o">=</span> <span class="nx">event</span><span class="p">.</span><span class="nx">request</span><span class="p">.</span><span class="nx">headers</span><span class="p">.</span><span class="nx">host</span><span class="p">.</span><span class="nx">value</span><span class="p">;</span>
+    <span class="kd">var</span> <span class="nx">newurl</span> <span class="o">=</span> <span class="nx">redirects</span><span class="p">[</span><span class="nx">host</span><span class="p">]</span> <span class="o">||</span> <span class="dl">"</span><span class="s2">https://quicksight.aws.amazon.com</span><span class="dl">"</span><span class="p">;</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="na">statusCode</span><span class="p">:</span> <span class="mi">301</span><span class="p">,</span>
+        <span class="na">statusDescription</span><span class="p">:</span> <span class="dl">"</span><span class="s2">Moved Permanently</span><span class="dl">"</span><span class="p">,</span>
+        <span class="na">headers</span><span class="p">:</span> <span class="p">{</span> <span class="na">location</span><span class="p">:</span> <span class="p">{</span> <span class="na">value</span><span class="p">:</span> <span class="nx">newurl</span> <span class="p">}</span> <span class="p">}</span>
+    <span class="p">};</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Unmatched hostnames fall back to the base QuickSight URL rather than returning an error. The <code class="language-plaintext highlighter-rouge">cloudfront-js-2.0</code> runtime is the current CloudFront Functions runtime.</p>
+
+<p>The redirect map is baked into the function code at deploy time. This means adding a new domain requires a <code class="language-plaintext highlighter-rouge">terraform apply</code>, but it also means there is no external lookup, no latency, and no failure mode at runtime. The JavaScript is always a perfect reflection of the Terraform state.</p>
+
+<p>All input variables include validation blocks to catch misconfiguration before <code class="language-plaintext highlighter-rouge">apply</code>:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">name_prefix</code> — alphanumeric and hyphens only (prevents injection into resource names)</li>
+  <li><code class="language-plaintext highlighter-rouge">r53_hosted_zone_id</code> — must match the <code class="language-plaintext highlighter-rouge">Z...</code> format of a valid hosted zone ID</li>
+  <li><code class="language-plaintext highlighter-rouge">acm_certificate_arn</code> — must be a valid ACM ARN in <code class="language-plaintext highlighter-rouge">us-east-1</code> specifically</li>
+  <li><code class="language-plaintext highlighter-rouge">redirects</code> domain keys — validated as proper hostnames</li>
+  <li><code class="language-plaintext highlighter-rouge">aws_region</code> values — lowercase alphanumeric and hyphens only</li>
+  <li><code class="language-plaintext highlighter-rouge">directory_alias</code> values — alphanumeric and hyphens only</li>
+</ul>
+
+<p>These validations are the guardrails that make self-service possible. A data science team or a business unit can deploy their own vanity URL without needing to understand CloudFront internals — the module catches their mistakes before anything reaches AWS.</p>
+
+<h2 id="using-the-module">Using the Module</h2>
+
+<p>The module is published on the <a href="https://registry.terraform.io/modules/mcgarrah/quicksight-redirect/aws/latest">Terraform Registry</a>. A single module instance handles multiple domains through one CloudFront distribution:</p>
+
+<div class="language-hcl highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nx">module</span> <span class="s2">"quicksight_redirects"</span> <span class="p">{</span>
+  <span class="nx">source</span>  <span class="o">=</span> <span class="s2">"mcgarrah/quicksight-redirect/aws"</span>
+  <span class="nx">version</span> <span class="o">=</span> <span class="s2">"~&gt; 1.0.1"</span>
+
+  <span class="nx">name_prefix</span>         <span class="o">=</span> <span class="s2">"quicksight"</span>
+  <span class="nx">r53_hosted_zone_id</span>  <span class="o">=</span> <span class="nx">var</span><span class="p">.</span><span class="nx">r53_hosted_zone_id</span>
+  <span class="nx">acm_certificate_arn</span> <span class="o">=</span> <span class="nx">var</span><span class="p">.</span><span class="nx">acm_certificate_arn</span>
+
+  <span class="nx">redirects</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"analytics.example.com"</span> <span class="p">=</span> <span class="p">{</span>
+      <span class="nx">aws_region</span>      <span class="o">=</span> <span class="s2">"us-east-1"</span>
+      <span class="nx">directory_alias</span> <span class="o">=</span> <span class="s2">"analytics"</span>
+    <span class="p">}</span>
+    <span class="s2">"reporting.example.com"</span> <span class="p">=</span> <span class="p">{</span>
+      <span class="nx">aws_region</span>      <span class="o">=</span> <span class="s2">"us-west-2"</span>
+      <span class="nx">directory_alias</span> <span class="o">=</span> <span class="s2">"reporting"</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Works just as well with a single redirect — remove the second entry and you’re done. To pin to an exact version:</p>
+
+<div class="language-hcl highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nx">module</span> <span class="s2">"quicksight_redirect"</span> <span class="p">{</span>
+  <span class="nx">source</span>  <span class="o">=</span> <span class="s2">"mcgarrah/quicksight-redirect/aws"</span>
+  <span class="nx">version</span> <span class="o">=</span> <span class="s2">"1.0.1"</span>
+  <span class="c1"># ...</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="aws-resources-created">AWS Resources Created</h3>
+
+<p>The module creates a small, well-defined set of resources:</p>
+
+<ul>
+  <li><strong>Route 53 A and AAAA records</strong> — one pair per domain, all aliased to the same CloudFront distribution</li>
+  <li><strong>CloudFront distribution</strong> — single distribution with the dummy origin and <code class="language-plaintext highlighter-rouge">PriceClass_100</code> (North America and Europe)</li>
+  <li><strong>CloudFront cache policy</strong> — forwards the <code class="language-plaintext highlighter-rouge">Host</code> header so the function can route by hostname</li>
+  <li><strong>CloudFront Function</strong> — the 301 redirect logic</li>
+  <li><strong>S3 bucket</strong> <em>(optional)</em> — created only when <code class="language-plaintext highlighter-rouge">enable_access_logging = true</code>, with AES256 encryption, public access blocked, and 90-day log expiration</li>
+</ul>
+
+<h3 id="access-logging">Access Logging</h3>
+
+<p>Logging is off by default. When you need it, there are two modes:</p>
+
+<p><strong>Managed bucket</strong> — the module creates and manages an S3 bucket:</p>
+
+<div class="language-hcl highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nx">enable_access_logging</span> <span class="o">=</span> <span class="kc">true</span>
+<span class="nx">access_log_prefix</span>     <span class="o">=</span> <span class="s2">"quicksight/"</span>
+</code></pre></div></div>
+
+<p><strong>Bring your own bucket</strong> — for teams that need SSE-KMS, custom lifecycle policies, or centralized logging:</p>
+
+<div class="language-hcl highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nx">enable_access_logging</span>         <span class="o">=</span> <span class="kc">true</span>
+<span class="nx">access_log_bucket_domain_name</span> <span class="o">=</span> <span class="nx">aws_s3_bucket</span><span class="err">.</span><span class="nx">my_log_bucket</span><span class="err">.</span><span class="nx">bucket_regional_domain_name</span>
+<span class="nx">access_log_prefix</span>             <span class="o">=</span> <span class="s2">"quicksight/"</span>
+</code></pre></div></div>
+
+<p>The external bucket must have ACLs enabled with <code class="language-plaintext highlighter-rouge">BucketOwnerPreferred</code> object ownership and the <code class="language-plaintext highlighter-rouge">log-delivery-write</code> canned ACL. Rather than exposing every S3 configuration option as a module variable, the bring-your-own-bucket model lets callers configure the bucket exactly as their organization requires.</p>
+
+<h2 id="things-worth-knowing">Things Worth Knowing</h2>
+
+<p>A few non-obvious details that tripped me up during development:</p>
+
+<p><strong>The ACM certificate must be in <code class="language-plaintext highlighter-rouge">us-east-1</code>.</strong> CloudFront is a global service and only reads certificates from <code class="language-plaintext highlighter-rouge">us-east-1</code>, regardless of where you deploy everything else. The variable validation enforces this, but it is worth understanding why.</p>
+
+<p><strong>The module does not declare a provider or backend.</strong> This is intentional Terraform module hygiene — the caller configures those. If you are deploying from a region other than <code class="language-plaintext highlighter-rouge">us-east-1</code>, you may need a provider alias for ACM certificate creation.</p>
+
+<p><strong><code class="language-plaintext highlighter-rouge">PriceClass_100</code> limits edge locations to North America and Europe.</strong> If your users are primarily in those regions, this is the right default. Change it to <code class="language-plaintext highlighter-rouge">PriceClass_All</code> if you need global coverage.</p>
+
+<h2 id="business-impact">Business Impact</h2>
+
+<p>The numbers on this project are small in absolute terms, but the ratios tell the real story:</p>
+
+<p><strong>Cost optimization.</strong> Shifting from $20+/month (EC2 behind an ALB) to under $0.06/month is a 99.7% reduction. Scale that pattern across dozens of internal tools that need vanity URLs and the savings compound. More importantly, the human capital savings are significant — zero maintenance means zero engineering hours spent on patching, monitoring, and troubleshooting a proxy server.</p>
+
+<p><strong>User experience.</strong> The “Account Alias” prompt and regional confusion disappear entirely. Users bookmark a clean domain and land on the correct login page every time. Adoption of QuickSight dashboards improved because the barrier to entry dropped to a single URL.</p>
+
+<p><strong>Governance and standardization.</strong> In a large organization, teams building their own haphazard redirect solutions — an Nginx container here, a Lambda there — is a security and compliance risk. A published Terraform module provides a blessed path: every team gets HTTPS via ACM, proper DNS via Route 53, and a consistent architectural pattern without anyone having to police them.</p>
+
+<p><strong>Time to value.</strong> Without this module, a team might spend days figuring out CloudFront, ACM certificate requirements, and Route 53 aliases. With it, they spend five minutes writing a <code class="language-plaintext highlighter-rouge">redirects</code> block and running <code class="language-plaintext highlighter-rouge">terraform apply</code>.</p>
+
+<h2 id="beyond-quicksight">Beyond QuickSight</h2>
+
+<p>While this module is laser-focused on QuickSight, the underlying pattern — Route 53, CloudFront Functions, no origin — is a general-purpose serverless redirect engine. The same architecture could solve:</p>
+
+<ul>
+  <li><strong>Legacy URL migrations</strong> during domain consolidation or company mergers, replacing old servers kept alive solely to issue 301 redirects</li>
+  <li><strong>Vanity domain management</strong> for marketing campaigns, partner portals, or multi-brand organizations</li>
+  <li><strong>Microservice routing</strong> where hostname-based dispatch needs to happen at the edge before traffic reaches the application layer</li>
+</ul>
+
+<p>The pattern works anywhere you need hostname-based routing at global scale with zero infrastructure to manage. I kept this module focused on QuickSight because focused tools are more reliable than generic ones — but the blueprint is there for anyone who needs it.</p>
+
+<p>The best architecture is the kind you never have to think about again. This is one of those.</p>
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://github.com/mcgarrah/terraform-aws-quicksight-redirect">terraform-aws-quicksight-redirect</a> — Source code on GitHub</li>
+  <li><a href="https://registry.terraform.io/modules/mcgarrah/quicksight-redirect/aws/latest">mcgarrah/quicksight-redirect/aws</a> — Terraform Registry</li>
+  <li><a href="https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/cloudfront-functions.html">CloudFront Functions</a> — AWS documentation</li>
+  <li><a href="https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/edge-functions.html">CloudFront Functions vs Lambda@Edge</a> — AWS comparison guide</li>
+  <li><a href="https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/cnames-and-https-requirements.html">ACM Certificate Requirements for CloudFront</a> — Why us-east-1 is required</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/aws/">aws</a>, 
+        
+          <a href="/tags/terraform/">terraform</a>, 
+        
+          <a href="/tags/quicksight/">quicksight</a>, 
+        
+          <a href="/tags/cloudfront/">cloudfront</a>, 
+        
+          <a href="/tags/route53/">route53</a>, 
+        
+          <a href="/tags/acm/">acm</a>, 
+        
+          <a href="/tags/infrastructure-as-code/">infrastructure-as-code</a>, 
+        
+          <a href="/tags/platform-engineering/">platform-engineering</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/cloud/">cloud</a>, 
+        
+          <a href="/categories/aws/">aws</a>, 
+        
+          <a href="/categories/terraform/">terraform</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>
