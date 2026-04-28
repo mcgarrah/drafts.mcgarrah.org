@@ -147,6 +147,130 @@
   <article class="post-preview-unpublished">
     <header>
   <h1>
+    <a href="/FASTAPI-DATASRCS/">Fastapi Datasrcs</a>
+    <svg aria-label="Draft" class="icon icon-status" title="Draft"><use xlink:href="/assets/fontawesome/icons.svg#pencil-alt"></use></svg>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-04-28T17:48:17+00:00">April 28, 2026</time><span class="reading-time">14 min read</span></header>
+
+    <h1 id="additional-free--open-food-data-sources-to-complement-usda-fdc--open-food-facts">Additional Free &amp; Open Food Data Sources to Complement USDA FDC &amp; Open Food Facts</h1>
+
+<p>To bolster data quality and coverage in your food intelligence API, consider integrating other open-access nutrition datasets. Each adds unique value in terms of geographic coverage, data collection methods, or nutrient details. Below are several recommended sources, along with their content, access methods, and strengths/limitations. These resources can be layered into your reconciliation model with appropriate confidence weighting (e.g. giving higher weight to lab-analyzed official data, but still leveraging crowdsourced breadth).</p>
+
+<h2 id="food-data-sources">Food Data Sources</h2>
+
+<h3 id="canadian-nutrient-file-cnf--canadas-official-database-open-api">Canadian Nutrient File (CNF) – Canada’s Official Database (Open API)</h3>
+
+<p>What it is: The Canadian Nutrient File is Health Canada’s standard reference for nutrients in foods commonly consumed in Canada. It’s comparable to USDA’s database but tailored to Canadian food items and fortification standards.</p>
+
+<p>Access: Offers a free, public REST API (JSON/XML) in English &amp; French, enabling easy integration and automated queries. The API returns detailed food entries by ID (with descriptions, serving sizes, and full nutrient profiles) and includes endpoints for nutrient lists and groups.</p>
+
+<p>Strengths: High-quality government-validated data, updated by Health Canada, under an Open Government Licence. Provides an international cross-check for US data – useful for verifying values and capturing foods or formulations specific to Canada (e.g. Canadian food products, different fortification or recipe variations). Bilingual data may help with multi-language support.</p>
+
+<p>Limitations: Focused on Canadian market; fewer branded items than USDA FDC. For many basic foods, CNF and USDA values will be very similar, so discrepancies might reflect real differences (e.g. due to regional fortification policies or analysis methods). You’ll need to handle unique food identifiers (CNF has its own food codes, not UPCs), meaning you’d map a GTIN to a CNF <code class="language-plaintext highlighter-rouge">food_code</code> via some reference if available (for generic foods, likely by name matching).</p>
+
+<p>Use in Reconciliation: Treat CNF as another high-confidence source for nutrient values. For example, if a particular food (especially a raw ingredient or generic food) exists in both USDA and CNF, you can compare their nutrient values. Consistent values increase confidence; any large divergence might flag a need for closer review or averaging. For Canadian-branded products, CNF could supply data if USDA FDC lacks them.</p>
+
+<h3 id="uk-composition-of-foods-cofid--united-kingdoms-nutrient-dataset">UK Composition of Foods (CoFID) – United Kingdom’s Nutrient Dataset</h3>
+
+<p>What it is: McCance &amp; Widdowson’s Composition of Foods Integrated Dataset (CoFID) is the UK’s official nutrient database. It consolidates decades of lab analyses on foods commonly consumed in the UK into one spreadsheet. Last updated in 2021 by Public Health England, it contains thousands of foods (raw ingredients, prepared dishes, beverages, etc.) with extensive nutrient profiles.</p>
+
+<p>Access: Available as a free downloadable Excel/CSV dataset via the UK government website. There’s no direct API, but you can load the dataset into a database or in-memory data structure for quick lookups. Each food has a unique ID and description; many entries are generic (e.g., “Milk, whole, pasteurized”). No direct barcode/GTINs, but you could map branded products to these generic entries by name or category.</p>
+
+<p>Strengths: Authoritative data source for nutrients, regularly updated with new lab analyses of foods in the UK food supply. It includes some foods or recipes not in USDA (like regional dishes or UK-specific products), and can reveal differences caused by regional production or fortification (e.g., UK vs US iron enrichment in flour). CoFID is comprehensive in nutrients (covering vitamins, minerals, amino acids, etc.), often more so than what’s on a nutrition label.</p>
+
+<p>Limitations: Static dataset (periodic updates every few years) and no product images or brand info (not aimed at commercial products). Some values might conflict with USDA/OFF due to different measurement methods or sample sources. Also, UK measures may use metric units and UK labeling conventions (e.g. fiber in UK is measured differently than in US). There may be foods with no direct GTIN link, so use is mainly for cross-checking unbranded or generic foods.</p>
+
+<p>Use in Reconciliation: Use CoFID as a secondary high-quality reference for nutrient values. For example, if your API is asked about “butter” or a generic food, you might pull data from both USDA and CoFID to compare. In an automated system, you could map English food description keywords to find potential matches in CoFID and highlight any major inconsistencies in nutrient data. Because CoFID is trusted, an agreement between CoFID and USDA can boost confidence, while discrepancies might lower confidence or trigger further inspection.</p>
+
+<h3 id="french-food-composition-table-ciqual">French Food Composition Table (CIQUAL)</h3>
+
+<p>What it is: CIQUAL is the official French food composition database maintained by ANSES (France’s food safety agency). It provides the average nutrient composition of hundreds of foods commonly consumed in France. It’s analogous to USDA’s SR database but for French dietary items.</p>
+
+<p>Access: Freely available under the French government’s Open License. Data can be downloaded (Excel/CSV) from ANSES or data.gouv.fr in French. There’s no native API, but the data is open for reuse. Some community projects (e.g., on GitHub) have parsed CIQUAL and even provided SQL or JSON versions for convenience.</p>
+
+<p>Strengths: Scientifically vetted data, especially useful for European food items or ingredients that may not appear in USDA or have different typical values in Europe. CIQUAL is continuously updated with local analyses, and it’s considered an authoritative source in France. It includes certain cheeses, pastries, and charcuterie products specific to French cuisine, with full nutrient profiles.</p>
+
+<p>Limitations: Data is in French (food descriptions, sometimes units), which may require translation or careful handling. The scope is primarily raw and generic foods; branded product coverage is minimal. Also, some nutrients are reported per 100g, others per portion, which might need normalization. As with other static tables, integration means managing your own copy of the data.</p>
+
+<p>Use in Reconciliation: CIQUAL can bolster international accuracy. In a reconciliation system, you could use it when a product’s origin or locale is European/French (to check if, for example, a croissant’s fat content from USDA vs. CIQUAL differ). In a confidence model, CIQUAL would be another high-confidence node for nutrient data; if both USDA and CIQUAL (and perhaps OFF’s label data) concur on a value, you can be more confident it’s correct. CIQUAL might also help identify discrepancies in vitamins or minerals for similar foods due to its regional data.</p>
+
+<h3 id="australian-food-composition-database-afcd--australias-official-nutrient-data">Australian Food Composition Database (AFCD) – Australia’s Official Nutrient Data</h3>
+
+<p>What it is: Australia’s reference food composition data, formerly known as NUTTAB, now the AFCD. It includes detailed nutrient information for ~1,500 foods common in Australia, with up to 268 nutrients per food in some cases – one of the most comprehensive nutrient datasets per food item.</p>
+
+<p>Access: Bulk dataset available via Australian government open data portals. Typically provided as CSV/Excel or a database file through FSANZ (Food Standards Australia New Zealand) or data.gov.au. Like CoFID, it’s a static dataset updated periodically (e.g., the current release was updated in 2023, with a major refresh in 2025). No public real-time API is documented, so you’d treat it as a reference database.</p>
+
+<p>Strengths: High data quality – values are derived from direct chemical analysis or official sources, making it a gold standard in its region. It includes foods unique to Australasian diets (e.g., kangaroo meat, local fish species, etc.) and can improve international coverage. The large number of nutrients means it covers many vitamins, minerals, and trace components, giving a deeper nutritional profile for each food than what package labels typically show.</p>
+
+<p>Limitations: The dataset focuses on Australian foods; branded products are limited. Naming conventions might differ (e.g., “soft drink, cola, regular” vs “soda, cola”). Integration requires downloading and mapping the data to your model. Also, because it’s a static dataset, you must watch for updates from FSANZ and refresh your copy accordingly.</p>
+
+<p>Use in Reconciliation: Similar to CoFID, the AFCD can serve as a verification layer for nutrient values in raw or generic foods. For instance, if Open Food Facts or USDA give a certain vitamin content for “salmon, raw,” you could cross-check against AFCD’s value for raw salmon. If you’re building a confidence scoring system, agreement between multiple official sources (USDA, CNF, AFCD, etc.) could yield a high-confidence rating, whereas disparity might decrease confidence or prompt using an average or choosing the majority value.</p>
+
+<h3 id="open-food-repo--swiss-open-product-database-crowdsourced">Open Food Repo – Swiss Open Product Database (Crowdsourced)</h3>
+
+<p>What it is: Open Food Repo (FoodRepo) is a community-driven open database of barcoded food products, initially focused on Switzerland. It’s similar to Open Food Facts in that volunteers and organizations contribute product information (ingredients, nutrition labels, images) for grocery items.</p>
+
+<p>Access: Provides a fully open REST API (no API key required). All data is accessible under a Creative Commons (open data) license. As of this writing, FoodRepo contains about 380k products (with global UPC/EAN barcodes) and has served millions of API requests. Integration is straightforward via HTTP GET by barcode, and they also offer an official Python client on GitHub.</p>
+
+<p>Strengths: Breadth of product data with images. It can serve as a secondary crowdsourced source to cross-check Open Food Facts data. FoodRepo’s dataset, while smaller than OFF’s 3M+ products, may have higher data consistency for certain regions and robust image and ingredient details (the project emphasizes high-quality images and data verification through community oversight). It’s also entirely open-source and transparent, which aligns with your project’s ethos.</p>
+
+<p>Limitations: Coverage is narrower (heavily European focus, especially Swiss market products). Also, like any crowdsourced database, data accuracy can vary; some entries might be incomplete or outdated if not frequently updated by volunteers. There is overlap with Open Food Facts (some data might be duplicated between OFF and FoodRepo), so you’d need to handle potential duplicates or conflicts when using both.</p>
+
+<p>Use in Reconciliation: Use FoodRepo as an additional crowdsourced validation step. For instance, if a product’s barcode is found on both OFF and FoodRepo, you can compare critical fields (e.g., nutrient values, ingredients list). Agreement between the two can increase confidence in crowdsourced data; discrepancies (like different nutrition facts) might indicate a recently reformulated product or an entry error on one platform. FoodRepo’s images can also be a fallback if OFF lacks an image URL for a product. In a confidence model, you might weight FoodRepo and OFF similarly, but give them lower weight than USDA or other official sources for nutrition values.</p>
+
+<h3 id="other-notable-open-data-sources">Other Notable Open Data Sources</h3>
+
+<p>Beyond the above, several specialized or regional datasets can further enhance your API:</p>
+
+<ul>
+  <li>International/FAO Datasets: The FAO’s INFOODS network compiles food composition tables for various regions (e.g., West African Food Composition Table 2019, Latin American, Asian datasets). These are available as Excel/PDF downloads. While not as easily integrated via API, they offer insights into local foods (e.g., staple crops, indigenous foods) and nutritional variations in different geographical regions, which could be useful for a truly global application.</li>
+  <li>Scientific Databases (Food Components): FooDB is a free (for research) database focusing on food components and bioactive compounds. It links foods with detailed chemical composition, metabolites, and bioactive compounds beyond standard nutrients. This can enrich your API’s data on phytochemicals, flavor compounds, or food processing effects. However, it’s more complex (not GTIN-based) and uses a Creative Commons non-commercial license, so it’s ideal for research or internal use rather than a public commercial API.</li>
+  <li>Additional Crowdsourced/Commercial APIs: There are also free-tier JSON APIs like Chomp or Nutritionix that aggregate nutrition label data for hundreds of thousands of products. For example, Chomp claims 875k+ foods, merging data from labels and other sources. These can provide another point of comparison for nutrition facts or UPC lookups. However, note that these are often maintained by companies; while they may offer free access (with an API key) up to certain limits, the data licensing might not be fully “open.” Still, they can serve as a supplemental check for anomalies (e.g., if both OFF and Chomp agree on a value that conflicts with USDA, it could indicate a labeling difference worth investigating).</li>
+</ul>
+
+<p>Use in Reconciliation: These sources can be integrated on a case-by-case basis. For instance, if a user scans a food product from a country outside the U.S. and it’s not found in USDA or OFF, your system could query the relevant national database (if available) or an international table for a generic equivalent. Scientific databases like FooDB can’t be queried by brand or UPC, but could enrich the API’s data model (e.g., listing specific compounds or providing alternative calculated nutrient values for raw foods). Each source should be tagged and possibly scored for confidence: e.g., government sources (USDA, CNF, CoFID, FSANZ, etc.) as high confidence for core nutrients, crowdsourced sources (OFF, FoodRepo) as moderate confidence to fill in details and images, and semi-curated commercial APIs or research databases as contextual or low-confidence unless verified. By combining multiple references, you can implement a robust reconciliation strategy where concordant data is accepted, and discordant data triggers flags or averaging algorithms for safety.</p>
+
+<h2 id="integration-strategy-ranking-and-confidence">Integration Strategy: Ranking and Confidence</h2>
+
+<p>When adding these sources to your FastAPI project, consider a layered approach similar to what you’ve done with USDA and OFF:</p>
+
+<ul>
+  <li>Primary “Source of Truth”: Official datasets – Continue to treat USDA FoodData Central as primary for nutrition in US products. Augment it with other high-credibility databases (Canada’s CNF, CoFID, etc.) for international or generic foods. These sources can be integrated via bulk data loads or their APIs. Because they’re rigorously analyzed, you’d typically trust these values the most. In a confidence model, they’d receive the highest weight. Also, using multiple official sources can reveal analytical differences – for example, if USDA says 3.5g fiber for a food vs. CoFID says 3.2g, both might be “correct” within lab measurement variance. But if one official source has data for a nutrient that another lacks, that might justify including it with a note on its origin.</li>
+  <li>Secondary “Broad Coverage”: Crowdsourced product databases – Open Food Facts and Food Repo together give you a wide net for branded products globally (millions of products when combined). They excel at providing brand names, ingredient lists, and images. You’ll use them as fallback for any GTIN not found in the official databases, and to retrieve attributes like packaging or allergens that official sources don’t capture. In a confidence scheme, you might mark these as lower confidence for nutrient accuracy (since they rely on user-contributed or manufacturer label data, which can have errors). However, their sheer coverage is a huge asset – they ensure your API rarely returns “not found.” You can boost confidence by cross-verifying crowdsourced entries against each other (e.g., if OFF and FoodRepo independently list the same values for a product’s nutrients, it likely means multiple people confirmed it). [freeapihub.com]</li>
+  <li>Supplementary “Niche” Data – Depending on your goals, you could integrate specialized data:
+    <ul>
+      <li>Other Countries’ Databases: Incorporate data from additional countries for regional foods (e.g., Japanese, Indian, or Latin American composition tables via INFOODS). This is useful if your API aims to be globally comprehensive.</li>
+      <li>Regulatory Data: Some regions publish official lab analysis of branded foods (e.g., EU or national agencies testing products for compliance). For example, the USDA Global Branded Foods Dataset itself is an industry-provided repository of label data, including ingredients and serving sizes, for brand-name foods in the US and beyond. This is actually part of FoodData Central now, contributed via a partnership with GS1 and food manufacturers. Similar initiatives exist elsewhere (though not always open). If accessible, such datasets provide authoritative label data to compare against crowdsourced values. [iafns.org]</li>
+      <li>Ingredient &amp; Allergen Databases: To deepen ingredient and allergen cross-checks, you might use resources like the FDA’s Food Additive Status List or the EU’s EFSA compendium of additives, which are public domain lists of ingredients and E-numbers. These aren’t product databases, but they can help validate whether an ingredient from OFF/Repo is recognized, and even flag if a banned or unexpected additive appears in a product.</li>
+      <li>Scientific reference data: Projects like FoodAtlas (a USDA-NSF funded open research database) are emerging, combining multiple sources and literature into a knowledge graph of food composition. For instance, FoodAtlas v4 (2026) compiles evidence-based data from literature and databases, providing a rich, traceable source of nutrient information (with references for each data point). Such resources could be used for cross-verification or to provide a “most likely” value when consumer-reported data diverges. [foodatlas.ai]</li>
+    </ul>
+  </li>
+</ul>
+
+<p>By incorporating a diverse ecosystem of data sources, your FastAPI project can implement a multi-faceted reconciliation:</p>
+
+<ul>
+  <li>If one source lacks data for a query, another source can fill the gap (e.g., a European product not in USDA might be in Open Food Facts or CIQUAL).</li>
+  <li>If multiple sources have the same data, confidence in that data increases. Your API could indicate this (e.g., “multiple sources confirmed this value”).</li>
+  <li>If sources disagree, your system can apply rules (for example: default to the official source, but flag the discrepancy and possibly include both values with annotations). Over time, you might even develop a scoring system (perhaps weighting by source credibility) to automatically resolve these differences into a single “best estimate” value for the API response.</li>
+</ul>
+
+<p>In summary, yes – there are several additional open data sources to pursue:</p>
+
+<ul>
+  <li>National food composition tables (Canada’s CNF, UK’s CoFID, Australia’s AFCD, France’s CIQUAL, etc.) for lab-analyzed nutrient data on generic foods and regional specialties.</li>
+  <li>Community-driven product databases (Open Food Repo, etc.) for broader product coverage and up-to-date label info (including images and ingredients).</li>
+  <li>Specialized databases (e.g., FooDB for biochemical details) for depth in composition beyond standard nutrients.</li>
+  <li>Other free APIs/aggregators (like Chomp, etc.) for quick integration of large product pools – useful for cross-checks, albeit with caution on data licensing and quality.</li>
+</ul>
+
+<p>Each of these can play a role in a layered “source of truth” model. The key is to balance accuracy vs. coverage: use authoritative sources to anchor the core nutrients, use crowdsourced databases to maximize coverage and enrich metadata, and use additional datasets to catch outliers or add unique information. By assigning confidence levels or priority to each source, your API can intelligently merge them, providing end users with both comprehensive and reliable food information.</p>
+
+    <div class="more"><a href="/FASTAPI-DATASRCS/" title="Fastapi Datasrcs">read more…</a></div>
+  </article>
+<article class="post-preview-unpublished">
+    <header>
+  <h1>
     <a href="/git-health-monitoring-github-actions-outline/">Repository Cleanup Part 3 Outline: Git Health Monitoring with GitHub Actions</a>
     <svg aria-label="Draft" class="icon icon-status" title="Draft"><use xlink:href="/assets/fontawesome/icons.svg#pencil-alt"></use></svg>
   </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
@@ -930,965 +1054,6 @@
 
     <div class="more"><a href="/DRAFTS/" title="Drafts">read more…</a></div>
   </article>
-<article class="post-preview-unpublished">
-    <header>
-  <h1>
-    <a href="/AME-GPT-EXPLORATION/">Ame Gpt Exploration</a>
-    <svg aria-label="Draft" class="icon icon-status" title="Draft"><use xlink:href="/assets/fontawesome/icons.svg#pencil-alt"></use></svg>
-  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
-  <time datetime="1999-12-31T00:00:00+00:00">December 31, 1999</time><span class="reading-time">19 min read</span></header>
-
-    <h1 id="autonomous-model-evolution-ame--project-tracker">Autonomous Model Evolution (AME) — Project Tracker</h1>
-
-<p>Extension of the AASR project that digs deeper into GPT/Transformer architecture evolution.
-AME applies the AASR Manager-Worker evolutionary loop specifically to GPT internals —
-attention head scaling, normalization placement, and other Transformer components.</p>
-
-<p>Source material: Google Gemini conversation (2026) — “Building GPT From Scratch” on AlteredCarbon cluster.
-Inspired by Andrej Karpathy’s <a href="https://github.com/karpathy/autoresearch">AutoResearch</a> and <a href="https://github.com/karpathy/nanoGPT">nanoGPT</a>.</p>
-
-<p>See also: <code class="language-plaintext highlighter-rouge">AASR-PROJECT.md</code> (canonical AASR reference), <code class="language-plaintext highlighter-rouge">2026-07-01-aasr-proxmox-overview.md</code> (AASR Part 1 article draft).</p>
-
-<p>Last updated: 2026-07-28</p>
-
-<hr />
-
-<h2 id="gpt-architecture-foundations-from-karpathy">GPT Architecture Foundations (from Karpathy)</h2>
-
-<p>The training substrate for AME is a nanoGPT-style decoder-only Transformer. These are the
-core concepts the AI researcher will be mutating. Source: Karpathy’s “Let’s build GPT: from
-scratch, in code, spelled out” lecture and the nanoGPT/minGPT/microGPT repositories.</p>
-
-<h3 id="key-resources">Key Resources</h3>
-
-<table>
-  <thead>
-    <tr>
-      <th>Resource</th>
-      <th>URL</th>
-      <th>Notes</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>Video lecture</td>
-      <td>https://www.youtube.com/watch?v=kCc8FmEb1nY</td>
-      <td>2 hours, definitive entry point</td>
-    </tr>
-    <tr>
-      <td>nanoGPT repo</td>
-      <td>https://github.com/karpathy/nanoGPT</td>
-      <td>~300 lines model.py + ~300 lines train.py</td>
-    </tr>
-    <tr>
-      <td>minGPT repo</td>
-      <td>https://github.com/karpathy/minGPT</td>
-      <td>Older, simpler, prioritizes readability</td>
-    </tr>
-    <tr>
-      <td>microGPT gist</td>
-      <td>https://gist.github.com/karpathy/8627fe009c40f57531cb18360106ce95</td>
-      <td>April 2026 “code golf” version</td>
-    </tr>
-    <tr>
-      <td>Zero to Hero course</td>
-      <td>https://karpathy.ai/zero-to-hero.html</td>
-      <td>Full course, start here</td>
-    </tr>
-    <tr>
-      <td>Attention Is All You Need</td>
-      <td>https://arxiv.org/abs/1706.03762</td>
-      <td>Original 2017 Transformer paper</td>
-    </tr>
-    <tr>
-      <td>Transformer Explainer</td>
-      <td>https://poloclub.github.io/transformer-explainer/</td>
-      <td>Georgia Tech — live browser visualization</td>
-    </tr>
-  </tbody>
-</table>
-
-<h3 id="gpt-as-a-probability-distribution">GPT as a Probability Distribution</h3>
-
-<p>A GPT is a probability distribution over the next token in a sequence, conditioned on
-previous tokens. It is a <strong>decoder-only Transformer</strong> — the encoder-decoder setup from the
-original “Attention Is All You Need” paper is simplified to focus on auto-regressive language
-modeling: predicting the next token based on preceding context.</p>
-
-<p><strong>Programmer’s mental model:</strong></p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Input:       Array of integers (token IDs)
-Embedding:   Look up row in learnable matrix We for each integer.
-             Add positional encoding vector (so "dog bites man" ≠ "man bites dog").
-Block:       Self-Attention (tokens communicate) → Feed-Forward Network (per-token compute)
-             Repeated N times (AME target: 3–4 layers on P620)
-Output:      Final matrix multiplication → vocabulary-size logits (e.g., 50,000)
-Sampling:    Softmax logits → probabilities → sample next integer index
-</code></pre></div></div>
-
-<h3 id="self-attention-the-core-mechanism">Self-Attention: The Core Mechanism</h3>
-
-<p>Self-attention is a <strong>content-based lookup</strong> — think of a fuzzy Python dictionary.
-Every token emits three vectors:</p>
-
-<ul>
-  <li><strong>Q (Query):</strong> “What am I looking for?”</li>
-  <li><strong>K (Key):</strong> “What information do I contain?”</li>
-  <li><strong>V (Value):</strong> “If you find me interesting, here is what I pass on.”</li>
-</ul>
-
-<p>The attention formula:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Attention(Q, K, V) = softmax( Q·Kᵀ / √d_k ) · V
-</code></pre></div></div>
-
-<ol>
-  <li><code class="language-plaintext highlighter-rouge">Q·Kᵀ</code> — dot product computes similarity score between every pair of tokens</li>
-  <li><code class="language-plaintext highlighter-rouge">/ √d_k</code> — scaling factor keeps variance unit-level at initialization, prevents softmax saturation</li>
-  <li><code class="language-plaintext highlighter-rouge">softmax(...)</code> — normalizes scores to sum to 1.0 (probability distribution)</li>
-  <li><code class="language-plaintext highlighter-rouge">· V</code> — weighted sum of Value vectors using those probabilities</li>
-</ol>
-
-<p><strong>The “Matrix Trick” (causal masking):</strong> Karpathy demonstrates using lower triangular matrices
-(<code class="language-plaintext highlighter-rouge">tril</code>) to ensure tokens only communicate with the past — they cannot “cheat” by looking at
-future tokens. This is what makes it auto-regressive.</p>
-
-<h3 id="repeating-block-structure">Repeating Block Structure</h3>
-
-<p>Each Transformer Block (see <code class="language-plaintext highlighter-rouge">model.py</code> → <code class="language-plaintext highlighter-rouge">CausalSelfAttention</code>) has two parts:</p>
-
-<ol>
-  <li><strong>Communication (Multi-Head Attention):</strong> Tokens look at each other to gather context</li>
-  <li><strong>Computation (Feed-Forward Network):</strong> Each token “thinks” about gathered information individually</li>
-</ol>
-
-<h3 id="training-stability-components-ame-mutation-targets">Training Stability Components (AME mutation targets)</h3>
-
-<ul>
-  <li><strong>Residual Connections (Skip Connections):</strong> “Gradient super-highways” — allow gradient to
-flow from output back to input unimpeded during backpropagation. Critical for deep models.</li>
-  <li><strong>Layer Normalization:</strong> Normalizes features of a single token to keep training stable.
-Karpathy notes <strong>Pre-Norm vs Post-Norm</strong> as a key departure from the original paper —
-this is a primary AME mutation target.</li>
-</ul>
-
-<h3 id="primary-evaluation-metric">Primary Evaluation Metric</h3>
-
-<ul>
-  <li><strong><code class="language-plaintext highlighter-rouge">val_bpb</code> (bits per byte):</strong> Primary metric from AutoResearch. Lower = model is “smarter”.</li>
-  <li><strong><code class="language-plaintext highlighter-rouge">val_loss</code>:</strong> Secondary metric, used for frontier promotion decisions.</li>
-  <li>If <code class="language-plaintext highlighter-rouge">val_bpb</code> improves → commit the mutation to frontier branch.</li>
-  <li>If <code class="language-plaintext highlighter-rouge">val_bpb</code> regresses or OOM → <code class="language-plaintext highlighter-rouge">git revert</code>, destroy worker LXC.</li>
-</ul>
-
-<hr />
-
-<h2 id="project-relationship-aasr--ame">Project Relationship: AASR → AME</h2>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>AASR (Autonomous AI Scientific Research)
-  └── Manager-Worker pattern on AlteredCarbon cluster
-  └── Evolutionary Git Loop (hypothesize → mutate → execute → evaluate → select)
-  └── General ML research automation
-
-AME (Autonomous Model Evolution)  ← this project
-  └── Extends AASR with GPT-specific mutation targets
-  └── Focuses on Transformer internals: attention, normalization, embeddings
-  └── "Building GPT From Scratch" as the training substrate
-  └── Deeper visualization of internal math (attention maps, VRAM graphs)
-</code></pre></div></div>
-
-<p>AME is a series of articles that extends AASR. AASR articles establish the infrastructure;
-AME articles dig into what the AI researcher actually discovers about GPT architecture.</p>
-
-<hr />
-
-<h2 id="hardware-context-alteredcarbon-cluster">Hardware Context (AlteredCarbon Cluster)</h2>
-
-<table>
-  <thead>
-    <tr>
-      <th>Node</th>
-      <th>CPU</th>
-      <th>RAM</th>
-      <th>GPU</th>
-      <th>VRAM</th>
-      <th>AME Role</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>harlan</td>
-      <td>i7-2600 (8 cores)</td>
-      <td>31 GiB</td>
-      <td>Quadro P620</td>
-      <td>2 GB GDDR5</td>
-      <td>Primary GPU worker</td>
-    </tr>
-    <tr>
-      <td>kovacs</td>
-      <td>i7-2600 (8 cores)</td>
-      <td>31 GiB</td>
-      <td>Quadro P620</td>
-      <td>2 GB GDDR5</td>
-      <td>GPU worker</td>
-    </tr>
-    <tr>
-      <td>poe</td>
-      <td>i7-2600 (8 cores)</td>
-      <td>31 GiB</td>
-      <td>Quadro P620</td>
-      <td>2 GB GDDR5</td>
-      <td>GPU worker</td>
-    </tr>
-    <tr>
-      <td>quell</td>
-      <td>i7-2600 (8 cores)</td>
-      <td>31 GiB</td>
-      <td>Quadro P620</td>
-      <td>2 GB GDDR5</td>
-      <td>GPU worker</td>
-    </tr>
-    <tr>
-      <td>edgar</td>
-      <td>i7-2600 (8 cores)</td>
-      <td>31 GiB</td>
-      <td>Quadro K600</td>
-      <td>1 GB GDDR3</td>
-      <td>CPU-only comparison</td>
-    </tr>
-    <tr>
-      <td>tanaka</td>
-      <td>i7-2600 (4 cores)</td>
-      <td>15 GiB</td>
-      <td>Quadro K600</td>
-      <td>1 GB GDDR3</td>
-      <td>Excluded</td>
-    </tr>
-  </tbody>
-</table>
-
-<p><strong>Hard constraints for AME:</strong></p>
-<ul>
-  <li>Sandy Bridge (2011): AVX supported, <strong>AVX2 not supported</strong> — all binaries must be AVX-only</li>
-  <li>P620 Pascal: no Tensor Cores, FP32/FP16 only, 2 GB VRAM hard ceiling</li>
-  <li>PCIe 2.0: slower GPU↔RAM transfers — CPU offloading via DeepSpeed ZeRO-2 or Accelerate</li>
-  <li>OptiPlex 990 SFF: thermal throttling under sustained load — 3-minute cooldown enforced</li>
-  <li>Dataset: TinyStories (not enwik8 — lower entropy, learns faster on constrained hardware)</li>
-</ul>
-
-<p><strong>Training parameters tuned for P620:</strong></p>
-
-<table>
-  <thead>
-    <tr>
-      <th>Setting</th>
-      <th>Default (H100)</th>
-      <th>P620 (2 GB VRAM)</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>Max Seq Len</td>
-      <td>1024</td>
-      <td>128–256</td>
-    </tr>
-    <tr>
-      <td>Batch Size</td>
-      <td>128</td>
-      <td>8–16</td>
-    </tr>
-    <tr>
-      <td>Model Depth</td>
-      <td>8–12 layers</td>
-      <td>3–4 layers</td>
-    </tr>
-    <tr>
-      <td>Vocab Size</td>
-      <td>8192</td>
-      <td>1024–2048</td>
-    </tr>
-    <tr>
-      <td>Experiment Window</td>
-      <td>5 min</td>
-      <td>15 min</td>
-    </tr>
-    <tr>
-      <td>Step Target</td>
-      <td>N/A</td>
-      <td>500 steps</td>
-    </tr>
-    <tr>
-      <td>Cool Down</td>
-      <td>None</td>
-      <td>3 min</td>
-    </tr>
-  </tbody>
-</table>
-
-<hr />
-
-<h2 id="ame-research-focus-gpt-internals">AME Research Focus: GPT Internals</h2>
-
-<p>AME targets specific Transformer components as mutation candidates for the evolutionary loop.
-Each mutation class maps to a hypothesis the AI researcher can propose and test.</p>
-
-<h3 id="mutation-target-classes">Mutation Target Classes</h3>
-
-<table>
-  <thead>
-    <tr>
-      <th>Component</th>
-      <th>Mutation Examples</th>
-      <th>Metric Impact</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>Attention heads</td>
-      <td>Scale head count (1→2→4), head dimension</td>
-      <td>val_loss, VRAM usage</td>
-    </tr>
-    <tr>
-      <td>Normalization placement</td>
-      <td>Pre-norm vs post-norm, RMSNorm vs LayerNorm</td>
-      <td>Training stability, convergence speed</td>
-    </tr>
-    <tr>
-      <td>Embedding dimensions</td>
-      <td>Shrink/grow d_model relative to depth</td>
-      <td>Parameter efficiency</td>
-    </tr>
-    <tr>
-      <td>FFN ratio</td>
-      <td>4× → 2× or 8× expansion factor</td>
-      <td>VRAM vs expressiveness</td>
-    </tr>
-    <tr>
-      <td>Positional encoding</td>
-      <td>Learned vs RoPE vs ALiBi at seq_len 128–256</td>
-      <td>Generalization</td>
-    </tr>
-    <tr>
-      <td>Activation function</td>
-      <td>GELU vs SwiGLU vs ReLU</td>
-      <td>Speed vs quality</td>
-    </tr>
-    <tr>
-      <td>Residual connections</td>
-      <td>Pre/post scaling, depth-dependent scaling</td>
-      <td>Gradient flow</td>
-    </tr>
-    <tr>
-      <td>Dropout placement</td>
-      <td>Attention dropout vs residual dropout</td>
-      <td>Regularization</td>
-    </tr>
-  </tbody>
-</table>
-
-<h3 id="the-ame-hypothesis-format">The AME Hypothesis Format</h3>
-
-<p>The AI researcher proposes mutations in a structured format that the Manager validates:</p>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code># Hypothesis: [one-line description]
-# Target component: [attention|normalization|embedding|ffn|positional|activation|residual]
-# Expected effect: [val_loss direction and reasoning]
-# VRAM delta estimate: [+/- MB]
-# Risk: [low|medium|high]
-[unified diff of train.py]
-</code></pre></div></div>
-
-<h3 id="suggested-programmd-research-goal-from-gemini-conversation">Suggested program.md Research Goal (from Gemini conversation)</h3>
-
-<p>The exact wording Gemini suggested for directing the agent at GPT Block mutations:</p>
-
-<div class="language-markdown highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"Explore architectural mutations in the Block class (e.g., number of heads, MLP expansion
-ratios, or LayerNorm placement) to achieve the lowest bits-per-byte (bpb) on Tiny Shakespeare
-within a 15-minute training window on a P620 GPU."
-</code></pre></div></div>
-
-<p>Hardware-aware variant (platform engineering angle):</p>
-
-<div class="language-markdown highlighter-rouge"><div class="highlight"><pre class="highlight"><code>"Optimize the nanoGPT architecture specifically for the CPU/GPU constraints of the
-AlteredCarbon cluster (i7-2600, P620 2GB VRAM, PCIe 2.0). Minimize latency while keeping
-val_loss below 1.5. AVX only — no AVX2 code paths."
-</code></pre></div></div>
-
-<h3 id="three-key-metrics-to-monitor-during-ame-runs">Three Key Metrics to Monitor During AME Runs</h3>
-
-<p>From the Gemini conversation — these three metrics directly expose GPT underpinnings:</p>
-
-<table>
-  <thead>
-    <tr>
-      <th>Metric</th>
-      <th>GPT Underpinning</th>
-      <th>What It Tells You</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>Gradient Norm</td>
-      <td>Backpropagation</td>
-      <td>Is the new architecture stable, or did the mutation break the “Gradient Super-highway”?</td>
-    </tr>
-    <tr>
-      <td>Throughput (Tokens/sec)</td>
-      <td>Platform Efficiency</td>
-      <td>Did the mutation (e.g., adding more heads) make the model too slow for the P620s?</td>
-    </tr>
-    <tr>
-      <td>Attention Maps</td>
-      <td>Self-Attention</td>
-      <td>Visualizing where the model is “looking” after the agent changes Key/Query dimensions</td>
-    </tr>
-  </tbody>
-</table>
-
-<p>These map directly to the three Phase 3 visualization targets: gradient flow graphs,
-throughput counters, and attention map overlays in the Gradio worker UI.</p>
-
-<hr />
-
-<h2 id="three-phase-implementation-strategy">Three-Phase Implementation Strategy</h2>
-
-<h3 id="phase-one-proxmox-testing-framework">Phase One: Proxmox Testing Framework</h3>
-
-<p><strong>Goal:</strong> Ensure legacy hardware reliability before running evolutionary experiments.</p>
-
-<ul class="task-list">
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Automated LXC provisioning for worker nodes (harlan, kovacs, poe, quell)</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />AVX compatibility checks — verify no AVX2 instructions in PyTorch wheel</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Thermal guardrails — monitor CPU/GPU temps, enforce 3-minute cooldown</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />GPU passthrough validation — <code class="language-plaintext highlighter-rouge">nvidia-smi</code> accessible inside LXC</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />CephFS mount verification — dataset reads from <code class="language-plaintext highlighter-rouge">/mnt/pve/cephfs/</code> in worker</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Baseline train.py run — 500 steps on TinyStories, record val_loss and VRAM peak</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Worker results JSON schema validated end-to-end (worker → Manager <code class="language-plaintext highlighter-rouge">/api/results</code>)</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Forgejo LXC running at 192.168.86.201 with <code class="language-plaintext highlighter-rouge">autoresearch</code> repo</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Manager LXC running at 192.168.86.202 with Flask + proxmoxer</li>
-</ul>
-
-<p><strong>Success criteria:</strong> Clean 15-minute training burst on all 4 P620 nodes, metrics posted to Manager, worker LXC destroyed cleanly.</p>
-
-<h3 id="phase-two-ame-gpt-underpinnings">Phase Two: AME GPT Underpinnings</h3>
-
-<p><strong>Goal:</strong> Apply the evolutionary loop specifically to Transformer components.</p>
-
-<ul class="task-list">
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Baseline GPT implementation in <code class="language-plaintext highlighter-rouge">train.py</code> (nanoGPT-style, 3-4 layers, TinyStories)</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" /><code class="language-plaintext highlighter-rouge">program.md</code> hardware manifest written and fed to AI researcher</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Attention head scaling mutations — test 1, 2, 4 heads at fixed d_model</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Normalization placement mutations — pre-norm vs post-norm comparison</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Embedding dimension sweep — d_model 64, 128, 256 at fixed depth</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />FFN ratio mutations — 2×, 4×, 8× expansion at fixed d_model</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Positional encoding comparison — learned vs RoPE at seq_len 128</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Activation function comparison — GELU vs SwiGLU</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Multi-model A/B testing — assign different AI models to different P620 nodes</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Leaderboard tracking — val_loss improvement per mutation class</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Frontier branch evolution — track which mutation classes produce consistent wins</li>
-</ul>
-
-<p><strong>Success criteria:</strong> At least 10 successful evolutionary cycles with measurable val_loss improvement over baseline.</p>
-
-<h3 id="phase-three-deep-visualization">Phase Three: Deep Visualization</h3>
-
-<p><strong>Goal:</strong> Extend the Gradio worker interface to visualize internal math in real time.</p>
-
-<ul class="task-list">
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Attention map overlays — heatmap of attention weights per head per layer (QKᵀ matrix visualization)</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />VRAM offloading graphs — live GPU vs CPU memory split, showing KV cache and optimizer state offload from 2GB P620 to 32GB system RAM</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Residual Stream Analysis — monitoring the “Gradient Super-highway” to detect if a mutation has made the model too deep or unstable for the legacy i7-2600 CPUs</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Gradient flow visualization — per-layer gradient norms over training steps</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Loss landscape snapshots — 2D projections of loss surface around current weights</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Head specialization analysis — what each attention head learns to attend to</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Mutation diff viewer — side-by-side before/after train.py with highlighted changes</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Experiment timeline — visual history of frontier evolution with branch annotations</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Flask dashboard integration — embed Gradio iframes per active worker node</li>
-</ul>
-
-<p><strong>Success criteria:</strong> Gradio UI shows attention maps and VRAM graphs live during a 15-minute training burst.</p>
-
-<hr />
-
-<h2 id="the-ame-research-loop-extended-from-aasr">The AME Research Loop (Extended from AASR)</h2>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>1. HYPOTHESIZE (AME-specific)
-   Manager sends: experiment history + current train.py + program.md hardware manifest
-   AI proposes: a targeted GPT component mutation with hypothesis comment
-   ↓
-2. VALIDATE
-   Syntax check (ast.parse), policy check (no shell calls, no network outside allowed endpoints)
-   Reject malformed or forbidden mutations without executing
-   ↓
-3. MUTATE
-   Commit new train.py to experiment branch: experiment-&lt;YYYYMMDD-HHMMSS&gt;-&lt;component&gt;-&lt;slug&gt;
-   ↓
-4. EXECUTE
-   Clone Gold Template LXC to idle P620 node
-   Push train.py via pct push or CephFS shared path
-   Start 15-minute training burst via pct exec
-   ↓
-5. EVALUATE (AME-specific)
-   Worker trains 500 steps (or 15 min, whichever first)
-   Gradio shows: loss curve + attention maps + VRAM graph (Phase 3)
-   Worker POSTs results JSON to Manager /api/results
-   ↓
-6. SELECT
-   val_loss improved → merge to frontier, record winning mutation class
-   val_loss regressed or OOM → discard branch, log failure pattern
-   ↓
-7. COOL DOWN
-   3-minute thermal pause
-   Manager updates mutation class leaderboard
-   ↓
-   Loop back to step 1
-</code></pre></div></div>
-
-<hr />
-
-<h2 id="ai-provider-strategy">AI Provider Strategy</h2>
-
-<h3 id="primary-github-models-openai-compatible">Primary: GitHub Models (OpenAI-compatible)</h3>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># manager/ai_provider.py
-</span><span class="kn">import</span> <span class="n">os</span>
-<span class="kn">from</span> <span class="n">openai</span> <span class="kn">import</span> <span class="n">OpenAI</span>
-
-<span class="n">HARDWARE_CONTEXT</span> <span class="o">=</span> <span class="sh">"""</span><span class="s">
-Hardware: Dell OptiPlex 990 cluster (AlteredCarbon)
-- CPU: Intel i7-2600 Sandy Bridge, 8 cores, 32GB DDR3
-- GPU: NVIDIA Quadro P620, 2GB GDDR5, Pascal (GP107GL), no Tensor Cores
-- Bus: PCIe 2.0
-- AVX: Yes. AVX2: NO. All binaries must be AVX-only compiled.
-Experiment constraints:
-- VRAM ceiling: 2GB. Active model weights must fit.
-- System RAM: 32GB — use for gradient offloading (DeepSpeed ZeRO-2, Accelerate).
-- Max seq len: 128-256. Batch size: 8-16. Model depth: 3-4 layers.
-- Experiment window: 15 min wall clock or 500 steps (whichever first).
-- Cooldown: 3 min between experiments (thermal management).
-- Dataset: TinyStories (not enwik8).
-AME focus: Propose mutations targeting GPT Transformer internals.
-Mutation classes: attention heads, normalization placement, embedding dims,
-FFN ratio, positional encoding, activation functions, residual connections.
-</span><span class="sh">"""</span>
-</code></pre></div></div>
-
-<p><strong>Recommended models:</strong></p>
-
-<table>
-  <thead>
-    <tr>
-      <th>Model</th>
-      <th>Context</th>
-      <th>Best For</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><code class="language-plaintext highlighter-rouge">claude-sonnet-4-5</code></td>
-      <td>1M</td>
-      <td>Primary — large context, strong code reasoning</td>
-    </tr>
-    <tr>
-      <td><code class="language-plaintext highlighter-rouge">gpt-4o</code></td>
-      <td>128K</td>
-      <td>Secondary — faster iteration cycles</td>
-    </tr>
-    <tr>
-      <td><code class="language-plaintext highlighter-rouge">gpt-4o-mini</code></td>
-      <td>128K</td>
-      <td>History summarization (cheap)</td>
-    </tr>
-    <tr>
-      <td><code class="language-plaintext highlighter-rouge">meta-llama-3-70b-instruct</code></td>
-      <td>128K</td>
-      <td>Open-weights alternative</td>
-    </tr>
-  </tbody>
-</table>
-
-<h3 id="optional-gemini-api">Optional: Gemini API</h3>
-
-<ul>
-  <li><code class="language-plaintext highlighter-rouge">google-generativeai</code> SDK, 2M token context</li>
-  <li>Useful for very long experiment histories (&gt;50 experiments)</li>
-  <li>Original inspiration for this project (see PDF source material)</li>
-</ul>
-
-<h3 id="multi-model-ab-testing">Multi-Model A/B Testing</h3>
-
-<p>Assign different AI models to different P620 nodes to compare which produces better val_loss improvements:</p>
-
-<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">MODEL_ROTATION</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="sh">"</span><span class="s">harlan</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">claude-sonnet-4-5</span><span class="sh">"</span><span class="p">,</span>
-    <span class="sh">"</span><span class="s">kovacs</span><span class="sh">"</span><span class="p">:</span> <span class="sh">"</span><span class="s">gpt-4o</span><span class="sh">"</span><span class="p">,</span>
-    <span class="sh">"</span><span class="s">poe</span><span class="sh">"</span><span class="p">:</span>    <span class="sh">"</span><span class="s">claude-sonnet-4-5</span><span class="sh">"</span><span class="p">,</span>
-    <span class="sh">"</span><span class="s">quell</span><span class="sh">"</span><span class="p">:</span>  <span class="sh">"</span><span class="s">gpt-4o</span><span class="sh">"</span><span class="p">,</span>
-<span class="p">}</span>
-</code></pre></div></div>
-
-<p>Track <code class="language-plaintext highlighter-rouge">model_name</code> in the <code class="language-plaintext highlighter-rouge">experiments</code> table alongside <code class="language-plaintext highlighter-rouge">val_loss</code> to analyze which model writes more hardware-efficient GPT mutations.</p>
-
-<hr />
-
-<h2 id="repository-layout">Repository Layout</h2>
-
-<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>aasr/
-  manager/
-    app.py                  # Flask + HTMX dashboard
-    ai_provider.py          # Provider abstraction (GitHub Models / Gemini)
-    scheduler.py            # Experiment orchestration loop
-    evaluator.py            # val_loss comparison and frontier promotion
-    models.py               # SQLAlchemy schema
-    templates/              # HTMX dashboard templates
-  worker/
-    train.py                # GPT training script (mutation sandbox)
-    prepare.py              # TinyStories data pipeline
-    gradio_monitor.py       # Live visualization (loss, attention maps, VRAM)
-    start.sh                # Worker boot: train → report → exit
-    requirements.txt
-  prompts/
-    program.md              # Human goals, hardware constraints, scoring objective
-    hardware_manifest.md    # AlteredCarbon hardware context for AI researcher
-  ops/
-    proxmox/
-      lxc-template.conf     # Gold Template LXC config (GPU passthrough)
-      create-core-services.sh
-    forgejo/
-      bootstrap-repo.sh
-  docs/
-    runbook.md
-    troubleshooting.md
-</code></pre></div></div>
-
-<hr />
-
-<h2 id="infrastructure-core-service-lxcs">Infrastructure: Core Service LXCs</h2>
-
-<h3 id="forgejo-git-server-19216886201">Forgejo Git Server (192.168.86.201)</h3>
-
-<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>pct create 201 <span class="nb">local</span>:vztmpl/debian-13-standard_13.0-1_amd64.tar.zst <span class="se">\</span>
-  <span class="nt">--hostname</span> forgejo <span class="se">\</span>
-  <span class="nt">--cores</span> 1 <span class="nt">--memory</span> 1024 <span class="nt">--swap</span> 512 <span class="se">\</span>
-  <span class="nt">--net0</span> <span class="nv">name</span><span class="o">=</span>eth0,bridge<span class="o">=</span>vmbr0,ip<span class="o">=</span>192.168.86.201/23,gw<span class="o">=</span>192.168.86.1 <span class="se">\</span>
-  <span class="nt">--nameserver</span> 192.168.86.3 <span class="se">\</span>
-  <span class="nt">--mp0</span> /mnt/pve/cephfs/aasr/forgejo,mp<span class="o">=</span>/var/lib/gitea
-</code></pre></div></div>
-
-<p>Post-setup: create API token for Flask orchestrator; create <code class="language-plaintext highlighter-rouge">autoresearch</code> repo with <code class="language-plaintext highlighter-rouge">main</code> and <code class="language-plaintext highlighter-rouge">frontier</code> branches.</p>
-
-<h3 id="manager-lxc-19216886202">Manager LXC (192.168.86.202)</h3>
-
-<ul>
-  <li>2 vCPU, 4 GB RAM, Debian 13</li>
-  <li>Flask + HTMX dashboard, Flask-SQLAlchemy, proxmoxer, openai SDK</li>
-  <li>CephFS mount at <code class="language-plaintext highlighter-rouge">/mnt/data</code> for shared datasets and results</li>
-</ul>
-
-<p><strong>Key Flask routes:</strong></p>
-
-<table>
-  <thead>
-    <tr>
-      <th>Route</th>
-      <th>Method</th>
-      <th>Purpose</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><code class="language-plaintext highlighter-rouge">/</code></td>
-      <td>GET</td>
-      <td>Dashboard: node grid, leaderboard, live console</td>
-    </tr>
-    <tr>
-      <td><code class="language-plaintext highlighter-rouge">/node-status</code></td>
-      <td>GET</td>
-      <td>HTMX fragment: node temps, GPU idle/busy</td>
-    </tr>
-    <tr>
-      <td><code class="language-plaintext highlighter-rouge">/start-research</code></td>
-      <td>POST</td>
-      <td>Trigger new experiment cycle</td>
-    </tr>
-    <tr>
-      <td><code class="language-plaintext highlighter-rouge">/kill/&lt;vmid&gt;</code></td>
-      <td>POST</td>
-      <td>Emergency destroy of a rogue worker</td>
-    </tr>
-    <tr>
-      <td><code class="language-plaintext highlighter-rouge">/api/results</code></td>
-      <td>POST</td>
-      <td>Worker callback with final metrics</td>
-    </tr>
-    <tr>
-      <td><code class="language-plaintext highlighter-rouge">/config/model</code></td>
-      <td>POST</td>
-      <td>Switch active AI model without restart</td>
-    </tr>
-  </tbody>
-</table>
-
-<h3 id="gold-template-worker-lxc">Gold Template Worker LXC</h3>
-
-<ul>
-  <li>4 vCPU, 28 GB RAM, Debian 13</li>
-  <li>NVIDIA production drivers, uv, git, gradio, PyTorch (AVX-only)</li>
-  <li>GPU passthrough: P620 device nodes</li>
-  <li>CephFS mount at <code class="language-plaintext highlighter-rouge">/data</code> (read-only)</li>
-</ul>
-
-<div class="language-conf highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># /etc/pve/lxc/&lt;TEMPLATE_ID&gt;.conf
-</span><span class="n">lxc</span>.<span class="n">cgroup2</span>.<span class="n">devices</span>.<span class="n">allow</span>: <span class="n">c</span> <span class="m">195</span>:* <span class="n">rwm</span>
-<span class="n">lxc</span>.<span class="n">cgroup2</span>.<span class="n">devices</span>.<span class="n">allow</span>: <span class="n">c</span> <span class="m">234</span>:* <span class="n">rwm</span>
-<span class="n">lxc</span>.<span class="n">mount</span>.<span class="n">entry</span>: /<span class="n">dev</span>/<span class="n">nvidia0</span> <span class="n">dev</span>/<span class="n">nvidia0</span> <span class="n">none</span> <span class="n">bind</span>,<span class="n">optional</span>,<span class="n">create</span>=<span class="n">file</span>
-<span class="n">lxc</span>.<span class="n">mount</span>.<span class="n">entry</span>: /<span class="n">dev</span>/<span class="n">nvidiactl</span> <span class="n">dev</span>/<span class="n">nvidiactl</span> <span class="n">none</span> <span class="n">bind</span>,<span class="n">optional</span>,<span class="n">create</span>=<span class="n">file</span>
-<span class="n">lxc</span>.<span class="n">mount</span>.<span class="n">entry</span>: /<span class="n">dev</span>/<span class="n">nvidia</span>-<span class="n">uvm</span> <span class="n">dev</span>/<span class="n">nvidia</span>-<span class="n">uvm</span> <span class="n">none</span> <span class="n">bind</span>,<span class="n">optional</span>,<span class="n">create</span>=<span class="n">file</span>
-<span class="n">lxc</span>.<span class="n">cgroup2</span>.<span class="n">cpuset</span>.<span class="n">cpus</span>: <span class="m">0</span>-<span class="m">3</span>
-<span class="n">lxc</span>.<span class="n">cgroup2</span>.<span class="n">memory</span>.<span class="n">max</span>: <span class="m">28</span><span class="n">G</span>
-</code></pre></div></div>
-
-<p><strong>Worker results JSON schema:</strong></p>
-<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
-  </span><span class="nl">"experiment_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"20260601-143022-attention-heads-2"</span><span class="p">,</span><span class="w">
-  </span><span class="nl">"mutation_class"</span><span class="p">:</span><span class="w"> </span><span class="s2">"attention"</span><span class="p">,</span><span class="w">
-  </span><span class="nl">"steps_completed"</span><span class="p">:</span><span class="w"> </span><span class="mi">500</span><span class="p">,</span><span class="w">
-  </span><span class="nl">"duration_seconds"</span><span class="p">:</span><span class="w"> </span><span class="mi">847</span><span class="p">,</span><span class="w">
-  </span><span class="nl">"val_loss"</span><span class="p">:</span><span class="w"> </span><span class="mf">1.2341</span><span class="p">,</span><span class="w">
-  </span><span class="nl">"val_bpb"</span><span class="p">:</span><span class="w"> </span><span class="mf">1.7812</span><span class="p">,</span><span class="w">
-  </span><span class="nl">"peak_vram_mb"</span><span class="p">:</span><span class="w"> </span><span class="mi">1820</span><span class="p">,</span><span class="w">
-  </span><span class="nl">"peak_ram_mb"</span><span class="p">:</span><span class="w"> </span><span class="mi">14200</span><span class="p">,</span><span class="w">
-  </span><span class="nl">"temperature_max_c"</span><span class="p">:</span><span class="w"> </span><span class="mi">78</span><span class="p">,</span><span class="w">
-  </span><span class="nl">"success"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">
-  </span><span class="nl">"error"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="w">
-</span><span class="p">}</span><span class="w">
-</span></code></pre></div></div>
-
-<hr />
-
-<h2 id="git-model-branch-per-experiment">Git Model: Branch-per-Experiment</h2>
-
-<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>main ──────────────────────────────────────────────►  (stable, human-controlled)
-  │
-  ├── frontier ──────────┬──────────┬──────────────►  (best machine-evolved GPT)
-  │                      │          │
-  │   experiment-001-attention-heads-2 ────┘
-  │   (merged: val_loss 1.41 → 1.38)
-  │
-  │   experiment-002-prenorm-rmsnorm ───── X
-  │   (discarded: OOM at seq_len 256)
-  │
-  │   experiment-003-ffn-ratio-2x ─────────────────┘
-  │   (merged: val_loss 1.38 → 1.35, VRAM -180MB)
-</code></pre></div></div>
-
-<p>Workers never touch git directly — Manager drives all Forgejo API calls.</p>
-
-<hr />
-
-<h2 id="security-and-isolation">Security and Isolation</h2>
-
-<ul>
-  <li>Worker LXC network egress restricted to Manager (192.168.86.202) and Forgejo (192.168.86.201) only — no internet</li>
-  <li>Worker git credentials scoped to experiment branches only — no write access to <code class="language-plaintext highlighter-rouge">main</code> or <code class="language-plaintext highlighter-rouge">frontier</code></li>
-  <li>Manager Proxmox API token scoped to <code class="language-plaintext highlighter-rouge">PVEVMAdmin</code> for LXC lifecycle only</li>
-  <li>AI token scoped to <code class="language-plaintext highlighter-rouge">models:read</code> only — no repo write access</li>
-  <li>AI output validated before execution: <code class="language-plaintext highlighter-rouge">ast.parse()</code> → forbidden API/path check</li>
-  <li>Strict CPU pinning (4 cores) and memory caps (28 GB) per worker</li>
-  <li>Fresh LXC clone for every experiment — no state leaks between runs</li>
-  <li>Every mutation logged with diff, reasoning, and metrics in Flask DB and Forgejo commit history</li>
-</ul>
-
-<hr />
-
-<h2 id="open-questions">Open Questions</h2>
-
-<ul class="task-list">
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Exact NVIDIA host + container driver version for Proxmox 8.4 kernel (6.8.12-18-pve)</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Whether <code class="language-plaintext highlighter-rouge">pct push</code> / <code class="language-plaintext highlighter-rouge">pct exec</code> is sufficient or SSH-based orchestration is more reliable</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />CephFS read amplification impact on parallel worker throughput during training</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />GitHub Models rate limits per hour — max experiment frequency before throttling</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Whether <code class="language-plaintext highlighter-rouge">claude-sonnet-4-5</code> remains consistently available via GitHub Models</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Thermal telemetry source — can Proxmox sensor data be read from within an LXC?</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Parallel experiment git strategy — linear frontier vs. branching tournament selection</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Streaming responses: GitHub Models supports <code class="language-plaintext highlighter-rouge">stream=True</code> — surface reasoning tokens on dashboard?</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Which attention map visualization library works best with Gradio + PyTorch on P620?</li>
-  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Whether K600 nodes (edgar) deliver enough signal for CPU-only comparison experiments</li>
-</ul>
-
-<hr />
-
-<h2 id="blog-article-series">Blog Article Series</h2>
-
-<h3 id="aasr-series-prerequisite--establishes-infrastructure">AASR Series (prerequisite — establishes infrastructure)</h3>
-
-<table>
-  <thead>
-    <tr>
-      <th>Part</th>
-      <th>Topic</th>
-      <th>Status</th>
-      <th>File</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>1</td>
-      <td>Architecture</td>
-      <td>Draft</td>
-      <td><code class="language-plaintext highlighter-rouge">2026-07-01-aasr-proxmox-overview.md</code></td>
-    </tr>
-    <tr>
-      <td>2</td>
-      <td>GPU Passthrough in LXC</td>
-      <td>Planned</td>
-      <td>—</td>
-    </tr>
-    <tr>
-      <td>3</td>
-      <td>The Evolutionary Git Loop</td>
-      <td>Planned</td>
-      <td>—</td>
-    </tr>
-    <tr>
-      <td>4</td>
-      <td>Training on 2 GB VRAM</td>
-      <td>Planned</td>
-      <td>—</td>
-    </tr>
-    <tr>
-      <td>5</td>
-      <td>AI Provider Abstraction</td>
-      <td>Planned</td>
-      <td>—</td>
-    </tr>
-  </tbody>
-</table>
-
-<h3 id="ame-series-this-project--gpt-deep-dive">AME Series (this project — GPT deep dive)</h3>
-
-<table>
-  <thead>
-    <tr>
-      <th>Part</th>
-      <th>Topic</th>
-      <th>Status</th>
-      <th>Notes</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>1</td>
-      <td>AME: Building GPT From Scratch</td>
-      <td>Planned</td>
-      <td>nanoGPT baseline on TinyStories, hardware constraints</td>
-    </tr>
-    <tr>
-      <td>2</td>
-      <td>Attention Head Scaling</td>
-      <td>Planned</td>
-      <td>What the AI discovers about head count on 2GB VRAM</td>
-    </tr>
-    <tr>
-      <td>3</td>
-      <td>Normalization Placement</td>
-      <td>Planned</td>
-      <td>Pre-norm vs post-norm on legacy hardware</td>
-    </tr>
-    <tr>
-      <td>4</td>
-      <td>Visualizing Transformer Internals</td>
-      <td>Planned</td>
-      <td>Attention maps, VRAM graphs, Gradio Phase 3</td>
-    </tr>
-    <tr>
-      <td>5</td>
-      <td>What the AI Researcher Discovered</td>
-      <td>Planned</td>
-      <td>Results: winning mutation classes, frontier evolution</td>
-    </tr>
-  </tbody>
-</table>
-
-<p><strong>Publication cadence:</strong> MWF slots, AASR series first, AME series follows.
-AASR Part 1 draft exists (<code class="language-plaintext highlighter-rouge">2026-07-01-aasr-proxmox-overview.md</code>) — needs promotion to <code class="language-plaintext highlighter-rouge">_posts/</code>.</p>
-
-<hr />
-
-<h2 id="status-summary">Status Summary</h2>
-
-<table>
-  <thead>
-    <tr>
-      <th>Phase</th>
-      <th>Status</th>
-      <th>Blocker</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>Phase 1: Proxmox Testing Framework</td>
-      <td>🔲 Not started</td>
-      <td>Forgejo LXC not yet provisioned</td>
-    </tr>
-    <tr>
-      <td>Phase 2: AME GPT Underpinnings</td>
-      <td>🔲 Not started</td>
-      <td>Depends on Phase 1</td>
-    </tr>
-    <tr>
-      <td>Phase 3: Deep Visualization</td>
-      <td>🔲 Not started</td>
-      <td>Depends on Phase 2</td>
-    </tr>
-    <tr>
-      <td>AASR Part 1 article</td>
-      <td>📝 Draft ready</td>
-      <td>Needs promotion to <code class="language-plaintext highlighter-rouge">_posts/</code></td>
-    </tr>
-    <tr>
-      <td>AME articles</td>
-      <td>📝 Planned</td>
-      <td>Depends on implementation</td>
-    </tr>
-  </tbody>
-</table>
-
-<p><strong>Next action:</strong> Provision Forgejo LXC (192.168.86.201) on harlan or kovacs to begin Phase 1.</p>
-
-<hr />
-
-<h2 id="related-files">Related Files</h2>
-
-<table>
-  <thead>
-    <tr>
-      <th>File</th>
-      <th>Purpose</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><code class="language-plaintext highlighter-rouge">AASR-PROJECT.md</code></td>
-      <td>Canonical AASR reference and implementation guide</td>
-    </tr>
-    <tr>
-      <td><code class="language-plaintext highlighter-rouge">2026-07-01-aasr-project-series-overview.md</code></td>
-      <td>AASR five-part series index article</td>
-    </tr>
-    <tr>
-      <td><code class="language-plaintext highlighter-rouge">2026-07-01-aasr-proxmox-overview.md</code></td>
-      <td>AASR Part 1 article draft (nearest to publishable)</td>
-    </tr>
-    <tr>
-      <td><code class="language-plaintext highlighter-rouge">AME-GPT-EXPLORATION.md</code></td>
-      <td>This file — AME project tracker</td>
-    </tr>
-  </tbody>
-</table>
-
-    <div class="more"><a href="/AME-GPT-EXPLORATION/" title="Ame Gpt Exploration">read more…</a></div>
-  </article>
 
 
 
@@ -1903,6 +1068,11 @@ AASR Part 1 draft exists (<code class="language-plaintext highlighter-rouge">202
 
   <header><h1>Posts</h1></header>
   <ul><li>
+      <time datetime="2026-04-28T17:48:17+00:00">2026-04-28</time>
+      <svg aria-label="Draft" class="icon icon-status" title="Draft"><use xlink:href="/assets/fontawesome/icons.svg#pencil-alt"></use></svg>
+      <em><a href="/FASTAPI-DATASRCS/">Fastapi Datasrcs</a></em>
+    </li>
+    <li>
       <time datetime="2026-07-24T00:00:00+00:00">2026-07-24</time>
       <svg aria-label="Draft" class="icon icon-status" title="Draft"><use xlink:href="/assets/fontawesome/icons.svg#pencil-alt"></use></svg>
       <em><a href="/git-health-monitoring-github-actions-outline/">Repository Cleanup Part 3 Outline: Git Health Monitoring with GitHub Actions</a></em>
@@ -1916,11 +1086,6 @@ AASR Part 1 draft exists (<code class="language-plaintext highlighter-rouge">202
       <time datetime="1999-12-31T00:00:00+00:00">1999-12-31</time>
       <svg aria-label="Draft" class="icon icon-status" title="Draft"><use xlink:href="/assets/fontawesome/icons.svg#pencil-alt"></use></svg>
       <em><a href="/DRAFTS/">Drafts</a></em>
-    </li>
-    <li>
-      <time datetime="1999-12-31T00:00:00+00:00">1999-12-31</time>
-      <svg aria-label="Draft" class="icon icon-status" title="Draft"><use xlink:href="/assets/fontawesome/icons.svg#pencil-alt"></use></svg>
-      <em><a href="/AME-GPT-EXPLORATION/">Ame Gpt Exploration</a></em>
     </li>
     
   </ul>
