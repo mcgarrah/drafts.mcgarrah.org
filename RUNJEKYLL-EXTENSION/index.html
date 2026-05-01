@@ -244,8 +244,46 @@
 <ul class="task-list">
   <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Jekyll Clean command (<code class="language-plaintext highlighter-rouge">jekyll-run.Clean</code> / <code class="language-plaintext highlighter-rouge">ctrl+f10</code>) — cleans cache, restarts if running</li>
   <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Jekyll Doctor command (<code class="language-plaintext highlighter-rouge">jekyll-run.Doctor</code> / <code class="language-plaintext highlighter-rouge">ctrl+f11</code>) — read-only diagnostic</li>
+  <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Multi-workspace Jekyll site selection (see below)</li>
   <li class="task-list-item"><input type="checkbox" class="task-list-item-checkbox" disabled="disabled" />Tests for new commands</li>
 </ul>
+
+<h3 id="multi-workspace-jekyll-site-selection">Multi-Workspace Jekyll Site Selection</h3>
+
+<p><strong>Problem:</strong> In a multi-root workspace with multiple Jekyll repos (e.g., <code class="language-plaintext highlighter-rouge">mcgarrah.github.io</code>
+and <code class="language-plaintext highlighter-rouge">resume</code>), the extension always serves the first workspace folder. There is no way to
+choose which Jekyll site to run.</p>
+
+<p>The root cause is in <code class="language-plaintext highlighter-rouge">isStaticWebsiteWorkspace()</code> (<code class="language-plaintext highlighter-rouge">src/extension.ts:79-96</code>). When no editor
+is active, it falls back to <code class="language-plaintext highlighter-rouge">workspace.workspaceFolders[0]</code>. When an editor <em>is</em> active, it
+uses that file’s workspace folder — but this is implicit and not obvious to the user.</p>
+
+<p><strong>Desired behavior (evaluate these options):</strong></p>
+
+<ol>
+  <li>
+    <p><strong>Active workspace folder</strong> — If a file from a Jekyll repo is open and focused in the
+editor, serve that repo. This partially works today but is not communicated to the user
+(no indicator of which site will be served).</p>
+  </li>
+  <li>
+    <p><strong>Quick pick prompt</strong> — When multiple workspace folders contain <code class="language-plaintext highlighter-rouge">_config.yml</code>, show a
+VS Code QuickPick letting the user choose which site to serve. Could fire on Run if
+multiple Jekyll sites are detected.</p>
+  </li>
+  <li>
+    <p><strong>Configuration setting</strong> — Add a <code class="language-plaintext highlighter-rouge">jekyll-run.workspaceFolder</code> setting that lets the
+user pin a specific workspace folder by name. Falls back to current behavior if unset.</p>
+  </li>
+  <li>
+    <p><strong>Status bar indicator</strong> — Show which Jekyll site is currently targeted in the status
+bar (e.g., “Jekyll: mcgarrah.github.io”). Clicking it could open the QuickPick.</p>
+  </li>
+</ol>
+
+<p>Option 2 + 4 combined is probably the best UX — prompt on ambiguity, show current selection.</p>
+
+<p><strong>Branch:</strong> <code class="language-plaintext highlighter-rouge">main</code> only (new feature, not upstream-compatible)</p>
 
 <h2 id="phase-5--rename-to-run-jekyll-on-main">Phase 5 — Rename to “Run Jekyll” (on <code class="language-plaintext highlighter-rouge">main</code>)</h2>
 
