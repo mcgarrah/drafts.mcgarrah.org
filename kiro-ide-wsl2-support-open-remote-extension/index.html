@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Kiro IDE on Windows: WSL2 Support via Open Remote Extension | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Kiro IDE on Windows: WSL2 Support via Open Remote Extension" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="Complete guide to enabling WSL2 support in Kiro IDE on Windows using the Open Remote - WSL community extension. Covers the required argv.json configuration, kiro-server breakage recovery after updates, terminal default profile fix, MCP server execution within Linux, and known limitations." />
+<meta property="og:description" content="Complete guide to enabling WSL2 support in Kiro IDE on Windows using the Open Remote - WSL community extension. Covers the required argv.json configuration, kiro-server breakage recovery after updates, terminal default profile fix, MCP server execution within Linux, and known limitations." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/kiro-ide-wsl2-support-open-remote-extension/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/kiro-ide-wsl2-support-open-remote-extension/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2025-05-05T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Kiro IDE on Windows: WSL2 Support via Open Remote Extension" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah"},"dateModified":"2025-05-05T00:00:00+00:00","datePublished":"2025-05-05T00:00:00+00:00","description":"Complete guide to enabling WSL2 support in Kiro IDE on Windows using the Open Remote - WSL community extension. Covers the required argv.json configuration, kiro-server breakage recovery after updates, terminal default profile fix, MCP server execution within Linux, and known limitations.","headline":"Kiro IDE on Windows: WSL2 Support via Open Remote Extension","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/kiro-ide-wsl2-support-open-remote-extension/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/kiro-ide-wsl2-support-open-remote-extension/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+
+<!-- Favicons -->
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="shortcut icon" href="/favicon.ico">
+<meta name="theme-color" content="#ffffff">
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+</aside>
+
+
+
+
+
+<div style="background:#e67e00;color:#fff;text-align:center;padding:0.5em 1em;font-size:0.9em;font-weight:bold;">
+  ⚠ DRAFT PREVIEW SITE — unpublished content, may change.
+  <a href="https://mcgarrah.org" style="color:#fff;text-decoration:underline;margin-left:0.5em;">Go to the main site →</a>
+</div>
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/kiro-ide-wsl2-support-open-remote-extension/">Kiro IDE on Windows: WSL2 Support via Open Remote Extension</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2025-05-05T00:00:00+00:00">May 05, 2025</time><span class="reading-time">11 min read</span></header>
+
+  <p>Kiro is a VS Code fork, but it doesn’t include Microsoft’s proprietary Remote - WSL extension. That extension isn’t published to Open VSX (the extension marketplace Kiro uses), and Microsoft’s marketplace terms restrict it to official VS Code builds. If you’re running Kiro on Windows with WSL2 as your primary development environment, this is a hard stop — unless you know where to look.</p>
+
+<p>The <a href="https://open-vsx.org/extension/jeanp413/open-remote-wsl">Open Remote - WSL</a> extension by jeanp413 fills this gap. It’s a community-built, Open VSX-compatible implementation that enables WSL2 support in any VS Code fork, including Kiro. The <a href="https://github.com/kirodotdev/Kiro/issues/17">Kiro GitHub issue #17</a> tracks the ongoing community experience — 38+ comments of workarounds, breakage reports, and fixes that inform everything in this article.</p>
+
+<p>The extension works. It also breaks predictably on Kiro updates, has an easy-to-miss configuration requirement, and routes terminal commands to the wrong shell if you don’t set a default profile. None of these are dealbreakers, but they’ll cost you time if you don’t know about them going in.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="the-problem">The Problem</h2>
+
+<p>VS Code’s WSL integration is built on Microsoft’s proprietary Remote Development extensions. These extensions are:</p>
+
+<ul>
+  <li>Licensed exclusively for use with Microsoft’s VS Code builds</li>
+  <li>Published only to Microsoft’s Visual Studio Marketplace, not Open VSX</li>
+  <li>Not available in Kiro’s extension marketplace</li>
+</ul>
+
+<p>Without WSL support, Kiro on Windows can only access the Windows filesystem. Your Linux development environments, toolchains, and MCP servers running inside WSL2 are unreachable from the IDE. As multiple users in the tracking issue put it bluntly: Kiro is “completely useless” for Windows developers who do all their work inside WSL2.</p>
+
+<p>Kiro itself acknowledges the gap — if you install the Linux version inside WSL2, it displays a message directing you to install the Windows version instead and use the remote extension approach.</p>
+
+<h2 id="installation-and-the-argvjson-requirement">Installation and the argv.json Requirement</h2>
+
+<p>Install the extension from Kiro’s extension panel or the command line:</p>
+
+<div class="language-powershell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">kiro</span><span class="w"> </span><span class="nt">--install-extension</span><span class="w"> </span><span class="nx">jeanp413.open-remote-wsl</span><span class="w">
+</span></code></pre></div></div>
+
+<p><strong>This is the step most people miss.</strong> The extension requires proposed API access to function. Without it, the extension installs silently but does nothing. Enable it in your <code class="language-plaintext highlighter-rouge">~/.kiro/argv.json</code> file (or open it via the command palette: <code class="language-plaintext highlighter-rouge">Preferences: Configure Runtime Arguments</code>):</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+    </span><span class="nl">"enable-proposed-api"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+        </span><span class="s2">"jeanp413.open-remote-wsl"</span><span class="w">
+    </span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Restart Kiro after making this change. If you have other entries in <code class="language-plaintext highlighter-rouge">argv.json</code>, add the <code class="language-plaintext highlighter-rouge">enable-proposed-api</code> array alongside them — don’t replace the file contents. If WSL commands don’t appear in the command palette after installing the extension, this missing configuration is almost certainly the reason.</p>
+
+<p>After installation, the command palette gains WSL-specific commands:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">WSL: New Window</code> — Open a new Kiro window connected to your default WSL distribution</li>
+  <li><code class="language-plaintext highlighter-rouge">WSL: New Window using Distro...</code> — Choose a specific distribution</li>
+  <li><code class="language-plaintext highlighter-rouge">WSL: Open Folder in WSL...</code> — Open a Linux folder directly</li>
+  <li><code class="language-plaintext highlighter-rouge">WSL: Reopen Folder in WSL</code> — Switch the current folder to WSL context</li>
+</ul>
+
+<h2 id="the-terminal-default-profile-gotcha">The Terminal Default Profile Gotcha</h2>
+
+<p>With the extension installed and a WSL2 folder open, Kiro’s agentic chat will attempt to run terminal commands. By default, it routes them to PowerShell — not the WSL terminal. This means commands that should execute in your Linux environment run in Windows instead, producing confusing failures.</p>
+
+<p>The fix is to set the WSL distribution as your default terminal profile. Add this to your Kiro settings (<code class="language-plaintext highlighter-rouge">%APPDATA%\Kiro\User\settings.json</code>):</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+    </span><span class="nl">"wsl.defaultDistro"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Ubuntu"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"terminal.integrated.defaultProfile.windows"</span><span class="p">:</span><span class="w"> </span><span class="s2">"WSL (Ubuntu)"</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"terminal.integrated.profiles.windows"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+        </span><span class="nl">"WSL (Ubuntu)"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+            </span><span class="nl">"path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"C:</span><span class="se">\\</span><span class="s2">Windows</span><span class="se">\\</span><span class="s2">System32</span><span class="se">\\</span><span class="s2">wsl.exe"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"-d"</span><span class="p">,</span><span class="w"> </span><span class="s2">"Ubuntu"</span><span class="p">]</span><span class="w">
+        </span><span class="p">}</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>Replace <code class="language-plaintext highlighter-rouge">Ubuntu</code> with your distribution name. This ensures both manual terminal sessions and agent-initiated commands execute inside WSL2.</p>
+
+<h2 id="opening-wsl2-folders">Opening WSL2 Folders</h2>
+
+<p>From PowerShell or the Windows command line:</p>
+
+<div class="language-powershell highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Open a specific Linux folder</span><span class="w">
+</span><span class="n">kiro</span><span class="w"> </span><span class="nt">--folder-uri</span><span class="w"> </span><span class="s2">"vscode-remote://wsl+Ubuntu/home/username/projects"</span><span class="w">
+
+</span><span class="c"># Open with the --remote flag</span><span class="w">
+</span><span class="n">kiro</span><span class="w"> </span><span class="nt">--remote</span><span class="w"> </span><span class="nx">wsl</span><span class="o">+</span><span class="nx">Ubuntu</span><span class="w">
+</span></code></pre></div></div>
+
+<p>From inside a WSL2 terminal:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># If the kiro CLI is on PATH (installed by the Windows Kiro installer)</span>
+kiro <span class="nb">.</span>
+</code></pre></div></div>
+
+<p>Note: launching <code class="language-plaintext highlighter-rouge">kiro .</code> from inside WSL2 doesn’t always auto-detect the WSL context correctly. If Kiro opens in Windows mode instead of WSL mode, use the explicit <code class="language-plaintext highlighter-rouge">--folder-uri</code> or <code class="language-plaintext highlighter-rouge">--remote</code> flags from PowerShell, or use the command palette (<code class="language-plaintext highlighter-rouge">WSL: Open Folder in WSL...</code>) from within Kiro.</p>
+
+<p>A community-contributed launcher script addresses this by detecting whether the path is a WSL path and automatically constructing the correct <code class="language-plaintext highlighter-rouge">--folder-uri</code>:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+<span class="c"># Save as /usr/local/bin/kiro-wsl or replace the Kiro bin/kiro script</span>
+<span class="nv">KIRO_ROOT</span><span class="o">=</span><span class="s2">"</span><span class="si">$(</span><span class="nb">dirname</span> <span class="s2">"</span><span class="si">$(</span><span class="nb">dirname</span> <span class="s2">"</span><span class="si">$(</span><span class="nb">readlink</span> <span class="nt">-f</span> <span class="s2">"</span><span class="nv">$0</span><span class="s2">"</span><span class="si">)</span><span class="s2">"</span><span class="si">)</span><span class="s2">"</span><span class="si">)</span><span class="s2">"</span>
+
+<span class="nv">ARGS</span><span class="o">=()</span>
+<span class="k">for </span>arg <span class="k">in</span> <span class="s2">"</span><span class="nv">$@</span><span class="s2">"</span><span class="p">;</span> <span class="k">do
+    if</span> <span class="o">[[</span> <span class="s2">"</span><span class="nv">$arg</span><span class="s2">"</span> <span class="o">!=</span> -<span class="k">*</span> <span class="o">]]</span> <span class="o">&amp;&amp;</span> <span class="o">{</span> <span class="o">[</span> <span class="nt">-d</span> <span class="s2">"</span><span class="nv">$arg</span><span class="s2">"</span> <span class="o">]</span> <span class="o">||</span> <span class="o">[[</span> <span class="s2">"</span><span class="nv">$arg</span><span class="s2">"</span> <span class="o">==</span> <span class="s2">"."</span> <span class="o">]]</span> <span class="o">||</span> <span class="o">[[</span> <span class="s2">"</span><span class="nv">$arg</span><span class="s2">"</span> <span class="o">==</span> <span class="s2">".."</span> <span class="o">]]</span><span class="p">;</span> <span class="o">}</span><span class="p">;</span> <span class="k">then
+        </span><span class="nv">FOLDER</span><span class="o">=</span><span class="s2">"</span><span class="si">$(</span><span class="nb">realpath</span> <span class="nt">-m</span> <span class="s2">"</span><span class="nv">$arg</span><span class="s2">"</span><span class="si">)</span><span class="s2">"</span>
+        ARGS+<span class="o">=(</span><span class="s2">"--folder-uri"</span> <span class="s2">"vscode-remote://wsl+</span><span class="k">${</span><span class="nv">WSL_DISTRO_NAME</span><span class="k">}${</span><span class="nv">FOLDER</span><span class="k">}</span><span class="s2">"</span><span class="o">)</span>
+    <span class="k">elif</span> <span class="o">[[</span> <span class="s2">"</span><span class="nv">$arg</span><span class="s2">"</span> <span class="o">!=</span> -<span class="k">*</span> <span class="o">]]</span> <span class="o">&amp;&amp;</span> <span class="o">[</span> <span class="nt">-f</span> <span class="s2">"</span><span class="nv">$arg</span><span class="s2">"</span> <span class="o">]</span><span class="p">;</span> <span class="k">then
+        </span><span class="nv">FILE</span><span class="o">=</span><span class="s2">"</span><span class="si">$(</span><span class="nb">realpath</span> <span class="nt">-m</span> <span class="s2">"</span><span class="nv">$arg</span><span class="s2">"</span><span class="si">)</span><span class="s2">"</span>
+        ARGS+<span class="o">=(</span><span class="s2">"--file-uri"</span> <span class="s2">"vscode-remote://wsl+</span><span class="k">${</span><span class="nv">WSL_DISTRO_NAME</span><span class="k">}${</span><span class="nv">FILE</span><span class="k">}</span><span class="s2">"</span><span class="o">)</span>
+    <span class="k">else
+        </span>ARGS+<span class="o">=(</span><span class="s2">"</span><span class="nv">$arg</span><span class="s2">"</span><span class="o">)</span>
+    <span class="k">fi
+done</span>
+
+<span class="s2">"</span><span class="nv">$KIRO_ROOT</span><span class="s2">/Kiro.exe"</span> <span class="s2">"</span><span class="k">${</span><span class="nv">ARGS</span><span class="p">[@]</span><span class="k">}</span><span class="s2">"</span> &lt;/dev/null &amp;&gt;/dev/null &amp;
+<span class="nb">disown</span>
+</code></pre></div></div>
+
+<h2 id="the-kiro-update-breakage-cycle">The Kiro Update Breakage Cycle</h2>
+
+<p>This is the most significant operational issue. When Kiro updates, the kiro-server binary installed inside WSL2 (at <code class="language-plaintext highlighter-rouge">~/.kiro-server/</code>) becomes incompatible with the new Kiro version. The extension tries to install a new server, and the installation script can fail — sometimes due to stale cached binaries, sometimes due to quoting bugs in the generated bash script.</p>
+
+<p>The symptom is always the same:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>[Error] Error resolving authority
+Error: Couldn't install vscode server on remote server,
+       install script returned non-zero exit status
+</code></pre></div></div>
+
+<h3 id="recovery-procedure">Recovery Procedure</h3>
+
+<p>When WSL2 connectivity breaks after a Kiro update:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Inside WSL2</span>
+<span class="nb">rm</span> <span class="nt">-rf</span> ~/.kiro-server
+</code></pre></div></div>
+
+<p>Then restart Kiro and reconnect to WSL2. The extension will perform a fresh server installation. This has been the reliable fix across multiple Kiro versions (confirmed working through v0.1.25 and beyond in the tracking issue).</p>
+
+<h3 id="the-server-installation-script-quoting-bug">The Server Installation Script Quoting Bug</h3>
+
+<p>In some Kiro versions, the server installation script that the extension generates contains improperly escaped single quotes (<code class="language-plaintext highlighter-rouge">'\''</code>) that fail in bash. If the <code class="language-plaintext highlighter-rouge">rm -rf ~/.kiro-server</code> approach doesn’t resolve the issue:</p>
+
+<ol>
+  <li>Open Kiro’s Output panel and select the WSL extension output channel</li>
+  <li>Copy the full bash script content from the output</li>
+  <li>Save it to a file inside WSL2 (e.g., <code class="language-plaintext highlighter-rouge">~/kiro-server-install.sh</code>)</li>
+  <li>Fix the three quoting errors (look for <code class="language-plaintext highlighter-rouge">'\''</code> patterns that break bash parsing)</li>
+  <li>Run the fixed script manually: <code class="language-plaintext highlighter-rouge">bash ~/kiro-server-install.sh</code></li>
+</ol>
+
+<p>This is a known issue in the community extension’s server bootstrapping code. The manual fix is tedious but reliable.</p>
+
+<h2 id="wsl2-path-escaping-issues">WSL2 Path Escaping Issues</h2>
+
+<p>Kiro’s agent sometimes generates Windows-style UNC paths when it should be using Linux paths inside WSL2. Commands like:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>cd "\\wsl.localhost\Ubuntu\home\username\project"
+</code></pre></div></div>
+
+<p>…fail because the agent is constructing a Windows UNC path instead of the native Linux path <code class="language-plaintext highlighter-rouge">/home/username/project</code>. This is a known limitation of how the remote extension bridges the two filesystems. The agent doesn’t always correctly detect that it’s operating in a Linux context.</p>
+
+<p>There’s no configuration fix for this — it’s a behavioral issue in how Kiro’s agent interacts with the remote extension’s filesystem abstraction. When it happens, the workaround is to manually correct the path in the terminal or re-prompt the agent with explicit Linux path context.</p>
+
+<h2 id="chat-window-disabled-unsafe-environment">Chat Window Disabled: “Unsafe Environment”</h2>
+
+<p>Some users report that after connecting to WSL2, the Kiro chat sidebar shows “Drag a view here to display” or displays an “unsafe environment” warning that disables the chat window entirely. This appears to be related to workspace trust settings.</p>
+
+<p>If you encounter this:</p>
+
+<ol>
+  <li>Open the command palette and run <code class="language-plaintext highlighter-rouge">Workspaces: Manage Workspace Trust</code></li>
+  <li>Trust the WSL2 workspace folder</li>
+  <li>If the chat window still doesn’t appear, close the WSL2 window and reopen it via <code class="language-plaintext highlighter-rouge">WSL: New Window</code></li>
+</ol>
+
+<p>The alternative approach — running the Linux version of Kiro natively inside WSL2 via WSLg — avoids this issue entirely but introduces its own problems (GUI scaling issues on multi-monitor setups, occasional terminal hangs, and general WSLg instability).</p>
+
+<h2 id="mcp-servers-in-wsl2">MCP Servers in WSL2</h2>
+
+<p>This is where WSL2 support becomes particularly relevant for Kiro’s agentic workflows. MCP servers that depend on Linux toolchains — Python <code class="language-plaintext highlighter-rouge">uvx</code> packages, Node.js tools, Docker containers — run natively inside WSL2 rather than through Windows compatibility layers.</p>
+
+<p>When Kiro connects to WSL2 via the Open Remote extension, the kiro-agent’s MCP server processes spawn inside the Linux environment. This means:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">uvx</code>-based MCP servers use the Linux Python installation</li>
+  <li>Docker-based MCP servers connect to the WSL2 Docker daemon</li>
+  <li>File paths in MCP server configs use Linux paths (<code class="language-plaintext highlighter-rouge">/home/...</code>), not Windows paths</li>
+  <li>Environment variables resolve from the Linux shell, not PowerShell</li>
+</ul>
+
+<h3 id="wsl2-side-configuration">WSL2-Side Configuration</h3>
+
+<p>The <code class="language-plaintext highlighter-rouge">~/.kiro</code> directory inside WSL2 is independent from <code class="language-plaintext highlighter-rouge">%USERPROFILE%\.kiro</code> on the Windows side. When connected to WSL2, Kiro reads:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>/home/username/.kiro/
+├── settings/mcp.json    # MCP servers configured for Linux execution
+├── powers/              # Powers available in Linux context
+├── hooks/               # Hooks that run in Linux shell
+├── steering/            # Steering rules
+└── secrets/             # Linux-side credentials
+</code></pre></div></div>
+
+<p>This natural separation means your Windows-side Kiro configuration (with Windows-native MCP servers) and your WSL2-side configuration (with Linux-native MCP servers) are already isolated by the filesystem boundary. You don’t need the <a href="/kiro-ide-parallel-personas-director-developer/">persona isolation techniques</a> to separate Windows and Linux configs — the remote extension handles that by virtue of running in a different filesystem.</p>
+
+<h2 id="the-alternative-running-kiro-natively-in-wsl2">The Alternative: Running Kiro Natively in WSL2</h2>
+
+<p>Several users in the tracking issue have tried running the Linux <code class="language-plaintext highlighter-rouge">.deb</code> version of Kiro directly inside WSL2 using WSLg (Windows Subsystem for Linux GUI). This bypasses the remote extension entirely — Kiro runs as a native Linux application with direct filesystem access.</p>
+
+<p>It works, with caveats:</p>
+
+<ul>
+  <li><strong>Multi-monitor scaling</strong>: WSLg doesn’t respect Windows display scaling. On multi-monitor setups (especially mixed DPI), the mouse cursor may be oversized and click targets may be offset.</li>
+  <li><strong>Terminal stability</strong>: The integrated terminal can hang after extended use in some configurations.</li>
+  <li><strong>GTK dependencies</strong>: Requires up-to-date GTK packages in the WSL2 distribution. Missing or outdated libraries cause rendering issues.</li>
+  <li><strong>Performance</strong>: Noticeably slower than the remote extension approach for UI rendering.</li>
+</ul>
+
+<p>Kiro itself discourages this approach — the Linux installer displays a message suggesting you use the Windows version with the remote extension instead. But for developers who find the remote extension’s breakage cycle unacceptable, it’s a viable if rough alternative.</p>
+
+<h2 id="relationship-to-persona-isolation">Relationship to Persona Isolation</h2>
+
+<p>If you’re running <a href="/kiro-ide-parallel-personas-director-developer/">parallel Kiro personas</a> on Windows, WSL2 adds a third dimension to the isolation story. The Windows-side personas (director and developer) each have their own <code class="language-plaintext highlighter-rouge">%USERPROFILE%\.kiro-*</code> directories. When either persona connects to WSL2, it sees the single <code class="language-plaintext highlighter-rouge">/home/username/.kiro/</code> inside Linux.</p>
+
+<p>For most workflows this is fine — the WSL2 config is developer-focused by nature. The more common pattern is: director persona runs on Windows (Atlassian, GitLab, observability MCPs), developer persona connects to WSL2 (code toolchains, Docker, Linux-native MCP servers).</p>
+
+<h2 id="setup-checklist">Setup Checklist</h2>
+
+<ol>
+  <li>Install WSL2 with your preferred distribution (<code class="language-plaintext highlighter-rouge">wsl --install -d Ubuntu</code>)</li>
+  <li>Install the Open Remote - WSL extension in Kiro (<code class="language-plaintext highlighter-rouge">jeanp413.open-remote-wsl</code>)</li>
+  <li><strong>Enable proposed API</strong> in <code class="language-plaintext highlighter-rouge">~/.kiro/argv.json</code> — this is the step most people miss</li>
+  <li>Restart Kiro</li>
+  <li>Set WSL as the default terminal profile in Kiro settings</li>
+  <li>Open a WSL2 folder (command palette → <code class="language-plaintext highlighter-rouge">WSL: New Window</code>)</li>
+  <li>On first connection, allow the kiro-server installation inside WSL2</li>
+  <li>Configure <code class="language-plaintext highlighter-rouge">~/.kiro/settings/mcp.json</code> inside WSL2 for Linux-native MCP servers</li>
+  <li>Verify MCP servers start correctly from the Kiro terminal (should show Linux paths)</li>
+</ol>
+
+<h3 id="after-every-kiro-update">After Every Kiro Update</h3>
+
+<ol>
+  <li>If WSL2 connectivity breaks: <code class="language-plaintext highlighter-rouge">rm -rf ~/.kiro-server</code> inside WSL2, then restart Kiro</li>
+  <li>If that doesn’t work: extract the server install script from Kiro’s Output panel, fix quoting, run manually</li>
+  <li>Verify <code class="language-plaintext highlighter-rouge">argv.json</code> still contains the <code class="language-plaintext highlighter-rouge">enable-proposed-api</code> entry (updates occasionally reset it)</li>
+</ol>
+
+<h2 id="the-state-of-things">The State of Things</h2>
+
+<p>WSL2 support in Kiro is functional but fragile. The community extension works, the configuration is straightforward once you know about <code class="language-plaintext highlighter-rouge">argv.json</code>, and the recovery procedure after updates is reliable. But it’s a community-maintained bridge over a gap that arguably shouldn’t exist in a product targeting Windows developers.</p>
+
+<p>The <a href="https://github.com/kirodotdev/Kiro/issues/17">tracking issue</a> remains open with the <code class="language-plaintext highlighter-rouge">pending-maintainer-response</code> label. Multiple users have requested either native WSL support or at minimum official documentation for the community extension setup. Until one of those happens, this article and that issue thread are the primary references.</p>
+
+<h2 id="references">References</h2>
+
+<ul>
+  <li><a href="https://github.com/kirodotdev/Kiro/issues/17">Kiro GitHub Issue #17: WSL Support</a> — The canonical community thread</li>
+  <li><a href="https://open-vsx.org/extension/jeanp413/open-remote-wsl">Open Remote - WSL on Open VSX</a></li>
+  <li><a href="https://github.com/jeanp413/open-remote-wsl">jeanp413/open-remote-wsl on GitHub</a></li>
+  <li><a href="https://learn.microsoft.com/en-us/windows/wsl/">WSL2 Documentation</a></li>
+  <li><a href="/kiro-ide-parallel-personas-director-developer/">Kiro IDE: Running Parallel Personas</a> — Companion article on persona isolation</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/kiro/">kiro</a>, 
+        
+          <a href="/tags/vscode/">vscode</a>, 
+        
+          <a href="/tags/wsl2/">wsl2</a>, 
+        
+          <a href="/tags/windows/">windows</a>, 
+        
+          <a href="/tags/linux/">linux</a>, 
+        
+          <a href="/tags/mcp/">mcp</a>, 
+        
+          <a href="/tags/remote-development/">remote-development</a>, 
+        
+          <a href="/tags/open-vsx/">open-vsx</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/technical/">technical</a>, 
+        
+          <a href="/categories/devtools/">devtools</a>, 
+        
+          <a href="/categories/kiro/">kiro</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Technical blog covering homelab infrastructure, Proxmox/Ceph, Dell Wyse 3040, Jekyll development, and networking. Deep dives into virtualization, storage clustering, and system administration.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>
