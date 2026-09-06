@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Jellyfin Media Integrity Scanner: Architecture &amp; Design Decisions | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Jellyfin Media Integrity Scanner: Architecture &amp; Design Decisions" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="Architecture and design decisions for the Jellyfin Media Integrity Scanner plugin. Covers plugin vs. script tradeoffs, two-phase scanning strategy, SQLite schema design, I/O throttling model, and CephFS/NFS storage considerations. Part 2 of a 6-part development series." />
+<meta property="og:description" content="Architecture and design decisions for the Jellyfin Media Integrity Scanner plugin. Covers plugin vs. script tradeoffs, two-phase scanning strategy, SQLite schema design, I/O throttling model, and CephFS/NFS storage considerations. Part 2 of a 6-part development series." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/jellyfin-media-integrity-architecture-design/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/jellyfin-media-integrity-architecture-design/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:image" content="https://drafts.mcgarrah.org/assets/images/og/jellyfin-media-integrity-architecture-design.png" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-08-05T00:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta property="twitter:image" content="https://drafts.mcgarrah.org/assets/images/og/jellyfin-media-integrity-architecture-design.png" />
+<meta property="twitter:title" content="Jellyfin Media Integrity Scanner: Architecture &amp; Design Decisions" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah","url":"https://mcgarrah.org"},"dateModified":"2026-08-05T00:00:00+00:00","datePublished":"2026-08-05T00:00:00+00:00","description":"Architecture and design decisions for the Jellyfin Media Integrity Scanner plugin. Covers plugin vs. script tradeoffs, two-phase scanning strategy, SQLite schema design, I/O throttling model, and CephFS/NFS storage considerations. Part 2 of a 6-part development series.","headline":"Jellyfin Media Integrity Scanner: Architecture &amp; Design Decisions","image":"https://drafts.mcgarrah.org/assets/images/og/jellyfin-media-integrity-architecture-design.png","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/jellyfin-media-integrity-architecture-design/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/jellyfin-media-integrity-architecture-design/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+
+
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = isDarkMode ? 'dark' : 'default';
+  mermaid.initialize({ startOnLoad: true, theme: theme });
+  await mermaid.run({ querySelector: '.language-mermaid' });
+</script>
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+
+<!-- Favicons -->
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="shortcut icon" href="/favicon.ico">
+<meta name="theme-color" content="#ffffff">
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="Substack" href="https://mcgarrah.substack.com/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#substack"></use></svg>
+      <span aria-hidden="true">Substack</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Engineering deep dives on infrastructure, distributed systems, and AI/ML — from homelab experiments to enterprise architecture.</div>
+</aside>
+
+
+
+
+
+<div style="background:#e67e00;color:#fff;text-align:center;padding:0.5em 1em;font-size:0.9em;font-weight:bold;">
+  ⚠ DRAFT PREVIEW SITE — unpublished content, may change.
+  <a href="https://mcgarrah.org" style="color:#fff;text-decoration:underline;margin-left:0.5em;">Go to the main site →</a>
+</div>
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+  
+  <nav class="drafts-nav"><a href="/substack/"><svg aria-label="Substack Drafts" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#newspaper"></use></svg><span>Substack Drafts</span>
+    </a><a href="/linkedin/"><svg aria-label="LinkedIn Drafts" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg><span>LinkedIn Drafts</span>
+    </a></nav>
+  
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/jellyfin-media-integrity-architecture-design/">Jellyfin Media Integrity Scanner: Architecture & Design Decisions</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-08-05T00:00:00+00:00">August 05, 2026</time><span class="reading-time">8 min read</span></header>
+
+  <p>The <a href="/jellyfin-media-integrity-scanner-introduction/">first article</a> introduced the problem: media files rot silently, and Jellyfin doesn’t validate stream integrity. This article covers the architectural decisions that shape the plugin’s design — the tradeoffs, constraints, and reasoning behind each choice.</p>
+
+<!-- excerpt-end -->
+
+<p>This is Part 2 of the <a href="/jellyfin-media-integrity-scanner-introduction/">Jellyfin Media Integrity Scanner</a> development series.</p>
+
+<h2 id="decision-1-plugin-vs-standalone-script">Decision 1: Plugin vs. Standalone Script</h2>
+
+<p>The first major decision: should this be a Jellyfin plugin (C#/.NET, runs inside the server process) or an external script (bash/Python, runs independently)?</p>
+
+<h3 id="why-a-plugin-wins">Why a Plugin Wins</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Factor</th>
+      <th>Plugin</th>
+      <th>Script</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Library awareness</td>
+      <td>Direct access to Jellyfin’s item database</td>
+      <td>Must query API or parse filesystem</td>
+    </tr>
+    <tr>
+      <td>Event hooks</td>
+      <td>Subscribes to ItemAdded/Removed events</td>
+      <td>Requires polling or webhooks</td>
+    </tr>
+    <tr>
+      <td>Admin UI</td>
+      <td>Native dashboard integration</td>
+      <td>Separate web interface needed</td>
+    </tr>
+    <tr>
+      <td>Configuration</td>
+      <td>Jellyfin’s plugin config system</td>
+      <td>Separate config file</td>
+    </tr>
+    <tr>
+      <td>Scheduling</td>
+      <td>Jellyfin’s scheduled task system</td>
+      <td>External cron/systemd timer</td>
+    </tr>
+    <tr>
+      <td>User visibility</td>
+      <td>Shows in Plugins page</td>
+      <td>Invisible to Jellyfin admins</td>
+    </tr>
+    <tr>
+      <td>State management</td>
+      <td>Plugin lifecycle managed by Jellyfin</td>
+      <td>Must handle own process lifecycle</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="why-scripts-still-have-a-role">Why Scripts Still Have a Role</h3>
+
+<p>Scripts remain useful for:</p>
+<ul>
+  <li>One-off scans before initial library import</li>
+  <li>Environments where plugin installation isn’t possible</li>
+  <li>Debugging and development (faster iteration than plugin reload)</li>
+</ul>
+
+<p>The architecture supports both: the core scanning logic wraps ffmpeg in a way that could be extracted into a standalone CLI tool later.</p>
+
+<h2 id="decision-2-two-phase-scanning-strategy">Decision 2: Two-Phase Scanning Strategy</h2>
+
+<p>Not all integrity checks are equal in cost. A full byte-stream decode of a 4K Blu-ray remux can take 10-15 minutes and read 50+ GB. Running that against every file on every scan is impractical.</p>
+
+<h3 id="phase-1-fast-header--metadata-check">Phase 1: Fast Header &amp; Metadata Check</h3>
+
+<p><strong>Cost:</strong> ~100ms per file<br />
+<strong>What it catches:</strong> Truncated files, corrupt containers, missing streams, invalid codecs</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ffprobe <span class="nt">-v</span> error <span class="nt">-show_entries</span> <span class="nv">format</span><span class="o">=</span>duration,size,bit_rate <span class="se">\</span>
+  <span class="nt">-show_entries</span> <span class="nv">stream</span><span class="o">=</span>codec_type,codec_name,width,height <span class="se">\</span>
+  <span class="nt">-of</span> json <span class="s2">"input.mkv"</span>
+</code></pre></div></div>
+
+<p>If ffprobe returns errors or can’t parse the container, the file is immediately flagged.</p>
+
+<h3 id="phase-2-full-byte-stream-decode">Phase 2: Full Byte-Stream Decode</h3>
+
+<p><strong>Cost:</strong> Minutes per file (proportional to file size)<br />
+<strong>What it catches:</strong> Corrupt frames, audio glitches, mid-file corruption, encoding errors</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ffmpeg <span class="nt">-v</span> error <span class="nt">-i</span> <span class="s2">"input.mkv"</span> <span class="nt">-f</span> null - 2&gt;&amp;1
+</code></pre></div></div>
+
+<p>This decodes every frame without producing output. Any decode errors are captured from stderr.</p>
+
+<h3 id="when-to-use-each-phase">When to Use Each Phase</h3>
+
+<ul>
+  <li><strong>Phase 1</strong> runs on all files during scheduled scans</li>
+  <li><strong>Phase 2</strong> runs on:
+    <ul>
+      <li>Files that fail Phase 1 (confirm the failure)</li>
+      <li>Newly added files (validate before marking as “good”)</li>
+      <li>User-triggered deep scans from the dashboard</li>
+      <li>Scheduled full-library deep scans (opt-in, runs over days/weeks)</li>
+    </ul>
+  </li>
+</ul>
+
+<h2 id="decision-3-io-throttling-model">Decision 3: I/O Throttling Model</h2>
+
+<p>The most critical design constraint: scanning must never degrade playback.</p>
+
+<h3 id="the-problem-with-unthrottled-scanning">The Problem with Unthrottled Scanning</h3>
+
+<p>A naive scan reads files sequentially at maximum disk speed. On shared storage (CephFS, NFS), this:</p>
+<ul>
+  <li>Saturates network bandwidth between storage nodes</li>
+  <li>Fills OSD/NFS server read caches with scan data, evicting hot playback data</li>
+  <li>Creates I/O contention that adds latency to concurrent reads</li>
+</ul>
+
+<h3 id="the-throttling-approach">The Throttling Approach</h3>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>┌─────────────────────────────────────┐
+│        Throttle Configuration       │
+├─────────────────────────────────────┤
+│  MaxConcurrentScans: 1              │
+│  DelayBetweenFiles: 5000ms          │
+│  MaxBytesPerSecond: 10MB/s          │
+│  PauseDuringPlayback: true          │
+│  ActiveHoursOnly: false             │
+│  QuietHoursStart: 02:00             │
+│  QuietHoursEnd: 06:00               │
+└─────────────────────────────────────┘
+</code></pre></div></div>
+
+<p>Key throttling mechanisms:</p>
+
+<ol>
+  <li><strong>Inter-file delay</strong> — Configurable pause between scanning each file (default: 5 seconds)</li>
+  <li><strong>Bandwidth cap</strong> — Limit read throughput via ionice or application-level rate limiting</li>
+  <li><strong>Playback awareness</strong> — Pause scanning when active playback sessions exist</li>
+  <li><strong>Concurrency limit</strong> — Never scan more than N files simultaneously (default: 1)</li>
+  <li><strong>Time-of-day scheduling</strong> — Optional restriction to quiet hours</li>
+</ol>
+
+<h3 id="cephfs-specific-considerations">CephFS-Specific Considerations</h3>
+
+<p>CephFS distributes data across OSDs. Sequential reads from scanning spread across the cluster, but:</p>
+<ul>
+  <li>MDS (metadata server) load increases with rapid stat() calls during file enumeration</li>
+  <li>OSD read-ahead can be wasteful for scanning (we read the whole file regardless)</li>
+  <li>Client-side caching of scanned data wastes RAM since we won’t re-read</li>
+</ul>
+
+<p>The plugin uses <code class="language-plaintext highlighter-rouge">posix_fadvise(FADV_SEQUENTIAL | FADV_DONTNEED)</code> semantics (via ffmpeg’s I/O behavior) to hint that scanned data shouldn’t be cached.</p>
+
+<h2 id="decision-4-sqlite-for-persistent-state">Decision 4: SQLite for Persistent State</h2>
+
+<h3 id="why-sqlite">Why SQLite</h3>
+
+<ul>
+  <li>Zero configuration — single file, no server process</li>
+  <li>ACID compliant — safe against crashes during scan</li>
+  <li>Embedded — ships with .NET, no external dependency</li>
+  <li>Concurrent reads — multiple threads can read while one writes</li>
+  <li>Small footprint — scan metadata for 100K files fits in &lt;50MB</li>
+</ul>
+
+<h3 id="schema-design">Schema Design</h3>
+
+<div class="language-sql highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">scan_results</span> <span class="p">(</span>
+    <span class="n">id</span> <span class="nb">INTEGER</span> <span class="k">PRIMARY</span> <span class="k">KEY</span> <span class="n">AUTOINCREMENT</span><span class="p">,</span>
+    <span class="n">item_id</span> <span class="nb">TEXT</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>           <span class="c1">-- Jellyfin item GUID</span>
+    <span class="n">file_path</span> <span class="nb">TEXT</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+    <span class="n">file_size</span> <span class="nb">INTEGER</span><span class="p">,</span>
+    <span class="n">last_modified</span> <span class="nb">TEXT</span><span class="p">,</span>              <span class="c1">-- File mtime at scan time</span>
+    <span class="n">scan_phase</span> <span class="nb">INTEGER</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>     <span class="c1">-- 1 = header, 2 = full decode</span>
+    <span class="n">scan_status</span> <span class="nb">INTEGER</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>    <span class="c1">-- 0 = pending, 1 = pass, 2 = fail, 3 = error</span>
+    <span class="n">scan_timestamp</span> <span class="nb">TEXT</span> <span class="k">NOT</span> <span class="k">NULL</span><span class="p">,</span>
+    <span class="n">error_output</span> <span class="nb">TEXT</span><span class="p">,</span>               <span class="c1">-- ffmpeg/ffprobe stderr on failure</span>
+    <span class="n">scan_duration_ms</span> <span class="nb">INTEGER</span><span class="p">,</span>
+    <span class="k">UNIQUE</span><span class="p">(</span><span class="n">item_id</span><span class="p">,</span> <span class="n">scan_phase</span><span class="p">)</span>
+<span class="p">);</span>
+
+<span class="k">CREATE</span> <span class="k">TABLE</span> <span class="n">scan_config</span> <span class="p">(</span>
+    <span class="k">key</span> <span class="nb">TEXT</span> <span class="k">PRIMARY</span> <span class="k">KEY</span><span class="p">,</span>
+    <span class="n">value</span> <span class="nb">TEXT</span> <span class="k">NOT</span> <span class="k">NULL</span>
+<span class="p">);</span>
+
+<span class="k">CREATE</span> <span class="k">INDEX</span> <span class="n">idx_scan_results_status</span> <span class="k">ON</span> <span class="n">scan_results</span><span class="p">(</span><span class="n">scan_status</span><span class="p">);</span>
+<span class="k">CREATE</span> <span class="k">INDEX</span> <span class="n">idx_scan_results_item</span> <span class="k">ON</span> <span class="n">scan_results</span><span class="p">(</span><span class="n">item_id</span><span class="p">);</span>
+<span class="k">CREATE</span> <span class="k">INDEX</span> <span class="n">idx_scan_results_timestamp</span> <span class="k">ON</span> <span class="n">scan_results</span><span class="p">(</span><span class="n">scan_timestamp</span><span class="p">);</span>
+</code></pre></div></div>
+
+<h3 id="incremental-scanning-logic">Incremental Scanning Logic</h3>
+
+<p>On each scheduled scan:</p>
+<ol>
+  <li>Query Jellyfin for all media items</li>
+  <li>For each item, check if <code class="language-plaintext highlighter-rouge">scan_results</code> has an entry where <code class="language-plaintext highlighter-rouge">last_modified</code> matches current file mtime</li>
+  <li>If mtime matches and previous scan passed → skip</li>
+  <li>If mtime differs or no entry exists → queue for scan</li>
+</ol>
+
+<p>This means only new or modified files get scanned on subsequent runs.</p>
+
+<blockquote>
+  <p><strong>Update:</strong> step 3 as originally implemented didn’t account for <code class="language-plaintext highlighter-rouge">scan_phase</code> — it skipped an item if <em>any</em> passing record existed with a matching mtime, regardless of whether that pass came from the quick Header check or the full Phase 2 decode. Since files are almost always Header-scanned first, this meant the Phase 2 deep scan would treat a Header-only pass as “current” and skip it forever. The fix requires the passing record’s <code class="language-plaintext highlighter-rouge">scan_phase</code> to be at or above the phase being requested. See the <a href="/jellyfin-media-integrity-scanner-core/#update-the-skip-check-didnt-know-about-scan-phase">scanner core article</a> for the full story.</p>
+</blockquote>
+
+<h2 id="decision-5-event-driven-library-monitoring">Decision 5: Event-Driven Library Monitoring</h2>
+
+<p>Rather than relying solely on scheduled scans, the plugin hooks into Jellyfin’s library events:</p>
+
+<ul>
+  <li><strong>ItemAdded</strong> — New file imported → queue Phase 1 scan</li>
+  <li><strong>ItemUpdated</strong> — File replaced/re-encoded → queue Phase 1 scan</li>
+  <li><strong>ItemRemoved</strong> — File deleted → purge scan_results entry</li>
+</ul>
+
+<p>This keeps the database in sync with the actual library state and ensures new imports are validated promptly.</p>
+
+<blockquote>
+  <p><strong>Update:</strong> <code class="language-plaintext highlighter-rouge">ItemUpdated</code> never actually got a handler — only <code class="language-plaintext highlighter-rouge">ItemAdded</code> and <code class="language-plaintext highlighter-rouge">ItemRemoved</code> are wired up in the shipped <code class="language-plaintext highlighter-rouge">LibraryMonitor</code>. A re-encoded file currently only gets re-scanned once its mtime no longer matches the stored record, via the incremental-scanning check above, not immediately on replacement.</p>
+</blockquote>
+
+<p>Library events are only two of six things that can put a file in front of the scanner. Scheduled tasks and the dashboard/API reach into the same engine, and all of them land in the same currency check before anything runs:</p>
+
+<pre><code class="language-mermaid">%%{init: {"theme": "base", "themeVariables": {
+  "primaryColor": "#17221f",
+  "primaryTextColor": "#e7ede9",
+  "primaryBorderColor": "#3e6e67",
+  "lineColor": "#7c93a3",
+  "secondaryColor": "#1d2b27",
+  "tertiaryColor": "#101a18",
+  "fontFamily": "monospace",
+  "fontSize": "14px"
+}}}%%
+flowchart TD
+    IA["ItemAdded&lt;br/&gt;library event"]:::ev
+    IR["ItemRemoved&lt;br/&gt;library event"]:::ev
+    HS["HeaderScanTask&lt;br/&gt;daily, 03:00"]:::ev
+    DS["DeepScanTask&lt;br/&gt;Sunday, 01:00"]:::ev
+    API["POST /MediaIntegrity/Scan&lt;br/&gt;dashboard or API"]:::ev
+    CAN["POST /MediaIntegrity/Cancel&lt;br/&gt;dashboard or API"]:::ev
+
+    IA --&gt;|"ScanOnItemAdded"| SIA1["ScanItemAsync&lt;br/&gt;Header · this file"]:::act
+    IR --&gt;|"PurgeOnItemRemoved"| PURGE["PurgeItemAsync"]:::act
+
+    HS --&gt; LOOP1{"IsCurrentAsync&lt;br/&gt;at Header?"}:::gate
+    DS --&gt;|"only if EnableDeepScan"| LOOP2{"IsCurrentAsync&lt;br/&gt;at FullDecode?"}:::gate
+
+    LOOP1 --&gt;|"current"| SKIP1["file untouched"]:::stop
+    LOOP1 --&gt;|"stale"| SIA1
+    LOOP2 --&gt;|"current"| SKIP2["file untouched"]:::stop
+    LOOP2 --&gt;|"stale"| SIA2["ScanItemAsync&lt;br/&gt;FullDecode · this file"]:::act
+
+    API --&gt; BUSY{"IsScanning?"}:::gate
+    BUSY --&gt;|"yes → 409"| REJECT["request refused,&lt;br/&gt;nothing changes"]:::stop
+    BUSY --&gt;|"no → 202"| SCOPE{"itemId given?"}:::gate
+    SCOPE --&gt;|"yes — skips the&lt;br/&gt;currency check"| SIA3["ScanItemAsync&lt;br/&gt;forced phase · one file"]:::act
+    SCOPE --&gt;|"no"| SLA["ScanLibraryAsync&lt;br/&gt;checks IsCurrentAsync per item"]:::act
+
+    CAN -.-&gt;|"cancellation token"| SIA1
+    CAN -.-&gt; SIA2
+    CAN -.-&gt; SIA3
+    CAN -.-&gt; SLA
+
+    SIA1 --&gt; GATES(["gate pipeline — see the&lt;br/&gt;scanner core article"]):::pipe
+    SIA2 --&gt; GATES
+    SIA3 --&gt; GATES
+    SLA --&gt; GATES
+
+    classDef ev fill:#1d2b27,stroke:#3e6e67,color:#e7ede9
+    classDef gate fill:#2a2013,stroke:#e3a857,color:#f4d9a8
+    classDef act fill:#16332c,stroke:#5fa88f,color:#cfefe2
+    classDef stop fill:#331c1a,stroke:#d96c5d,color:#f3c8c2
+    classDef pipe fill:#101a18,stroke:#e3a857,color:#e3a857,stroke-width:2px
+</code></pre>
+
+<p>The one asymmetry worth keeping in mind: an <code class="language-plaintext highlighter-rouge">itemId</code>-scoped API call skips the currency check entirely — it’s the only way to force a re-scan of a file the scheduled tasks would otherwise wave through as “already handled.”</p>
+
+<h2 id="decision-6-cross-platform-ffmpeg-resolution">Decision 6: Cross-Platform FFmpeg Resolution</h2>
+
+<p>Jellyfin runs on Linux, Windows, and macOS. FFmpeg’s binary location varies:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Platform</th>
+      <th>Common Paths</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Linux (apt)</td>
+      <td><code class="language-plaintext highlighter-rouge">/usr/bin/ffmpeg</code>, <code class="language-plaintext highlighter-rouge">/usr/bin/ffprobe</code></td>
+    </tr>
+    <tr>
+      <td>Linux (Jellyfin bundle)</td>
+      <td><code class="language-plaintext highlighter-rouge">/usr/lib/jellyfin-ffmpeg/ffmpeg</code></td>
+    </tr>
+    <tr>
+      <td>Windows</td>
+      <td><code class="language-plaintext highlighter-rouge">C:\ProgramData\Jellyfin\Server\ffmpeg.exe</code></td>
+    </tr>
+    <tr>
+      <td>macOS (brew)</td>
+      <td><code class="language-plaintext highlighter-rouge">/opt/homebrew/bin/ffmpeg</code></td>
+    </tr>
+    <tr>
+      <td>Docker</td>
+      <td><code class="language-plaintext highlighter-rouge">/usr/lib/jellyfin-ffmpeg/ffmpeg</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The plugin resolves ffmpeg using:</p>
+<ol>
+  <li>Jellyfin’s own configured ffmpeg path (from server config)</li>
+  <li><code class="language-plaintext highlighter-rouge">PATH</code> environment variable lookup</li>
+  <li>Platform-specific known locations</li>
+  <li>User-configurable override in plugin settings</li>
+</ol>
+
+<h2 id="whats-next">What’s Next</h2>
+
+<p>The <a href="/jellyfin-media-integrity-scanner-core/">next article</a> implements the scanner core: the .NET 9 plugin structure, ffmpeg process management, the bounded task queue, and cross-platform path resolution.</p>
+
+<h2 id="series-navigation">Series Navigation</h2>
+
+<ol>
+  <li><a href="/jellyfin-media-integrity-scanner-introduction/">Introduction &amp; Problem Statement</a></li>
+  <li><strong>Architecture &amp; Design Decisions</strong> (this post)</li>
+  <li><a href="/jellyfin-media-integrity-scanner-core/">Building the Scanner Core</a></li>
+  <li><a href="/jellyfin-media-integrity-dashboard-api/">The Dashboard &amp; API</a></li>
+  <li><a href="/jellyfin-media-integrity-deployment-operations/">Deployment &amp; Operations</a></li>
+  <li><a href="/jellyfin-media-integrity-release-and-updates/">v0.1.1 Release: Update Checker &amp; Auto-Update</a></li>
+</ol>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/jellyfin/">jellyfin</a>, 
+        
+          <a href="/tags/media-integrity/">media-integrity</a>, 
+        
+          <a href="/tags/architecture/">architecture</a>, 
+        
+          <a href="/tags/sqlite/">sqlite</a>, 
+        
+          <a href="/tags/throttling/">throttling</a>, 
+        
+          <a href="/tags/plugin-development/">plugin-development</a>, 
+        
+          <a href="/tags/dotnet/">dotnet</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/homelab/">homelab</a>, 
+        
+          <a href="/categories/media-server/">media-server</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://mcgarrah.substack.com/" rel="me">Substack</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Engineering deep dives on infrastructure, distributed systems, and AI/ML — from homelab experiments to enterprise architecture.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://mcgarrah.substack.com/" ><svg aria-label="Substack" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#substack"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

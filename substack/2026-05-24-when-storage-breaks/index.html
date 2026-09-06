@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>When Storage Breaks: Ceph Failures, Recovery, and the Case for Hybrid Drives | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="When Storage Breaks: Ceph Failures, Recovery, and the Case for Hybrid Drives" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="When Storage Breaks: Ceph Failures, Recovery, and the Case for Hybrid Drives Subtitle: Power Failures, Dead Switches, Overlapping Failures, and Why USB Drives With SSD Acceleration Actually Work Author: McGarrah Planned: May 24, 2026 URL: TBD Tags: Homelab, Infrastructure, Ceph, Storage, Proxmox, Distributed Systems, Software Engineering Incident response discipline is a leadership competency, not just an engineering skill. How your team debugs overlapping failures — the systematic isolation of variables, the staged recovery, the post-incident documentation — tells you more about engineering maturity than any architecture diagram. My first newsletter covered building the homelab. My second covered the blog platform. This one covers what happens when the infrastructure breaks — and the engineering decisions that determine whether recovery takes minutes or days. Having managed similar failure cascades in production environments — including systems under federal security audit — the debugging methodology is identical. The stakes change; the discipline doesn’t. In April 2026, a power outage knocked my 15-OSD Ceph cluster down to 4 healthy OSDs. The recovery took days, not because Ceph is fragile, but because three separate problems were hiding behind each other: a dead SAN switch, a ceph.conf misconfiguration, and a USB drive that had silently failed weeks earlier. Untangling overlapping failures in a distributed storage system is the kind of debugging that teaches you more than any certification course. This is also the story of a storage architecture decision that sounds insane on paper — running Ceph on USB drives — and why it actually works when you put the metadata on SSDs. Thanks for reading! Subscribe for free to receive new posts and support my work. The Failure Cascade A power outage shouldn’t be catastrophic for a distributed storage system. Ceph is designed for exactly this — data is replicated across nodes, and the cluster self-heals when nodes come back online. In theory. In practice, my cluster went from 15 healthy OSDs to 4, and the recovery path was anything but straightforward. Ceph OSD Recovery After Power Failure: SAN Switch Was Dead the Whole Time — The full recovery story. Eleven OSDs down, heartbeat cascades across the cluster, and the root cause hiding in plain sight: a dead SAN switch that showed NO-CARRIER on every node’s cluster network interface. Plus a ceph.conf misconfiguration (host IP vs network CIDR) that had been silently wrong for months. The debugging process is the real lesson here. When multiple things fail simultaneously, you can’t trust your assumptions about which layer is broken. Network? Storage? Configuration? The answer was “all three, and they’re masking each other.” When Failures Overlap The power failure recovery revealed a second problem that had been lurking for weeks: a dead USB drive hosting a Ceph OSD on one of the nodes. That failure had been masked by the cluster’s replication — data was still accessible, just degraded. But when the power outage hit, the degraded state compounded the recovery. Then a routine ZFS scrub alert fired on the same node, adding a third failure to debug simultaneously. When ZFS and Ceph Problems Collide: Diagnosing Overlapping Failures on Proxmox — A ZFS hostid mismatch, a dead USB Ceph drive, and a power failure recovery all happening on the same node at the same time. How to untangle overlapping storage problems when each one masks the symptoms of the others. The key insight: fix the most fundamental layer first. Network before storage, storage before applications. And verify each fix independently before moving to the next layer. The Hybrid Storage Architecture After the recovery, I had a decision to make about the cluster’s storage architecture. The USB drives were the weak link — slow, unreliable, and the source of most OSD failures. But replacing them all with SSDs would cost more than the entire cluster was worth. The compromise: keep the USB drives for bulk data, but move the metadata (WAL and DB) onto SSDs. This is the same tiered storage pattern used in enterprise Ceph deployments, just at homelab scale with consumer hardware. Hybrid Ceph Storage: SSD WAL/DB Acceleration with USB Drive Data — The architecture and implementation guide. WAL vs DB differences, sizing calculations, ceph-volume creation, and the performance results. A Crucial MX500 SSD handling metadata for three USB OSDs transformed the cluster from sluggish to surprisingly capable. Measuring the WAL vs DB Performance Gap on Ceph USB OSDs — I benchmarked WAL-only acceleration against full DB acceleration across the cluster. The headline result: DB is 5-15% faster on reads in matched-hardware comparisons. But the real discovery was that the USB 3.0 hardware ceiling dominates everything — the bus speed is the bottleneck, not the metadata placement. Includes ready-to-run benchmark scripts. The Prerequisite Nobody Documents All of this debugging required SSH access to six Proxmox nodes, repeatedly, under pressure. Typing passwords during an incident is not just annoying — it is a friction cost that compounds when you are cycling through nodes isolating a failure. SSH Key-Based Access to a Proxmox Cluster — The setup that makes everything else possible. SSH key authentication, named hosts in SSH config, and the Proxmox-specific detail that shared authorized_keys across cluster nodes means you only deploy the key once. This is the kind of foundational infrastructure that does not make for exciting reading until you are debugging a storage failure at midnight. Every production environment I have managed has the equivalent — the access patterns and tooling that nobody thinks about until they are the bottleneck during an incident. The Bigger Picture: Storage Economics The hybrid architecture decision didn’t happen in a vacuum. It was informed by months of running Ceph on consumer hardware and tracking the real costs. Homelab Storage Economics: Ceph vs Single Drive — The cost analysis that informed the hybrid decision. Distributed storage has a replication tax — 3x replication means 69 TiB raw becomes 23 TiB usable. Is the redundancy worth it? For a homelab that runs 24/7 and stores data I care about, yes. Optimizing Ceph Performance in Proxmox — The baseline performance numbers before the hybrid architecture. You can’t measure improvement without knowing where you started. Managing Ceph Nearfull Warnings — Capacity management. Ceph gets progressively more unhappy as disks fill up, and the warning thresholds are lower than you’d expect. This is the article I wish I’d read before my first nearfull panic. Enabling SMART Monitoring on Seagate USB Drives — The monitoring that should have caught the dead USB drive before the power failure. USB-to-SATA bridges hide SMART data by default — you need specific passthrough flags to get health information from USB storage. What This Teaches About Distributed Systems Every failure in this series maps to a distributed systems concept that shows up in production infrastructure: Failure cascades — One dead switch took out 11 of 15 OSDs because the cluster network was a single point of failure Silent degradation — The dead USB drive was invisible because replication covered for it, until a second failure exposed the weakness Overlapping failures — Three problems on one node, each masking the others. This is why observability matters more than redundancy Tiered storage — The same hot/cold data pattern used in every cloud provider’s storage offering, implemented with consumer hardware Hardware ceilings — The USB 3.0 bus speed bottleneck is the same class of problem as network bandwidth limits in distributed training The homelab is where I learn these lessons at low cost. The enterprise is where I apply them at scale — and where the same debugging methodology has resolved production incidents across healthcare platforms under HIPAA audit, financial services systems processing billions in assets, and state government infrastructure serving millions of citizens. What’s Next The cluster is stable and the hybrid architecture is performing well. Next priorities: Kubernetes on Proxmox — Deploying K8s on top of this infrastructure with Ceph CSI for persistent storage Ceph Reef to Squid upgrade — The next major Ceph version brings performance improvements LACP bonding for the SAN network — Eliminating the single-switch failure point that started this whole story About Me I’m Michael McGarrah. I’ve spent 30 years building and leading technology organizations — from enterprise architecture for North Carolina state government to cloud platforms running production ML models in healthcare and financial services. I hold an M.S. in Computer Science (AI/ML) from Georgia Tech and I’m completing an Executive MBA at UNC Wilmington, deliberately bridging the gap between technical depth and business strategy. I still write code, debug distributed systems, and build infrastructure — because the best technology leaders never stop being engineers. You can find more of my writing at mcgarrah.org, my detailed resume at mcgarrah.org/resume, and my profiles on LinkedIn, Substack, GitHub, and Google Scholar." />
+<meta property="og:description" content="When Storage Breaks: Ceph Failures, Recovery, and the Case for Hybrid Drives Subtitle: Power Failures, Dead Switches, Overlapping Failures, and Why USB Drives With SSD Acceleration Actually Work Author: McGarrah Planned: May 24, 2026 URL: TBD Tags: Homelab, Infrastructure, Ceph, Storage, Proxmox, Distributed Systems, Software Engineering Incident response discipline is a leadership competency, not just an engineering skill. How your team debugs overlapping failures — the systematic isolation of variables, the staged recovery, the post-incident documentation — tells you more about engineering maturity than any architecture diagram. My first newsletter covered building the homelab. My second covered the blog platform. This one covers what happens when the infrastructure breaks — and the engineering decisions that determine whether recovery takes minutes or days. Having managed similar failure cascades in production environments — including systems under federal security audit — the debugging methodology is identical. The stakes change; the discipline doesn’t. In April 2026, a power outage knocked my 15-OSD Ceph cluster down to 4 healthy OSDs. The recovery took days, not because Ceph is fragile, but because three separate problems were hiding behind each other: a dead SAN switch, a ceph.conf misconfiguration, and a USB drive that had silently failed weeks earlier. Untangling overlapping failures in a distributed storage system is the kind of debugging that teaches you more than any certification course. This is also the story of a storage architecture decision that sounds insane on paper — running Ceph on USB drives — and why it actually works when you put the metadata on SSDs. Thanks for reading! Subscribe for free to receive new posts and support my work. The Failure Cascade A power outage shouldn’t be catastrophic for a distributed storage system. Ceph is designed for exactly this — data is replicated across nodes, and the cluster self-heals when nodes come back online. In theory. In practice, my cluster went from 15 healthy OSDs to 4, and the recovery path was anything but straightforward. Ceph OSD Recovery After Power Failure: SAN Switch Was Dead the Whole Time — The full recovery story. Eleven OSDs down, heartbeat cascades across the cluster, and the root cause hiding in plain sight: a dead SAN switch that showed NO-CARRIER on every node’s cluster network interface. Plus a ceph.conf misconfiguration (host IP vs network CIDR) that had been silently wrong for months. The debugging process is the real lesson here. When multiple things fail simultaneously, you can’t trust your assumptions about which layer is broken. Network? Storage? Configuration? The answer was “all three, and they’re masking each other.” When Failures Overlap The power failure recovery revealed a second problem that had been lurking for weeks: a dead USB drive hosting a Ceph OSD on one of the nodes. That failure had been masked by the cluster’s replication — data was still accessible, just degraded. But when the power outage hit, the degraded state compounded the recovery. Then a routine ZFS scrub alert fired on the same node, adding a third failure to debug simultaneously. When ZFS and Ceph Problems Collide: Diagnosing Overlapping Failures on Proxmox — A ZFS hostid mismatch, a dead USB Ceph drive, and a power failure recovery all happening on the same node at the same time. How to untangle overlapping storage problems when each one masks the symptoms of the others. The key insight: fix the most fundamental layer first. Network before storage, storage before applications. And verify each fix independently before moving to the next layer. The Hybrid Storage Architecture After the recovery, I had a decision to make about the cluster’s storage architecture. The USB drives were the weak link — slow, unreliable, and the source of most OSD failures. But replacing them all with SSDs would cost more than the entire cluster was worth. The compromise: keep the USB drives for bulk data, but move the metadata (WAL and DB) onto SSDs. This is the same tiered storage pattern used in enterprise Ceph deployments, just at homelab scale with consumer hardware. Hybrid Ceph Storage: SSD WAL/DB Acceleration with USB Drive Data — The architecture and implementation guide. WAL vs DB differences, sizing calculations, ceph-volume creation, and the performance results. A Crucial MX500 SSD handling metadata for three USB OSDs transformed the cluster from sluggish to surprisingly capable. Measuring the WAL vs DB Performance Gap on Ceph USB OSDs — I benchmarked WAL-only acceleration against full DB acceleration across the cluster. The headline result: DB is 5-15% faster on reads in matched-hardware comparisons. But the real discovery was that the USB 3.0 hardware ceiling dominates everything — the bus speed is the bottleneck, not the metadata placement. Includes ready-to-run benchmark scripts. The Prerequisite Nobody Documents All of this debugging required SSH access to six Proxmox nodes, repeatedly, under pressure. Typing passwords during an incident is not just annoying — it is a friction cost that compounds when you are cycling through nodes isolating a failure. SSH Key-Based Access to a Proxmox Cluster — The setup that makes everything else possible. SSH key authentication, named hosts in SSH config, and the Proxmox-specific detail that shared authorized_keys across cluster nodes means you only deploy the key once. This is the kind of foundational infrastructure that does not make for exciting reading until you are debugging a storage failure at midnight. Every production environment I have managed has the equivalent — the access patterns and tooling that nobody thinks about until they are the bottleneck during an incident. The Bigger Picture: Storage Economics The hybrid architecture decision didn’t happen in a vacuum. It was informed by months of running Ceph on consumer hardware and tracking the real costs. Homelab Storage Economics: Ceph vs Single Drive — The cost analysis that informed the hybrid decision. Distributed storage has a replication tax — 3x replication means 69 TiB raw becomes 23 TiB usable. Is the redundancy worth it? For a homelab that runs 24/7 and stores data I care about, yes. Optimizing Ceph Performance in Proxmox — The baseline performance numbers before the hybrid architecture. You can’t measure improvement without knowing where you started. Managing Ceph Nearfull Warnings — Capacity management. Ceph gets progressively more unhappy as disks fill up, and the warning thresholds are lower than you’d expect. This is the article I wish I’d read before my first nearfull panic. Enabling SMART Monitoring on Seagate USB Drives — The monitoring that should have caught the dead USB drive before the power failure. USB-to-SATA bridges hide SMART data by default — you need specific passthrough flags to get health information from USB storage. What This Teaches About Distributed Systems Every failure in this series maps to a distributed systems concept that shows up in production infrastructure: Failure cascades — One dead switch took out 11 of 15 OSDs because the cluster network was a single point of failure Silent degradation — The dead USB drive was invisible because replication covered for it, until a second failure exposed the weakness Overlapping failures — Three problems on one node, each masking the others. This is why observability matters more than redundancy Tiered storage — The same hot/cold data pattern used in every cloud provider’s storage offering, implemented with consumer hardware Hardware ceilings — The USB 3.0 bus speed bottleneck is the same class of problem as network bandwidth limits in distributed training The homelab is where I learn these lessons at low cost. The enterprise is where I apply them at scale — and where the same debugging methodology has resolved production incidents across healthcare platforms under HIPAA audit, financial services systems processing billions in assets, and state government infrastructure serving millions of citizens. What’s Next The cluster is stable and the hybrid architecture is performing well. Next priorities: Kubernetes on Proxmox — Deploying K8s on top of this infrastructure with Ceph CSI for persistent storage Ceph Reef to Squid upgrade — The next major Ceph version brings performance improvements LACP bonding for the SAN network — Eliminating the single-switch failure point that started this whole story About Me I’m Michael McGarrah. I’ve spent 30 years building and leading technology organizations — from enterprise architecture for North Carolina state government to cloud platforms running production ML models in healthcare and financial services. I hold an M.S. in Computer Science (AI/ML) from Georgia Tech and I’m completing an Executive MBA at UNC Wilmington, deliberately bridging the gap between technical depth and business strategy. I still write code, debug distributed systems, and build infrastructure — because the best technology leaders never stop being engineers. You can find more of my writing at mcgarrah.org, my detailed resume at mcgarrah.org/resume, and my profiles on LinkedIn, Substack, GitHub, and Google Scholar." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/substack/2026-05-24-when-storage-breaks/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/substack/2026-05-24-when-storage-breaks/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-05-24T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="When Storage Breaks: Ceph Failures, Recovery, and the Case for Hybrid Drives" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah","url":"https://mcgarrah.org"},"dateModified":"2026-05-24T00:00:00+00:00","datePublished":"2026-05-24T00:00:00+00:00","description":"When Storage Breaks: Ceph Failures, Recovery, and the Case for Hybrid Drives Subtitle: Power Failures, Dead Switches, Overlapping Failures, and Why USB Drives With SSD Acceleration Actually Work Author: McGarrah Planned: May 24, 2026 URL: TBD Tags: Homelab, Infrastructure, Ceph, Storage, Proxmox, Distributed Systems, Software Engineering Incident response discipline is a leadership competency, not just an engineering skill. How your team debugs overlapping failures — the systematic isolation of variables, the staged recovery, the post-incident documentation — tells you more about engineering maturity than any architecture diagram. My first newsletter covered building the homelab. My second covered the blog platform. This one covers what happens when the infrastructure breaks — and the engineering decisions that determine whether recovery takes minutes or days. Having managed similar failure cascades in production environments — including systems under federal security audit — the debugging methodology is identical. The stakes change; the discipline doesn’t. In April 2026, a power outage knocked my 15-OSD Ceph cluster down to 4 healthy OSDs. The recovery took days, not because Ceph is fragile, but because three separate problems were hiding behind each other: a dead SAN switch, a ceph.conf misconfiguration, and a USB drive that had silently failed weeks earlier. Untangling overlapping failures in a distributed storage system is the kind of debugging that teaches you more than any certification course. This is also the story of a storage architecture decision that sounds insane on paper — running Ceph on USB drives — and why it actually works when you put the metadata on SSDs. Thanks for reading! Subscribe for free to receive new posts and support my work. The Failure Cascade A power outage shouldn’t be catastrophic for a distributed storage system. Ceph is designed for exactly this — data is replicated across nodes, and the cluster self-heals when nodes come back online. In theory. In practice, my cluster went from 15 healthy OSDs to 4, and the recovery path was anything but straightforward. Ceph OSD Recovery After Power Failure: SAN Switch Was Dead the Whole Time — The full recovery story. Eleven OSDs down, heartbeat cascades across the cluster, and the root cause hiding in plain sight: a dead SAN switch that showed NO-CARRIER on every node’s cluster network interface. Plus a ceph.conf misconfiguration (host IP vs network CIDR) that had been silently wrong for months. The debugging process is the real lesson here. When multiple things fail simultaneously, you can’t trust your assumptions about which layer is broken. Network? Storage? Configuration? The answer was “all three, and they’re masking each other.” When Failures Overlap The power failure recovery revealed a second problem that had been lurking for weeks: a dead USB drive hosting a Ceph OSD on one of the nodes. That failure had been masked by the cluster’s replication — data was still accessible, just degraded. But when the power outage hit, the degraded state compounded the recovery. Then a routine ZFS scrub alert fired on the same node, adding a third failure to debug simultaneously. When ZFS and Ceph Problems Collide: Diagnosing Overlapping Failures on Proxmox — A ZFS hostid mismatch, a dead USB Ceph drive, and a power failure recovery all happening on the same node at the same time. How to untangle overlapping storage problems when each one masks the symptoms of the others. The key insight: fix the most fundamental layer first. Network before storage, storage before applications. And verify each fix independently before moving to the next layer. The Hybrid Storage Architecture After the recovery, I had a decision to make about the cluster’s storage architecture. The USB drives were the weak link — slow, unreliable, and the source of most OSD failures. But replacing them all with SSDs would cost more than the entire cluster was worth. The compromise: keep the USB drives for bulk data, but move the metadata (WAL and DB) onto SSDs. This is the same tiered storage pattern used in enterprise Ceph deployments, just at homelab scale with consumer hardware. Hybrid Ceph Storage: SSD WAL/DB Acceleration with USB Drive Data — The architecture and implementation guide. WAL vs DB differences, sizing calculations, ceph-volume creation, and the performance results. A Crucial MX500 SSD handling metadata for three USB OSDs transformed the cluster from sluggish to surprisingly capable. Measuring the WAL vs DB Performance Gap on Ceph USB OSDs — I benchmarked WAL-only acceleration against full DB acceleration across the cluster. The headline result: DB is 5-15% faster on reads in matched-hardware comparisons. But the real discovery was that the USB 3.0 hardware ceiling dominates everything — the bus speed is the bottleneck, not the metadata placement. Includes ready-to-run benchmark scripts. The Prerequisite Nobody Documents All of this debugging required SSH access to six Proxmox nodes, repeatedly, under pressure. Typing passwords during an incident is not just annoying — it is a friction cost that compounds when you are cycling through nodes isolating a failure. SSH Key-Based Access to a Proxmox Cluster — The setup that makes everything else possible. SSH key authentication, named hosts in SSH config, and the Proxmox-specific detail that shared authorized_keys across cluster nodes means you only deploy the key once. This is the kind of foundational infrastructure that does not make for exciting reading until you are debugging a storage failure at midnight. Every production environment I have managed has the equivalent — the access patterns and tooling that nobody thinks about until they are the bottleneck during an incident. The Bigger Picture: Storage Economics The hybrid architecture decision didn’t happen in a vacuum. It was informed by months of running Ceph on consumer hardware and tracking the real costs. Homelab Storage Economics: Ceph vs Single Drive — The cost analysis that informed the hybrid decision. Distributed storage has a replication tax — 3x replication means 69 TiB raw becomes 23 TiB usable. Is the redundancy worth it? For a homelab that runs 24/7 and stores data I care about, yes. Optimizing Ceph Performance in Proxmox — The baseline performance numbers before the hybrid architecture. You can’t measure improvement without knowing where you started. Managing Ceph Nearfull Warnings — Capacity management. Ceph gets progressively more unhappy as disks fill up, and the warning thresholds are lower than you’d expect. This is the article I wish I’d read before my first nearfull panic. Enabling SMART Monitoring on Seagate USB Drives — The monitoring that should have caught the dead USB drive before the power failure. USB-to-SATA bridges hide SMART data by default — you need specific passthrough flags to get health information from USB storage. What This Teaches About Distributed Systems Every failure in this series maps to a distributed systems concept that shows up in production infrastructure: Failure cascades — One dead switch took out 11 of 15 OSDs because the cluster network was a single point of failure Silent degradation — The dead USB drive was invisible because replication covered for it, until a second failure exposed the weakness Overlapping failures — Three problems on one node, each masking the others. This is why observability matters more than redundancy Tiered storage — The same hot/cold data pattern used in every cloud provider’s storage offering, implemented with consumer hardware Hardware ceilings — The USB 3.0 bus speed bottleneck is the same class of problem as network bandwidth limits in distributed training The homelab is where I learn these lessons at low cost. The enterprise is where I apply them at scale — and where the same debugging methodology has resolved production incidents across healthcare platforms under HIPAA audit, financial services systems processing billions in assets, and state government infrastructure serving millions of citizens. What’s Next The cluster is stable and the hybrid architecture is performing well. Next priorities: Kubernetes on Proxmox — Deploying K8s on top of this infrastructure with Ceph CSI for persistent storage Ceph Reef to Squid upgrade — The next major Ceph version brings performance improvements LACP bonding for the SAN network — Eliminating the single-switch failure point that started this whole story About Me I’m Michael McGarrah. I’ve spent 30 years building and leading technology organizations — from enterprise architecture for North Carolina state government to cloud platforms running production ML models in healthcare and financial services. I hold an M.S. in Computer Science (AI/ML) from Georgia Tech and I’m completing an Executive MBA at UNC Wilmington, deliberately bridging the gap between technical depth and business strategy. I still write code, debug distributed systems, and build infrastructure — because the best technology leaders never stop being engineers. You can find more of my writing at mcgarrah.org, my detailed resume at mcgarrah.org/resume, and my profiles on LinkedIn, Substack, GitHub, and Google Scholar.","headline":"When Storage Breaks: Ceph Failures, Recovery, and the Case for Hybrid Drives","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/substack/2026-05-24-when-storage-breaks/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/substack/2026-05-24-when-storage-breaks/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+
+<!-- Favicons -->
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="shortcut icon" href="/favicon.ico">
+<meta name="theme-color" content="#ffffff">
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="Substack" href="https://mcgarrah.substack.com/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#substack"></use></svg>
+      <span aria-hidden="true">Substack</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Engineering deep dives on infrastructure, distributed systems, and AI/ML — from homelab experiments to enterprise architecture.</div>
+</aside>
+
+
+
+
+
+<div style="background:#e67e00;color:#fff;text-align:center;padding:0.5em 1em;font-size:0.9em;font-weight:bold;">
+  ⚠ DRAFT PREVIEW SITE — unpublished content, may change.
+  <a href="https://mcgarrah.org" style="color:#fff;text-decoration:underline;margin-left:0.5em;">Go to the main site →</a>
+</div>
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+  
+  <nav class="drafts-nav"><a href="/substack/"><svg aria-label="Substack Drafts" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#newspaper"></use></svg><span>Substack Drafts</span>
+    </a><a href="/linkedin/"><svg aria-label="LinkedIn Drafts" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg><span>LinkedIn Drafts</span>
+    </a></nav>
+  
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/substack/2026-05-24-when-storage-breaks/">When Storage Breaks: Ceph Failures, Recovery, and the Case for Hybrid Drives</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-05-24T00:00:00+00:00">May 24, 2026</time><span class="reading-time">7 min read</span></header>
+
+  <h1 id="when-storage-breaks-ceph-failures-recovery-and-the-case-for-hybrid-drives">When Storage Breaks: Ceph Failures, Recovery, and the Case for Hybrid Drives</h1>
+
+<p><strong>Subtitle:</strong> Power Failures, Dead Switches, Overlapping Failures, and Why USB Drives With SSD Acceleration Actually Work</p>
+
+<p><strong>Author:</strong> McGarrah</p>
+
+<p><strong>Planned:</strong> May 24, 2026</p>
+
+<p><strong>URL:</strong> TBD</p>
+
+<p><strong>Tags:</strong> Homelab, Infrastructure, Ceph, Storage, Proxmox, Distributed Systems, Software Engineering</p>
+
+<hr />
+
+<p>Incident response discipline is a leadership competency, not just an engineering skill. How your team debugs overlapping failures — the systematic isolation of variables, the staged recovery, the post-incident documentation — tells you more about engineering maturity than any architecture diagram.</p>
+
+<p>My first newsletter covered <a href="https://mcgarrah.substack.com/p/from-homelabs-to-machine-learning">building the homelab</a>. My second covered <a href="https://mcgarrah.substack.com/p/from-markdown-to-production-building">the blog platform</a>. This one covers what happens when the infrastructure breaks — and the engineering decisions that determine whether recovery takes minutes or days. Having managed similar failure cascades in production environments — including systems under federal security audit — the debugging methodology is identical. The stakes change; the discipline doesn’t.</p>
+
+<p>In April 2026, a power outage knocked my 15-OSD Ceph cluster down to 4 healthy OSDs. The recovery took days, not because Ceph is fragile, but because three separate problems were hiding behind each other: a dead SAN switch, a ceph.conf misconfiguration, and a USB drive that had silently failed weeks earlier. Untangling overlapping failures in a distributed storage system is the kind of debugging that teaches you more than any certification course.</p>
+
+<p>This is also the story of a storage architecture decision that sounds insane on paper — running Ceph on USB drives — and why it actually works when you put the metadata on SSDs.</p>
+
+<p><em>Thanks for reading! Subscribe for free to receive new posts and support my work.</em></p>
+
+<h2 id="the-failure-cascade">The Failure Cascade</h2>
+
+<p>A power outage shouldn’t be catastrophic for a distributed storage system. Ceph is designed for exactly this — data is replicated across nodes, and the cluster self-heals when nodes come back online. In theory.</p>
+
+<p>In practice, my cluster went from 15 healthy OSDs to 4, and the recovery path was anything but straightforward.</p>
+
+<ul>
+  <li><a href="https://mcgarrah.org/ceph-osd-recovery-power-failure/">Ceph OSD Recovery After Power Failure: SAN Switch Was Dead the Whole Time</a> — The full recovery story. Eleven OSDs down, heartbeat cascades across the cluster, and the root cause hiding in plain sight: a dead SAN switch that showed NO-CARRIER on every node’s cluster network interface. Plus a ceph.conf misconfiguration (host IP vs network CIDR) that had been silently wrong for months.</li>
+</ul>
+
+<p>The debugging process is the real lesson here. When multiple things fail simultaneously, you can’t trust your assumptions about which layer is broken. Network? Storage? Configuration? The answer was “all three, and they’re masking each other.”</p>
+
+<h2 id="when-failures-overlap">When Failures Overlap</h2>
+
+<p>The power failure recovery revealed a second problem that had been lurking for weeks: a dead USB drive hosting a Ceph OSD on one of the nodes. That failure had been masked by the cluster’s replication — data was still accessible, just degraded. But when the power outage hit, the degraded state compounded the recovery.</p>
+
+<p>Then a routine ZFS scrub alert fired on the same node, adding a third failure to debug simultaneously.</p>
+
+<ul>
+  <li><a href="https://mcgarrah.org/zfs-ceph-overlapping-failures/">When ZFS and Ceph Problems Collide: Diagnosing Overlapping Failures on Proxmox</a> — A ZFS hostid mismatch, a dead USB Ceph drive, and a power failure recovery all happening on the same node at the same time. How to untangle overlapping storage problems when each one masks the symptoms of the others.</li>
+</ul>
+
+<p>The key insight: <strong>fix the most fundamental layer first</strong>. Network before storage, storage before applications. And verify each fix independently before moving to the next layer.</p>
+
+<h2 id="the-hybrid-storage-architecture">The Hybrid Storage Architecture</h2>
+
+<p>After the recovery, I had a decision to make about the cluster’s storage architecture. The USB drives were the weak link — slow, unreliable, and the source of most OSD failures. But replacing them all with SSDs would cost more than the entire cluster was worth.</p>
+
+<p>The compromise: keep the USB drives for bulk data, but move the metadata (WAL and DB) onto SSDs. This is the same tiered storage pattern used in enterprise Ceph deployments, just at homelab scale with consumer hardware.</p>
+
+<ul>
+  <li>
+    <p><a href="https://mcgarrah.org/ceph-ssd-wal-db-usb-storage/">Hybrid Ceph Storage: SSD WAL/DB Acceleration with USB Drive Data</a> — The architecture and implementation guide. WAL vs DB differences, sizing calculations, ceph-volume creation, and the performance results. A Crucial MX500 SSD handling metadata for three USB OSDs transformed the cluster from sluggish to surprisingly capable.</p>
+  </li>
+  <li>
+    <p><a href="https://mcgarrah.org/ceph-wal-vs-db-performance-test/">Measuring the WAL vs DB Performance Gap on Ceph USB OSDs</a> — I benchmarked WAL-only acceleration against full DB acceleration across the cluster. The headline result: DB is 5-15% faster on reads in matched-hardware comparisons. But the real discovery was that the USB 3.0 hardware ceiling dominates everything — the bus speed is the bottleneck, not the metadata placement. Includes ready-to-run benchmark scripts.</p>
+  </li>
+</ul>
+
+<h2 id="the-prerequisite-nobody-documents">The Prerequisite Nobody Documents</h2>
+
+<p>All of this debugging required SSH access to six Proxmox nodes, repeatedly, under pressure. Typing passwords during an incident is not just annoying — it is a friction cost that compounds when you are cycling through nodes isolating a failure.</p>
+
+<ul>
+  <li><a href="https://mcgarrah.org/ssh-key-access-proxmox-cluster/">SSH Key-Based Access to a Proxmox Cluster</a> — The setup that makes everything else possible. SSH key authentication, named hosts in SSH config, and the Proxmox-specific detail that shared authorized_keys across cluster nodes means you only deploy the key once.</li>
+</ul>
+
+<p>This is the kind of foundational infrastructure that does not make for exciting reading until you are debugging a storage failure at midnight. Every production environment I have managed has the equivalent — the access patterns and tooling that nobody thinks about until they are the bottleneck during an incident.</p>
+
+<h2 id="the-bigger-picture-storage-economics">The Bigger Picture: Storage Economics</h2>
+
+<p>The hybrid architecture decision didn’t happen in a vacuum. It was informed by months of running Ceph on consumer hardware and tracking the real costs.</p>
+
+<ul>
+  <li>
+    <p><a href="https://mcgarrah.org/homelab-storage-economics/">Homelab Storage Economics: Ceph vs Single Drive</a> — The cost analysis that informed the hybrid decision. Distributed storage has a replication tax — 3x replication means 69 TiB raw becomes 23 TiB usable. Is the redundancy worth it? For a homelab that runs 24/7 and stores data I care about, yes.</p>
+  </li>
+  <li>
+    <p><a href="https://mcgarrah.org/proxmox-ceph-performance/">Optimizing Ceph Performance in Proxmox</a> — The baseline performance numbers before the hybrid architecture. You can’t measure improvement without knowing where you started.</p>
+  </li>
+  <li>
+    <p><a href="https://mcgarrah.org/proxmox-ceph-nearfull/">Managing Ceph Nearfull Warnings</a> — Capacity management. Ceph gets progressively more unhappy as disks fill up, and the warning thresholds are lower than you’d expect. This is the article I wish I’d read before my first nearfull panic.</p>
+  </li>
+  <li>
+    <p><a href="https://mcgarrah.org/usb-drive-smart/">Enabling SMART Monitoring on Seagate USB Drives</a> — The monitoring that should have caught the dead USB drive before the power failure. USB-to-SATA bridges hide SMART data by default — you need specific passthrough flags to get health information from USB storage.</p>
+  </li>
+</ul>
+
+<h2 id="what-this-teaches-about-distributed-systems">What This Teaches About Distributed Systems</h2>
+
+<p>Every failure in this series maps to a distributed systems concept that shows up in production infrastructure:</p>
+
+<ul>
+  <li><strong>Failure cascades</strong> — One dead switch took out 11 of 15 OSDs because the cluster network was a single point of failure</li>
+  <li><strong>Silent degradation</strong> — The dead USB drive was invisible because replication covered for it, until a second failure exposed the weakness</li>
+  <li><strong>Overlapping failures</strong> — Three problems on one node, each masking the others. This is why observability matters more than redundancy</li>
+  <li><strong>Tiered storage</strong> — The same hot/cold data pattern used in every cloud provider’s storage offering, implemented with consumer hardware</li>
+  <li><strong>Hardware ceilings</strong> — The USB 3.0 bus speed bottleneck is the same class of problem as network bandwidth limits in distributed training</li>
+</ul>
+
+<p>The homelab is where I learn these lessons at low cost. The enterprise is where I apply them at scale — and where the same debugging methodology has resolved production incidents across healthcare platforms under HIPAA audit, financial services systems processing billions in assets, and state government infrastructure serving millions of citizens.</p>
+
+<h2 id="whats-next">What’s Next</h2>
+
+<p>The cluster is stable and the hybrid architecture is performing well. Next priorities:</p>
+
+<ul>
+  <li><strong>Kubernetes on Proxmox</strong> — Deploying K8s on top of this infrastructure with Ceph CSI for persistent storage</li>
+  <li><strong>Ceph Reef to Squid upgrade</strong> — The next major Ceph version brings performance improvements</li>
+  <li><strong>LACP bonding for the SAN network</strong> — Eliminating the single-switch failure point that started this whole story</li>
+</ul>
+
+<h2 id="about-me">About Me</h2>
+
+<p>I’m Michael McGarrah. I’ve spent 30 years building and leading technology organizations — from enterprise architecture for North Carolina state government to cloud platforms running production ML models in healthcare and financial services. I hold an M.S. in Computer Science (AI/ML) from Georgia Tech and I’m completing an Executive MBA at UNC Wilmington, deliberately bridging the gap between technical depth and business strategy. I still write code, debug distributed systems, and build infrastructure — because the best technology leaders never stop being engineers.</p>
+
+<p>You can find more of my writing at <a href="https://mcgarrah.org">mcgarrah.org</a>, my detailed resume at <a href="https://mcgarrah.org/resume">mcgarrah.org/resume</a>, and my profiles on <a href="https://www.linkedin.com/in/michaelmcgarrah/">LinkedIn</a>, <a href="https://mcgarrah.substack.com/">Substack</a>, <a href="https://github.com/mcgarrah">GitHub</a>, and <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ">Google Scholar</a>.</p>
+
+
+  <div class="post-tags-categories">
+    
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://mcgarrah.substack.com/" rel="me">Substack</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Engineering deep dives on infrastructure, distributed systems, and AI/ML — from homelab experiments to enterprise architecture.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://mcgarrah.substack.com/" ><svg aria-label="Substack" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#substack"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

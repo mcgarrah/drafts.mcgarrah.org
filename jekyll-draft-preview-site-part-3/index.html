@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Building a Draft Preview Site for Jekyll — Part 3: The Implementation | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Building a Draft Preview Site for Jekyll — Part 3: The Implementation" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="Complete implementation guide for a Jekyll draft preview site using GitHub Pages, Staticrypt, and GitHub Actions. Includes repo setup, DNS configuration, final workflow, testing results, and lessons learned. Part 3 of a three-part series." />
+<meta property="og:description" content="Complete implementation guide for a Jekyll draft preview site using GitHub Pages, Staticrypt, and GitHub Actions. Includes repo setup, DNS configuration, final workflow, testing results, and lessons learned. Part 3 of a three-part series." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/jekyll-draft-preview-site-part-3/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/jekyll-draft-preview-site-part-3/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:image" content="https://drafts.mcgarrah.org/assets/images/og/jekyll-draft-preview-site-part-3.png" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-06-30T00:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta property="twitter:image" content="https://drafts.mcgarrah.org/assets/images/og/jekyll-draft-preview-site-part-3.png" />
+<meta property="twitter:title" content="Building a Draft Preview Site for Jekyll — Part 3: The Implementation" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah","url":"https://mcgarrah.org"},"dateModified":"2026-06-30T00:00:00+00:00","datePublished":"2026-06-30T00:00:00+00:00","description":"Complete implementation guide for a Jekyll draft preview site using GitHub Pages, Staticrypt, and GitHub Actions. Includes repo setup, DNS configuration, final workflow, testing results, and lessons learned. Part 3 of a three-part series.","headline":"Building a Draft Preview Site for Jekyll — Part 3: The Implementation","image":"https://drafts.mcgarrah.org/assets/images/og/jekyll-draft-preview-site-part-3.png","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/jekyll-draft-preview-site-part-3/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/jekyll-draft-preview-site-part-3/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+
+<!-- Favicons -->
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="shortcut icon" href="/favicon.ico">
+<meta name="theme-color" content="#ffffff">
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="Substack" href="https://mcgarrah.substack.com/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#substack"></use></svg>
+      <span aria-hidden="true">Substack</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Engineering deep dives on infrastructure, distributed systems, and AI/ML — from homelab experiments to enterprise architecture.</div>
+</aside>
+
+
+
+
+
+<div style="background:#e67e00;color:#fff;text-align:center;padding:0.5em 1em;font-size:0.9em;font-weight:bold;">
+  ⚠ DRAFT PREVIEW SITE — unpublished content, may change.
+  <a href="https://mcgarrah.org" style="color:#fff;text-decoration:underline;margin-left:0.5em;">Go to the main site →</a>
+</div>
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+  
+  <nav class="drafts-nav"><a href="/substack/"><svg aria-label="Substack Drafts" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#newspaper"></use></svg><span>Substack Drafts</span>
+    </a><a href="/linkedin/"><svg aria-label="LinkedIn Drafts" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg><span>LinkedIn Drafts</span>
+    </a></nav>
+  
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/jekyll-draft-preview-site-part-3/">Building a Draft Preview Site for Jekyll — Part 3: The Implementation</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-06-30T00:00:00+00:00">June 30, 2026</time><span class="reading-time">14 min read</span></header>
+
+  <p>In <a href="/jekyll-draft-preview-site-part-1/">Part 1</a>, I explored the options. In <a href="/jekyll-draft-preview-site-part-2/">Part 2</a>, I refined the design. Now it’s time to build it.</p>
+
+<!-- excerpt-end -->
+
+<p>This is Part 3 of a three-part series:</p>
+<ul>
+  <li><strong>Part 1</strong>: <a href="/jekyll-draft-preview-site-part-1/">Exploring every option I considered</a></li>
+  <li><strong>Part 2</strong>: <a href="/jekyll-draft-preview-site-part-2/">Refining the design — config, workflow, feedback, and gaps</a></li>
+  <li><strong>Part 3</strong> (this post): The complete implementation</li>
+</ul>
+
+<blockquote>
+  <p><strong>Status:</strong> The system is live at <code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code> and deploying reliably on every push to <code class="language-plaintext highlighter-rouge">main</code>. What follows captures the real issues and fixes from first-run deployments — not just the design intent, but what actually happened.</p>
+</blockquote>
+
+<h2 id="creating-the-drafts-repo">Creating the Drafts Repo</h2>
+
+<p>The deployment target is <code class="language-plaintext highlighter-rouge">mcgarrah/drafts.mcgarrah.org</code> — a public repo that contains only built HTML output. I chose public because:</p>
+
+<ul>
+  <li>GitHub Pages on free accounts requires public repos</li>
+  <li>The source markdown is already public in <code class="language-plaintext highlighter-rouge">mcgarrah.github.io</code></li>
+  <li>The HTML is Staticrypt-encrypted, so the rendered content isn’t casually browsable</li>
+  <li>The repo has no source code of value — it’s a deployment target, not a project</li>
+</ul>
+
+<p>Setup steps:</p>
+<ol>
+  <li>Created the repo initialized with a <code class="language-plaintext highlighter-rouge">README.md</code> (critical — see below)</li>
+  <li>Enabled GitHub Pages: Settings → Pages → Deploy from branch → <code class="language-plaintext highlighter-rouge">main</code> → <code class="language-plaintext highlighter-rouge">/ (root)</code></li>
+  <li>Enabled GitHub Discussions with a dedicated “Draft Reviews” category for Giscus feedback</li>
+  <li>Generated a fine-grained GitHub PAT scoped to only the <code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code> repo with <code class="language-plaintext highlighter-rouge">repo</code> permissions</li>
+  <li>Added <code class="language-plaintext highlighter-rouge">DRAFTS_DEPLOY_TOKEN</code> and <code class="language-plaintext highlighter-rouge">DRAFTS_PASSWORD</code> as secrets on the <code class="language-plaintext highlighter-rouge">mcgarrah.github.io</code> repo</li>
+</ol>
+
+<p><strong>The empty-repo trap:</strong> GitHub Pages cannot be configured on a truly empty repo because there’s no <code class="language-plaintext highlighter-rouge">main</code> branch to select. The Pages settings page just shows an error. The repo needs at least one commit before <code class="language-plaintext highlighter-rouge">main</code> exists and Pages can be enabled. Initializing with a <code class="language-plaintext highlighter-rouge">README.md</code> avoids this entirely.</p>
+
+<h2 id="dns-configuration">DNS Configuration</h2>
+
+<p>One-time setup in Porkbun:</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>drafts.mcgarrah.org  CNAME  mcgarrah.github.io.
+</code></pre></div></div>
+
+<p>Propagation took under five minutes. After the first successful deployment, I enabled “Enforce HTTPS” in the drafts repo’s Pages settings — GitHub provisions a Let’s Encrypt certificate automatically.</p>
+
+<h2 id="the-config-overlay">The Config Overlay</h2>
+
+<p>The real <code class="language-plaintext highlighter-rouge">_config_drafts.yml</code> that’s deployed:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">url</span><span class="pi">:</span> <span class="s2">"</span><span class="s">https://drafts.mcgarrah.org"</span>
+<span class="na">canonical_url</span><span class="pi">:</span> <span class="s2">"</span><span class="s">https://drafts.mcgarrah.org"</span>
+<span class="na">baseurl</span><span class="pi">:</span> <span class="s2">"</span><span class="s">"</span>
+<span class="na">draft_preview_site</span><span class="pi">:</span> <span class="kc">true</span>
+<span class="na">main_site_url</span><span class="pi">:</span> <span class="s2">"</span><span class="s">https://mcgarrah.org"</span>
+
+<span class="c1"># Disable production tracking and ads on the drafts preview site.</span>
+<span class="na">google_analytics</span><span class="pi">:</span> <span class="s2">"</span><span class="s">"</span>
+<span class="na">google_adsense</span><span class="pi">:</span> <span class="s2">"</span><span class="s">"</span>
+<span class="na">google_cse_id</span><span class="pi">:</span> <span class="s2">"</span><span class="s">"</span>
+
+<span class="c1"># Enable Giscus comments for the drafts preview site.</span>
+<span class="na">giscus</span><span class="pi">:</span>
+  <span class="na">repo</span><span class="pi">:</span> <span class="s">mcgarrah/drafts.mcgarrah.org</span>
+  <span class="na">repo_id</span><span class="pi">:</span> <span class="s">R_kgDOSG6Quw</span>
+  <span class="na">category</span><span class="pi">:</span> <span class="s">Draft Reviews</span>
+  <span class="na">category_id</span><span class="pi">:</span> <span class="s">DIC_kwDOSG6Qu84C7PMZ</span>
+  <span class="na">mapping</span><span class="pi">:</span> <span class="s">pathname</span>
+  <span class="na">strict</span><span class="pi">:</span> <span class="m">0</span>
+  <span class="na">reactions_enabled</span><span class="pi">:</span> <span class="m">1</span>
+  <span class="na">emit_metadata</span><span class="pi">:</span> <span class="m">0</span>
+  <span class="na">input_position</span><span class="pi">:</span> <span class="s">top</span>
+  <span class="na">theme</span><span class="pi">:</span> <span class="s">preferred_color_scheme</span>
+  <span class="na">lang</span><span class="pi">:</span> <span class="s">en</span>
+  <span class="na">loading</span><span class="pi">:</span> <span class="s">lazy</span>
+
+<span class="c1"># Mark every rendered page as noindex on the drafts site.</span>
+<span class="na">defaults</span><span class="pi">:</span>
+  <span class="pi">-</span> <span class="na">scope</span><span class="pi">:</span>
+      <span class="na">path</span><span class="pi">:</span> <span class="s2">"</span><span class="s">"</span>
+    <span class="na">values</span><span class="pi">:</span>
+      <span class="na">noindex</span><span class="pi">:</span> <span class="kc">true</span>
+</code></pre></div></div>
+
+<p>Key decisions baked into this config:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">draft_preview_site: true</code> and <code class="language-plaintext highlighter-rouge">main_site_url</code> power the orange preview banner in the layout</li>
+  <li>The <code class="language-plaintext highlighter-rouge">defaults:</code> block sets <code class="language-plaintext highlighter-rouge">noindex: true</code> on every page site-wide. The layout picks this up as <code class="language-plaintext highlighter-rouge">&lt;meta name="robots" content="noindex, follow"&gt;</code> — the primary defense against search engine indexing</li>
+  <li>Giscus points to the drafts repo’s Discussions, keeping preview feedback completely separate from production comments</li>
+  <li>Analytics, AdSense, and custom search are all blanked — no tracking on the preview site</li>
+</ul>
+
+<h2 id="the-final-workflow">The Final Workflow</h2>
+
+<p>The workflow evolved significantly from the sketch in Part 2. The biggest change: <strong>selective encryption</strong>. Instead of encrypting every HTML file on the site, the workflow identifies only draft and future-dated post pages and encrypts those. Already-published content stays unencrypted — it’s public anyway, and encrypting it just adds build time and makes navigation annoying.</p>
+
+<p>Here’s the structure of <code class="language-plaintext highlighter-rouge">.github/workflows/deploy-drafts.yml</code>:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">name</span><span class="pi">:</span> <span class="s">Deploy Draft Preview Site</span>
+
+<span class="na">on</span><span class="pi">:</span>
+  <span class="na">push</span><span class="pi">:</span>
+    <span class="na">branches</span><span class="pi">:</span> <span class="pi">[</span><span class="s2">"</span><span class="s">main"</span><span class="pi">]</span>
+  <span class="na">workflow_dispatch</span><span class="pi">:</span>
+
+<span class="na">concurrency</span><span class="pi">:</span>
+  <span class="na">group</span><span class="pi">:</span> <span class="s">drafts-pages</span>
+  <span class="na">cancel-in-progress</span><span class="pi">:</span> <span class="kc">true</span>
+</code></pre></div></div>
+
+<p>The concurrency group ensures only one drafts deployment runs at a time — if I push twice in quick succession, the second run cancels the first rather than racing.</p>
+
+<h3 id="build-step">Build Step</h3>
+
+<p>Standard Jekyll build with the config overlay:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Build with Jekyll (drafts + future)</span>
+  <span class="na">run</span><span class="pi">:</span> <span class="s">bundle exec jekyll build --drafts --future --config _config.yml,_config_drafts.yml</span>
+  <span class="na">env</span><span class="pi">:</span>
+    <span class="na">JEKYLL_ENV</span><span class="pi">:</span> <span class="s">production</span>
+</code></pre></div></div>
+
+<h3 id="selective-encryption">Selective Encryption</h3>
+
+<p>This is the most complex step. The workflow:</p>
+
+<ol>
+  <li>Scans <code class="language-plaintext highlighter-rouge">_drafts/</code> for files matching the <code class="language-plaintext highlighter-rouge">YYYY-MM-DD-*.md</code> pattern (skipping convenience files like <code class="language-plaintext highlighter-rouge">DRAFTS.md</code>)</li>
+  <li>Scans <code class="language-plaintext highlighter-rouge">_posts/</code> for future-dated files (post date &gt; today)</li>
+  <li>Maps each source file to its rendered HTML in <code class="language-plaintext highlighter-rouge">_site/</code> using Jekyll’s permalink slug</li>
+  <li>Encrypts each file individually in an isolated temp directory to avoid Staticrypt’s basename collision problem</li>
+</ol>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Only encrypt if it starts with YYYY-MM-DD pattern (actual post format).</span>
+<span class="k">if</span> <span class="o">[[</span> <span class="s2">"</span><span class="nv">$base</span><span class="s2">"</span> <span class="o">=</span>~ ^[0-9]<span class="o">{</span>4<span class="o">}</span>-[0-9]<span class="o">{</span>2<span class="o">}</span>-[0-9]<span class="o">{</span>2<span class="o">}</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then
+  </span>add_target_for_slug <span class="s2">"</span><span class="si">$(</span>slug_from_source_file <span class="s2">"</span><span class="nv">$source_file</span><span class="s2">"</span><span class="si">)</span><span class="s2">"</span>
+<span class="k">fi</span>
+</code></pre></div></div>
+
+<p>Each file is encrypted one at a time with hash-based verification:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nv">before_hash</span><span class="o">=</span><span class="s2">"</span><span class="si">$(</span><span class="nb">sha256sum</span> <span class="s2">"</span><span class="nv">$file</span><span class="s2">"</span> | <span class="nb">awk</span> <span class="s1">'{print $1}'</span><span class="si">)</span><span class="s2">"</span>
+<span class="nb">cp</span> <span class="s2">"</span><span class="nv">$encrypted_src</span><span class="s2">"</span> <span class="s2">"</span><span class="nv">$file</span><span class="s2">"</span>
+<span class="nv">after_hash</span><span class="o">=</span><span class="s2">"</span><span class="si">$(</span><span class="nb">sha256sum</span> <span class="s2">"</span><span class="nv">$file</span><span class="s2">"</span> | <span class="nb">awk</span> <span class="s1">'{print $1}'</span><span class="si">)</span><span class="s2">"</span>
+
+<span class="k">if</span> <span class="o">[[</span> <span class="s2">"</span><span class="nv">$before_hash</span><span class="s2">"</span> <span class="o">==</span> <span class="s2">"</span><span class="nv">$after_hash</span><span class="s2">"</span> <span class="o">]]</span><span class="p">;</span> <span class="k">then
+  </span><span class="nb">echo</span> <span class="s2">"::error::Encryption did not modify </span><span class="nv">$file</span><span class="s2"> (hashes match)"</span>
+  <span class="nb">exit </span>1
+<span class="k">fi</span>
+</code></pre></div></div>
+
+<p>Staticrypt flags used:</p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">--short</code> — compact password prompt page</li>
+  <li><code class="language-plaintext highlighter-rouge">--remember 30</code> — stores the decryption key in <code class="language-plaintext highlighter-rouge">localStorage</code> for 30 days so reviewers don’t re-enter the password on every page click</li>
+  <li><code class="language-plaintext highlighter-rouge">--template-title "Draft Preview - mcgarrah.org"</code> — custom title on the password prompt</li>
+  <li><code class="language-plaintext highlighter-rouge">-c false</code> — disables Staticrypt’s config file creation (not needed in CI)</li>
+  <li><code class="language-plaintext highlighter-rouge">-d &lt;temp_dir&gt;</code> — output to a temp directory, then copy back to preserve the original path structure</li>
+</ul>
+
+<h3 id="crawler-protections">Crawler Protections</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Apply crawler protections</span>
+  <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+    <span class="s">printf "User-agent: *\nDisallow: /\n" &gt; _site/robots.txt</span>
+    <span class="s">rm -f _site/feed.xml _site/sitemap.xml _site/sitemapindex.xml</span>
+
+    <span class="s"># Remove feed discovery hints from generated pages</span>
+    <span class="s">find _site -type f -name '*.html' \</span>
+      <span class="s">-exec sed -i.bak '/type="application\/atom+xml"/d' {} +</span>
+    <span class="s">find _site -type f -name '*.bak' -delete</span>
+</code></pre></div></div>
+
+<p>Three layers of protection:</p>
+<ol>
+  <li><code class="language-plaintext highlighter-rouge">robots.txt</code> with <code class="language-plaintext highlighter-rouge">Disallow: /</code> — tells well-behaved crawlers to stay away</li>
+  <li><code class="language-plaintext highlighter-rouge">noindex</code> meta tags on every page (via the config overlay defaults)</li>
+</ol>
+
+<h3 id="binary-artifact-filtering">Binary Artifact Filtering</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Remove oversized binaries from deploy output</span>
+  <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+    <span class="s">rm -rf _site/assets/exes</span>
+    <span class="s">find _site -type f \( -iname '*.exe' -o -iname '*.msi' \) -print -delete</span>
+    <span class="s">find _site -type f -size +45M -print -delete</span>
+</code></pre></div></div>
+
+<p>The production site has some downloadable executables under <code class="language-plaintext highlighter-rouge">assets/exes/</code>. These triggered GitHub large-file warnings during deployment and aren’t needed for draft review. The 45MB guard catches anything else that shouldn’t be in a static site deployment.</p>
+
+<h3 id="cross-repo-deploy">Cross-Repo Deploy</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Deploy to drafts.mcgarrah.org repo</span>
+  <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+    <span class="s">deploy_dir="$(mktemp -d)"</span>
+    <span class="s">git clone --depth 1 --branch main \</span>
+      <span class="s">"https://x-access-token:${DRAFTS_DEPLOY_TOKEN}@github.com/${TARGET_REPO}.git" \</span>
+      <span class="s">"$deploy_dir"</span>
+
+    <span class="s">find "$deploy_dir" -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +</span>
+    <span class="s">cp -a _site/. "$deploy_dir"/</span>
+
+    <span class="s">echo "drafts.mcgarrah.org" &gt; "$deploy_dir/CNAME"</span>
+    <span class="s">touch "$deploy_dir/.nojekyll"</span>
+
+    <span class="s">cd "$deploy_dir"</span>
+    <span class="s">git add -A</span>
+    <span class="s">if git diff --cached --quiet; then</span>
+      <span class="s">echo "No drafts-site changes to deploy"</span>
+      <span class="s">exit 0</span>
+    <span class="s">fi</span>
+
+    <span class="s">git commit -m "Deploy drafts site from ${GITHUB_SHA}"</span>
+    <span class="s">git push origin HEAD:main --force-with-lease</span>
+</code></pre></div></div>
+
+<p>A few details worth noting:</p>
+<ul>
+  <li>The <code class="language-plaintext highlighter-rouge">.nojekyll</code> file prevents GitHub Pages from re-processing the already-built HTML through Jekyll again</li>
+  <li><code class="language-plaintext highlighter-rouge">--force-with-lease</code> is safer than <code class="language-plaintext highlighter-rouge">--force</code> — it fails if someone else pushed to the drafts repo since the clone, rather than silently overwriting</li>
+  <li>The <code class="language-plaintext highlighter-rouge">git diff --cached --quiet</code> check skips the push entirely if nothing changed, avoiding empty commits</li>
+  <li>The shallow clone (<code class="language-plaintext highlighter-rouge">--depth 1</code>) keeps the operation fast since we don’t need history</li>
+</ul>
+
+<h2 id="staticrypt-testing-results">Staticrypt Testing Results</h2>
+
+<p>What works:</p>
+<ul>
+  <li>Draft and future post pages present the Staticrypt password prompt as expected</li>
+  <li>The <code class="language-plaintext highlighter-rouge">--remember 30</code> flag stores the decryption key in <code class="language-plaintext highlighter-rouge">localStorage</code> — after entering the password once, subsequent pages decrypt automatically without re-prompting</li>
+  <li>The encrypted HTML contains the Staticrypt wrapper, verified by both hash comparison and string detection in CI</li>
+  <li>The custom template title (“Draft Preview - mcgarrah.org”) makes it clear which site you’re on even at the password prompt</li>
+</ul>
+
+<p>What needs more testing before broad reviewer rollout:</p>
+<ul>
+  <li>Cross-browser <code class="language-plaintext highlighter-rouge">--remember</code> behavior over longer sessions (does it survive browser updates?)</li>
+  <li>Mobile UX around the password prompt and navigation flow</li>
+  <li>Private/incognito windows (should always prompt — <code class="language-plaintext highlighter-rouge">localStorage</code> is session-scoped in incognito)</li>
+</ul>
+
+<h2 id="giscus-feedback">Giscus Feedback</h2>
+
+<p>Giscus is configured to point at the <code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code> repo’s Discussions with a dedicated “Draft Reviews” category. This keeps preview feedback completely separate from production comments.</p>
+
+<p>The Giscus <code class="language-plaintext highlighter-rouge">&lt;script&gt;</code> tag lives inside the encrypted HTML. After Staticrypt decrypts the page in-browser, the browser parses the decrypted DOM and the Giscus script loads normally. This works because Staticrypt replaces the entire page content with the decrypted HTML, which the browser then processes as if it were freshly loaded.</p>
+
+<p>Reviewers need a GitHub account to leave comments. For reviewers without GitHub accounts, the preview banner includes a link back to the main site where they can use the contact page.</p>
+
+<h2 id="the-preview-banner">The Preview Banner</h2>
+
+<p>The banner is implemented in <code class="language-plaintext highlighter-rouge">_layouts/default.html</code> behind the <code class="language-plaintext highlighter-rouge">draft_preview_site</code> flag:</p>
+
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code>{% if site.draft_preview_site %}
+<span class="nt">&lt;div</span> <span class="na">style=</span><span class="s">"background:#e67e00;color:#fff;text-align:center;padding:0.5em 1em;font-size:0.9em;font-weight:bold;"</span><span class="nt">&gt;</span>
+  ⚠ DRAFT PREVIEW SITE — unpublished content, may change.
+  <span class="nt">&lt;a</span> <span class="na">href=</span><span class="s">"{{ site.main_site_url }}"</span> <span class="na">style=</span><span class="s">"color:#fff;text-decoration:underline;margin-left:0.5em;"</span><span class="nt">&gt;</span>Go to the main site →<span class="nt">&lt;/a&gt;</span>
+<span class="nt">&lt;/div&gt;</span>
+{% endif %}
+</code></pre></div></div>
+
+<p>This turned out to be one of the highest-value additions. It’s immediately obvious to reviewers that they’re on the preview site, and the link back to production makes context-switching effortless.</p>
+
+<h2 id="what-worked">What Worked</h2>
+
+<ul>
+  <li><strong>Config overlay approach</strong> cleanly separated production and drafts behavior without touching <code class="language-plaintext highlighter-rouge">_config.yml</code></li>
+  <li><strong>Cross-repo deploy pipeline</strong> is stable and repeatable — push to <code class="language-plaintext highlighter-rouge">main</code> updates both sites automatically</li>
+  <li><strong>Selective encryption</strong> reduced runtime and removed unnecessary friction on already-public pages</li>
+  <li><strong>The preview banner</strong> had outsized impact on reviewer clarity for minimal implementation effort</li>
+  <li><strong>Giscus on a separate repo</strong> keeps draft feedback isolated — when a post graduates to <code class="language-plaintext highlighter-rouge">_posts/</code>, the draft comments stay behind, having served their purpose</li>
+  <li><strong>Archive ordering</strong> is now deterministic after adding front matter to convenience files</li>
+</ul>
+
+<h2 id="what-didnt-work">What Didn’t Work</h2>
+
+<p>Early runs surfaced several workflow-level issues:</p>
+
+<ol>
+  <li><strong>GitHub Pages setup on empty repo failed</strong>: the repo needed an initial commit before <code class="language-plaintext highlighter-rouge">main</code> could be selected in Pages settings.</li>
+  <li><strong>Encryption step appeared hung</strong>: processing hundreds of pages made the <code class="language-plaintext highlighter-rouge">Encrypt HTML with Staticrypt</code> step look stuck even when still running. The logs were hard to interpret.</li>
+  <li><strong>Password prompt did not appear after first success</strong>: pages were deployed unencrypted. Root cause: Staticrypt v3.5.4+ doesn’t support the <code class="language-plaintext highlighter-rouge">-o</code> flag and silently ignores it. Switched to <code class="language-plaintext highlighter-rouge">-d &lt;directory&gt;</code>, but that flattens directory structures — all output goes to <code class="language-plaintext highlighter-rouge">&lt;dir&gt;/basename.html</code> regardless of input nesting. Fixed by processing each file individually in isolated temp directories.</li>
+  <li><strong>Deployment included large executable files</strong>: binaries in deploy output triggered GitHub large-file warnings and highlighted the need for artifact filtering.</li>
+  <li><strong>Full-site encryption created unnecessary overhead</strong>: encrypting already-public content increased runtime and complexity without adding value. Switched to selective encryption of draft and future posts only.</li>
+  <li><strong>Initial verification check was too brittle</strong>: string matching on encrypted output caused false failures. Replaced with SHA-256 hash comparison to detect whether files were actually transformed.</li>
+  <li><strong>Special-case files broke encryption targeting</strong>: utility documents like <code class="language-plaintext highlighter-rouge">DRAFTS.md</code> and <code class="language-plaintext highlighter-rouge">SUBDOMAIN-DRAFTS.md</code> (without standard front matter) were included in the encryption scope. Fixed by filtering to only files matching the <code class="language-plaintext highlighter-rouge">YYYY-MM-DD-*.md</code> pattern.</li>
+  <li><strong>Convenience files broke archive sort order</strong>: The uppercase convenience files (<code class="language-plaintext highlighter-rouge">DRAFTS.md</code>, <code class="language-plaintext highlighter-rouge">SUBDOMAIN-DRAFTS.md</code>, <code class="language-plaintext highlighter-rouge">DRAFTS-TODO.md</code>) had no front matter, so Jekyll used the file’s filesystem mtime as their date. This caused them to appear at random positions in the archive depending on when they were last edited. Fixed by adding minimal front matter (<code class="language-plaintext highlighter-rouge">layout: none</code>, <code class="language-plaintext highlighter-rouge">date: 2038-01-18</code>, <code class="language-plaintext highlighter-rouge">sitemap: false</code>). The pinned date of 2038-01-18 (day before the Unix Y2K38 epoch overflow) sorts them to the very top of the archive. <code class="language-plaintext highlighter-rouge">layout: none</code> preserves raw markdown rendering without site chrome. <code class="language-plaintext highlighter-rouge">sitemap: false</code> keeps them out of the sitemap.</li>
+</ol>
+
+<h2 id="what-not-to-do">What NOT to Do</h2>
+
+<p>A few guardrails I wish I’d written down before starting:</p>
+
+<ul>
+  <li><strong>Don’t add <code class="language-plaintext highlighter-rouge">--drafts --future</code> to the production build</strong> — defeats the entire purpose</li>
+  <li><strong>Don’t use <code class="language-plaintext highlighter-rouge">published: false</code> as a gating mechanism</strong> — the <code class="language-plaintext highlighter-rouge">_drafts/</code> directory is the correct approach</li>
+  <li><strong>Don’t rely solely on <code class="language-plaintext highlighter-rouge">robots.txt</code></strong> — it’s advisory, not enforced. Layer it with <code class="language-plaintext highlighter-rouge">noindex</code> meta tags</li>
+  <li><strong>Don’t put passwords in the repo</strong> — use GitHub Secrets</li>
+  <li><strong>Don’t modify <code class="language-plaintext highlighter-rouge">_config.yml</code> for the drafts site</strong> — use a config overlay file</li>
+  <li><strong>Don’t encrypt the entire site</strong> — only draft and future posts need protection. Encrypting published content adds friction without adding value</li>
+  <li><strong>Don’t use Staticrypt’s <code class="language-plaintext highlighter-rouge">-o</code> flag</strong> — it doesn’t exist in v3.5.4+. Use <code class="language-plaintext highlighter-rouge">-d &lt;directory&gt;</code> and handle the path flattening yourself</li>
+</ul>
+
+<h2 id="quick-reference-what-goes-where">Quick Reference: What Goes Where</h2>
+
+<p>For anyone implementing this pattern, here’s where everything lives:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>File</th>
+      <th>Repo</th>
+      <th>Purpose</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">_config_drafts.yml</code></td>
+      <td><code class="language-plaintext highlighter-rouge">mcgarrah.github.io</code></td>
+      <td>Jekyll config overlay for drafts build</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">.github/workflows/deploy-drafts.yml</code></td>
+      <td><code class="language-plaintext highlighter-rouge">mcgarrah.github.io</code></td>
+      <td>GitHub Actions workflow</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">CNAME</code></td>
+      <td><code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code> (auto-created)</td>
+      <td>GitHub Pages custom domain routing</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">.nojekyll</code></td>
+      <td><code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code> (auto-created)</td>
+      <td>Prevents GitHub Pages re-processing</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">DRAFTS_PASSWORD</code> secret</td>
+      <td><code class="language-plaintext highlighter-rouge">mcgarrah.github.io</code></td>
+      <td>Staticrypt shared password</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">DRAFTS_DEPLOY_TOKEN</code> secret</td>
+      <td><code class="language-plaintext highlighter-rouge">mcgarrah.github.io</code></td>
+      <td>GitHub PAT for cross-repo push</td>
+    </tr>
+    <tr>
+      <td>Draft preview banner</td>
+      <td><code class="language-plaintext highlighter-rouge">_layouts/default.html</code></td>
+      <td>Visual indicator for reviewers</td>
+    </tr>
+    <tr>
+      <td>Giscus config</td>
+      <td><code class="language-plaintext highlighter-rouge">_config_drafts.yml</code></td>
+      <td>Points comments to drafts repo Discussions</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="lessons-learned">Lessons Learned</h2>
+
+<ol>
+  <li><strong>Static-site security controls are mostly UX signals</strong> unless source content is private. The password prompt says “this is a preview” — it doesn’t prevent a determined reader from viewing the public source on GitHub.</li>
+  <li><strong>Build verification should check file transformation</strong>, not just string signatures. SHA-256 hash comparison catches real changes; string matching produces false negatives.</li>
+  <li><strong>Tooling behavior under batch mode matters.</strong> Staticrypt’s output flattening was the key hidden trap — it works fine on a single file but silently breaks when processing multiple files with the same basename (like dozens of <code class="language-plaintext highlighter-rouge">index.html</code> files).</li>
+  <li><strong>Selective encryption is better than full-site encryption.</strong> It reduces build time, avoids encrypting already-public content, and makes the password prompt meaningful rather than annoying.</li>
+  <li><strong>A tiny UI affordance has outsized impact.</strong> The orange preview banner took five minutes to implement and is the single most useful feature for reviewer clarity.</li>
+  <li><strong>Convenience files should get explicit front matter</strong> when they participate in Jekyll collections. Without a pinned date, Jekyll uses filesystem mtime, which causes random archive placement every time the file is edited.</li>
+  <li><strong>The concurrency group matters.</strong> Without <code class="language-plaintext highlighter-rouge">cancel-in-progress: true</code>, rapid pushes can queue up multiple deployments that step on each other.</li>
+</ol>
+
+<hr />
+
+<p><em>This is Part 3 of a three-part series on building a Jekyll draft preview site:</em></p>
+<ul>
+  <li><strong>Part 1</strong>: <a href="/jekyll-draft-preview-site-part-1/">Exploring every option I considered</a></li>
+  <li><strong>Part 2</strong>: <a href="/jekyll-draft-preview-site-part-2/">Refining the design — config, workflow, feedback, and gaps</a></li>
+  <li><strong>Part 3</strong> (this post): The complete implementation</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/jekyll/">jekyll</a>, 
+        
+          <a href="/tags/github-pages/">github-pages</a>, 
+        
+          <a href="/tags/staticrypt/">staticrypt</a>, 
+        
+          <a href="/tags/drafts/">drafts</a>, 
+        
+          <a href="/tags/preview/">preview</a>, 
+        
+          <a href="/tags/ci-cd/">ci-cd</a>, 
+        
+          <a href="/tags/github-actions/">github-actions</a>, 
+        
+          <a href="/tags/giscus/">giscus</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/jekyll/">jekyll</a>, 
+        
+          <a href="/categories/github-pages/">github-pages</a>, 
+        
+          <a href="/categories/devops/">devops</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://mcgarrah.substack.com/" rel="me">Substack</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Engineering deep dives on infrastructure, distributed systems, and AI/ML — from homelab experiments to enterprise architecture.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://mcgarrah.substack.com/" ><svg aria-label="Substack" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#substack"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

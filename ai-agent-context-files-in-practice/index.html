@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>AI Agent Context Files in Practice: One Repo, Five Agents | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="AI Agent Context Files in Practice: One Repo, Five Agents" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="A practical case study of implementing centralized AI agent context management in a real .NET plugin repository. Demonstrates the AGENTS.md pattern with minimal per-tool stubs for Kiro, Claude Code, GitHub Copilot, Gemini CLI, and OpenAI Codex." />
+<meta property="og:description" content="A practical case study of implementing centralized AI agent context management in a real .NET plugin repository. Demonstrates the AGENTS.md pattern with minimal per-tool stubs for Kiro, Claude Code, GitHub Copilot, Gemini CLI, and OpenAI Codex." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/ai-agent-context-files-in-practice/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/ai-agent-context-files-in-practice/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:image" content="https://drafts.mcgarrah.org/assets/images/og/ai-agent-context-files-in-practice.png" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-08-14T00:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta property="twitter:image" content="https://drafts.mcgarrah.org/assets/images/og/ai-agent-context-files-in-practice.png" />
+<meta property="twitter:title" content="AI Agent Context Files in Practice: One Repo, Five Agents" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah","url":"https://mcgarrah.org"},"dateModified":"2026-08-14T00:00:00+00:00","datePublished":"2026-08-14T00:00:00+00:00","description":"A practical case study of implementing centralized AI agent context management in a real .NET plugin repository. Demonstrates the AGENTS.md pattern with minimal per-tool stubs for Kiro, Claude Code, GitHub Copilot, Gemini CLI, and OpenAI Codex.","headline":"AI Agent Context Files in Practice: One Repo, Five Agents","image":"https://drafts.mcgarrah.org/assets/images/og/ai-agent-context-files-in-practice.png","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/ai-agent-context-files-in-practice/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/ai-agent-context-files-in-practice/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+
+<!-- Favicons -->
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="shortcut icon" href="/favicon.ico">
+<meta name="theme-color" content="#ffffff">
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="Substack" href="https://mcgarrah.substack.com/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#substack"></use></svg>
+      <span aria-hidden="true">Substack</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Engineering deep dives on infrastructure, distributed systems, and AI/ML — from homelab experiments to enterprise architecture.</div>
+</aside>
+
+
+
+
+
+<div style="background:#e67e00;color:#fff;text-align:center;padding:0.5em 1em;font-size:0.9em;font-weight:bold;">
+  ⚠ DRAFT PREVIEW SITE — unpublished content, may change.
+  <a href="https://mcgarrah.org" style="color:#fff;text-decoration:underline;margin-left:0.5em;">Go to the main site →</a>
+</div>
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+  
+  <nav class="drafts-nav"><a href="/substack/"><svg aria-label="Substack Drafts" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#newspaper"></use></svg><span>Substack Drafts</span>
+    </a><a href="/linkedin/"><svg aria-label="LinkedIn Drafts" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg><span>LinkedIn Drafts</span>
+    </a></nav>
+  
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/ai-agent-context-files-in-practice/">AI Agent Context Files in Practice: One Repo, Five Agents</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-08-14T00:00:00+00:00">August 14, 2026</time><span class="reading-time">9 min read</span></header>
+
+  <p>Two months ago I wrote about <a href="/managing-cross-ai-agent-context/">managing context across multiple AI coding assistants</a> and documented the <a href="/ai-coding-agent-context-files-reference/">reference guide for every agent’s file format</a>. The theory was straightforward: maintain a single source of truth and let each agent’s config file be a thin pointer.</p>
+
+<p>This week I put that into practice on <a href="https://github.com/mcgarrah/jellyfin-plugin-media-integrity-scanner">jellyfin-plugin-media-integrity-scanner</a> — and discovered what actually matters when you stop thinking about it abstractly and start shipping code with multiple agents hitting the same repo.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="the-problem-that-triggered-this">The Problem That Triggered This</h2>
+
+<p>I was implementing the plugin’s core components with Kiro (Amazon’s new agent-native IDE) and ran into a cascade of build failures. The Jellyfin 10.11 API had removed <code class="language-plaintext highlighter-rouge">IServerEntryPoint</code>, changed where <code class="language-plaintext highlighter-rouge">MediaType</code> lives, and renamed the <code class="language-plaintext highlighter-rouge">TaskTriggerInfo</code> trigger constants. Every time I fixed one issue and pushed, CI failed on the next.</p>
+
+<p>The frustrating part: I’d already figured out these API changes. But without persistent context, each new session started from zero. Worse, when I switched between agents (Kiro for implementation, Claude Code for investigation, Copilot for quick completions), none of them knew what the others had learned.</p>
+
+<p>That’s when the articles I’d written stopped being theoretical. I needed exactly the pattern I’d described: one canonical context file that every agent reads.</p>
+
+<h2 id="the-implementation">The Implementation</h2>
+
+<p>Here’s what the repository looks like now:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>jellyfin-plugin-media-integrity-scanner/
+├── AGENTS.md                           # Single source of truth
+├── CLAUDE.md                           # "Read AGENTS.md"
+├── .github/copilot-instructions.md     # "Read AGENTS.md"
+├── .gemini/styleguide.md               # "Read AGENTS.md"
+├── .kiro/steering/project-context.md   # Pulls in AGENTS.md via inclusion
+└── ...
+</code></pre></div></div>
+
+<p>Five files. One has content. Four are one-liners.</p>
+
+<h3 id="why-agentsmd">Why AGENTS.md</h3>
+
+<p>The name matters for exactly one reason: OpenAI Codex auto-discovers <code class="language-plaintext highlighter-rouge">AGENTS.md</code> by convention, which means one fewer stub file to maintain. Every other agent needs its own config file regardless of what you name the canonical source, so you might as well pick the name that gives you one free discovery.</p>
+
+<p>I considered <code class="language-plaintext highlighter-rouge">CONTEXT.md</code> (more neutral) and <code class="language-plaintext highlighter-rouge">CONVENTIONS.md</code> (from my earlier article), but <code class="language-plaintext highlighter-rouge">AGENTS.md</code> is self-documenting — a human browsing the repo immediately understands what it’s for and who it’s for.</p>
+
+<h3 id="the-agents-covered">The Agents Covered</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Agent</th>
+      <th>Discovery File</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Kiro</strong> (IDE + CLI)</td>
+      <td><code class="language-plaintext highlighter-rouge">.kiro/steering/project-context.md</code></td>
+      <td>File inclusion directive loads full content</td>
+    </tr>
+    <tr>
+      <td><strong>Claude Code</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">CLAUDE.md</code></td>
+      <td>Reliably follows file references</td>
+    </tr>
+    <tr>
+      <td><strong>GitHub Copilot</strong></td>
+      <td><code class="language-plaintext highlighter-rouge">.github/copilot-instructions.md</code></td>
+      <td>Workspace indexing picks up AGENTS.md</td>
+    </tr>
+    <tr>
+      <td><strong>Gemini</strong> (<code class="language-plaintext highlighter-rouge">agy</code> CLI)</td>
+      <td><code class="language-plaintext highlighter-rouge">.gemini/styleguide.md</code></td>
+      <td>Google’s Antigravity/Gemini Code Assist</td>
+    </tr>
+    <tr>
+      <td><strong>Codex</strong> (OpenAI)</td>
+      <td><code class="language-plaintext highlighter-rouge">AGENTS.md</code> directly</td>
+      <td>Auto-discovers by convention</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>I deliberately dropped Amazon Q Developer support. Amazon shifted their AI developer tooling strategy toward Kiro, and Q Developer’s rules system (<code class="language-plaintext highlighter-rouge">.amazonq/rules/</code>) is headed for deprecation or irrelevance. Maintaining config files for abandoned tooling is exactly the kind of drift I’m trying to avoid.</p>
+
+<h3 id="the-stub-files">The Stub Files</h3>
+
+<p>Each agent file is exactly one line:</p>
+
+<p><strong>CLAUDE.md:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Read AGENTS.md for all project context.
+</code></pre></div></div>
+
+<p><strong>.github/copilot-instructions.md:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Read AGENTS.md at the repository root for all project context and coding guidelines.
+</code></pre></div></div>
+
+<p><strong>.gemini/styleguide.md:</strong></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Read AGENTS.md at the repository root for all project context.
+</code></pre></div></div>
+
+<p>No duplicated details. Nothing that can go stale. If the agent can follow a file reference (Claude Code can, reliably), it gets the full context. If it can’t, the stub at least tells it where to look, and most modern agents will read the referenced file.</p>
+
+<h3 id="kiros-special-case">Kiro’s Special Case</h3>
+
+<p>Kiro (both the IDE and the forthcoming <code class="language-plaintext highlighter-rouge">kiro-cli</code>) has a genuinely useful feature here. Its steering files support a file inclusion directive:</p>
+
+<p><strong>.kiro/steering/project-context.md:</strong></p>
+<div class="language-markdown highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nn">---</span>
+<span class="na">inclusion</span><span class="pi">:</span> <span class="s">auto</span>
+<span class="nn">---</span>
+
+<span class="gh">#[[file:AGENTS.md]]</span>
+</code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">inclusion: auto</code> frontmatter means this loads on every session. The <code class="language-plaintext highlighter-rouge">#[[file:AGENTS.md]]</code> directive injects the full content of AGENTS.md directly into Kiro’s context — no cross-referencing, no hoping the agent follows a pointer. The content is there, guaranteed, every time.</p>
+
+<p>This is the closest any agent comes to solving the problem cleanly. The <code class="language-plaintext highlighter-rouge">.kiro/steering/</code> directory is shared between the IDE and CLI, so the same context file works for both. The others still rely on the agent being smart enough to read a referenced file.</p>
+
+<h2 id="what-goes-in-agentsmd">What Goes in AGENTS.md</h2>
+
+<p>The content matters as much as the structure. After iterating on this during real implementation work, here’s what proved essential:</p>
+
+<h3 id="1-environment-details-that-prevent-wasted-cycles">1. Environment Details That Prevent Wasted Cycles</h3>
+
+<div class="language-markdown highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gu">### Important: Shell Execution</span>
+<span class="p">-</span> Shell commands must run in a Linux context (bash/zsh), not PowerShell
+<span class="p">-</span> <span class="sb">`dotnet`</span> is not available locally — do not attempt local builds
+<span class="p">-</span> Use <span class="sb">`gh`</span> CLI for GitHub API access (runs, PRs, issues)
+</code></pre></div></div>
+
+<p>This saved me repeated failures. Kiro’s shell execution was trying to run <code class="language-plaintext highlighter-rouge">dotnet build</code> in a context where the SDK wasn’t installed, and it took multiple sessions to diagnose because the context reset each time. Once this was in AGENTS.md, every agent knew immediately: don’t try local builds, push and check CI instead.</p>
+
+<h3 id="2-api-specific-gotchas">2. API-Specific Gotchas</h3>
+
+<div class="language-markdown highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gu">### Removed/Changed APIs</span>
+<span class="p">-</span> <span class="gs">**`IServerEntryPoint`**</span> — Removed in 10.11. Use <span class="sb">`IHostedService`</span> instead.
+<span class="p">-</span> <span class="gs">**`MediaType`**</span> — Now in <span class="sb">`MediaBrowser.Model.Entities`</span>.
+<span class="p">-</span> <span class="gs">**`TaskTriggerInfo.TriggerDaily`**</span> — Use the string <span class="sb">`"DailyTrigger"`</span>.
+</code></pre></div></div>
+
+<p>This is the highest-value content in the file. Without it, every agent independently discovers these breaking changes by writing code that fails CI, reading the error, and fixing it — three round-trips per issue, per session. With it, the agent writes correct code on the first attempt.</p>
+
+<h3 id="3-correct-patterns-not-just-whats-wrong">3. Correct Patterns (Not Just What’s Wrong)</h3>
+
+<div class="language-csharp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Scheduled task triggers</span>
+<span class="k">new</span> <span class="n">TaskTriggerInfo</span> <span class="p">{</span> <span class="n">Type</span> <span class="p">=</span> <span class="s">"DailyTrigger"</span><span class="p">,</span> <span class="n">TimeOfDayTicks</span> <span class="p">=</span> <span class="n">TimeSpan</span><span class="p">.</span><span class="nf">FromHours</span><span class="p">(</span><span class="m">3</span><span class="p">).</span><span class="n">Ticks</span> <span class="p">}</span>
+</code></pre></div></div>
+
+<p>Don’t just say what’s broken — show what’s correct. Agents are better at copying patterns than inferring fixes from error descriptions.</p>
+
+<h3 id="4-build-verification-workflow">4. Build Verification Workflow</h3>
+
+<div class="language-markdown highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Since <span class="sb">`dotnet`</span> is not installed locally, all build verification happens via CI:
+<span class="p">1.</span> Push changes to GitHub
+<span class="p">2.</span> Check workflow status: <span class="sb">`GH_PAGER=cat gh run list --limit 3`</span>
+<span class="p">3.</span> View errors: <span class="sb">`GH_PAGER=cat gh run view &lt;run-id&gt; --log-failed 2&gt;&amp;1 | grep "error CS"`</span>
+</code></pre></div></div>
+
+<p>This tells the agent how to close the feedback loop. Without it, the agent pushes code and considers the task done. With it, the agent knows to check CI and iterate.</p>
+
+<h2 id="what-i-left-out">What I Left Out</h2>
+
+<p>Equally important: the stub files contain zero details that could go stale. My earlier article suggested keeping a “quick reference” in CLAUDE.md with build commands and key conventions. I tried that initially and removed it within a day.</p>
+
+<p>The problem: when you update AGENTS.md (adding a new API note, fixing a path), you forget to update the duplicated snippets in CLAUDE.md. Now Claude Code has stale context that contradicts the canonical source. The whole point of centralization is defeated the moment you duplicate anything.</p>
+
+<p>One line. One reference. No details in the stubs.</p>
+
+<h2 id="does-cross-referencing-actually-work">Does Cross-Referencing Actually Work?</h2>
+
+<p>In my earlier article, I was skeptical about cross-referencing — telling one agent to read a competitor’s files. Two months later, the landscape has improved:</p>
+
+<ul>
+  <li><strong>Claude Code</strong>: Reliably reads referenced files. <code class="language-plaintext highlighter-rouge">CLAUDE.md</code> saying “read AGENTS.md” works.</li>
+  <li><strong>Kiro</strong>: File inclusion directive guarantees the content is loaded. Best solution of any agent.</li>
+  <li><strong>GitHub Copilot</strong>: Reads <code class="language-plaintext highlighter-rouge">.github/copilot-instructions.md</code> content but does not follow file references within it. However, since AGENTS.md is in the repo, Copilot’s workspace indexing picks it up for chat context.</li>
+  <li><strong>Gemini</strong> (<code class="language-plaintext highlighter-rouge">agy</code> CLI): Reads <code class="language-plaintext highlighter-rouge">.gemini/styleguide.md</code> and follows file references. Google’s tooling respects the pointer pattern.</li>
+  <li><strong>Codex</strong>: Auto-discovers AGENTS.md by convention. No pointer needed.</li>
+</ul>
+
+<p>The pattern works today in mid-2026 in a way it wouldn’t have six months ago. Agents are better at following references, and workspace-level indexing means the canonical file gets picked up even without explicit inclusion.</p>
+
+<h2 id="lessons-learned">Lessons Learned</h2>
+
+<p><strong>1. Context persistence is the real problem, not context format.</strong></p>
+
+<p>I spent time in my earlier articles comparing file formats (MDC vs Markdown, YAML vs prose). That doesn’t matter. What matters is: does the agent have the right information when it starts working? AGENTS.md solves that regardless of format differences.</p>
+
+<p><strong>2. API breakage documentation is the highest-ROI content.</strong></p>
+
+<p>Of everything in AGENTS.md, the Jellyfin 10.11 API notes save the most time. Environment details are a close second. General coding standards (XML docs, ConfigureAwait) are nice-to-have but agents mostly infer those from existing code.</p>
+
+<p><strong>3. One file, one truth, no duplication.</strong></p>
+
+<p>Every time I was tempted to put “just a few key points” in a stub file, I reminded myself: that’s how drift starts. The stubs are pointers, not summaries.</p>
+
+<p><strong>4. The name <code class="language-plaintext highlighter-rouge">AGENTS.md</code> is a pragmatic choice, not a standard.</strong></p>
+
+<p>There is still no cross-agent standard. <code class="language-plaintext highlighter-rouge">AGENTS.md</code> works because Codex reads it natively and the name is self-documenting. But if the ecosystem converges on something else tomorrow, the migration is trivial — rename one file, update four one-liners.</p>
+
+<h2 id="the-repository">The Repository</h2>
+
+<p>The full implementation is at <a href="https://github.com/mcgarrah/jellyfin-plugin-media-integrity-scanner">github.com/mcgarrah/jellyfin-plugin-media-integrity-scanner</a>. The <code class="language-plaintext highlighter-rouge">feat/agent-context-files</code> branch contains the agent context setup described here.</p>
+
+<h2 id="reality-check-kiro-cli-is-broken-for-enterprise-auth">Reality Check: Kiro CLI Is Broken for Enterprise Auth</h2>
+
+<p>While the <code class="language-plaintext highlighter-rouge">.kiro/steering/</code> file inclusion works beautifully in the Kiro IDE, <code class="language-plaintext highlighter-rouge">kiro-cli</code> — the terminal-based agent — is currently unusable with IAM Identity Center (organization-managed) authentication. I spent hours debugging this and <a href="https://github.com/kirodotdev/Kiro/issues/10587">filed the issue</a>.</p>
+
+<p>The symptoms: <code class="language-plaintext highlighter-rouge">kiro-cli chat</code> exits silently. No error, no output, exit code 0. Authentication works (<code class="language-plaintext highlighter-rouge">whoami</code> succeeds, <code class="language-plaintext highlighter-rouge">chat --list-models</code> returns models), but the chat subprocess never starts. Debug output reveals the problem:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>no social token found
+no idp token found
+launching q chat binary
+</code></pre></div></div>
+
+<p>The chat subprocess only accepts “social” tokens (Google/GitHub login) or “idp” tokens (Okta/Entra). IAM Identity Center SSO tokens — the enterprise auth path — are simply not handled. The Kiro IDE works fine with the same credentials because it handles auth internally rather than delegating to a subprocess.</p>
+
+<p>This is frustrating for two reasons:</p>
+
+<p><strong>1. The CLI was closed-source in the transition.</strong> Amazon Q Developer CLI was open source on GitHub. When it was rebranded to Kiro CLI, the repository was archived and the new codebase is proprietary. I can’t look at the token-passing code to understand the issue or propose a fix. The debug output (<code class="language-plaintext highlighter-rouge">q_cli::cli</code>, <code class="language-plaintext highlighter-rouge">launching q chat binary</code>) reveals the old Q Developer internals are still under the hood — this is a rebrand, not a rewrite — but I can’t inspect them anymore.</p>
+
+<p><strong>2. Builder ID works, enterprise auth doesn’t.</strong> The irony of a tool marketed for enterprise adoption failing on the enterprise authentication path while working fine with personal Builder ID login is not lost on me. If you’re evaluating Kiro CLI for an organization that uses IAM Identity Center, be aware that chat functionality doesn’t work as of version 2.15.2.</p>
+
+<p>For now, my <code class="language-plaintext highlighter-rouge">.kiro/steering/project-context.md</code> file delivers value through the Kiro IDE (where it works as designed) and awaits a fix for the CLI. The context file pattern is correct — the tooling has a gap.</p>
+
+<h2 id="related-articles">Related Articles</h2>
+
+<ul>
+  <li><a href="/managing-cross-ai-agent-context/">Managing Context and Rules Across Multiple AI Coding Assistants</a> — The strategy article that preceded this implementation</li>
+  <li><a href="/ai-coding-agent-context-files-reference/">AI Coding Agent Context Files: A Reference Guide</a> — Detailed reference for each agent’s file format and conventions</li>
+</ul>
+
+<h2 id="series-context">Series Context</h2>
+
+<p>This article is part of the <a href="/jellyfin-media-integrity-scanner-introduction/">Jellyfin Media Integrity Scanner</a> development series, though it stands alone as a practical guide to AI agent context management applicable to any project.</p>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/ai/">ai</a>, 
+        
+          <a href="/tags/claude-code/">claude-code</a>, 
+        
+          <a href="/tags/github-copilot/">github-copilot</a>, 
+        
+          <a href="/tags/kiro/">kiro</a>, 
+        
+          <a href="/tags/gemini/">gemini</a>, 
+        
+          <a href="/tags/productivity/">productivity</a>, 
+        
+          <a href="/tags/tooling/">tooling</a>, 
+        
+          <a href="/tags/plugin-development/">plugin-development</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/technical/">technical</a>, 
+        
+          <a href="/categories/development/">development</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://mcgarrah.substack.com/" rel="me">Substack</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Engineering deep dives on infrastructure, distributed systems, and AI/ML — from homelab experiments to enterprise architecture.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://mcgarrah.substack.com/" ><svg aria-label="Substack" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#substack"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>
