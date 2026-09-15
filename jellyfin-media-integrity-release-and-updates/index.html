@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Jellyfin Media Integrity Scanner: v0.1.1 Release — Update Checker and Auto-Update | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Jellyfin Media Integrity Scanner: v0.1.1 Release — Update Checker and Auto-Update" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="v0.1.1 release article for the Jellyfin Media Integrity Scanner. Covers update checker architecture, session-aware auto-restart, package bloat fixes, Playwright E2E testing, media corruption test matrix, and architectural documentation. Part 6 of a 6-part development series." />
+<meta property="og:description" content="v0.1.1 release article for the Jellyfin Media Integrity Scanner. Covers update checker architecture, session-aware auto-restart, package bloat fixes, Playwright E2E testing, media corruption test matrix, and architectural documentation. Part 6 of a 6-part development series." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/jellyfin-media-integrity-release-and-updates/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/jellyfin-media-integrity-release-and-updates/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:image" content="https://drafts.mcgarrah.org/assets/images/og/jellyfin-media-integrity-release-and-updates.png" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-08-19T00:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta property="twitter:image" content="https://drafts.mcgarrah.org/assets/images/og/jellyfin-media-integrity-release-and-updates.png" />
+<meta property="twitter:title" content="Jellyfin Media Integrity Scanner: v0.1.1 Release — Update Checker and Auto-Update" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah","url":"https://mcgarrah.org"},"dateModified":"2026-08-19T00:00:00+00:00","datePublished":"2026-08-19T00:00:00+00:00","description":"v0.1.1 release article for the Jellyfin Media Integrity Scanner. Covers update checker architecture, session-aware auto-restart, package bloat fixes, Playwright E2E testing, media corruption test matrix, and architectural documentation. Part 6 of a 6-part development series.","headline":"Jellyfin Media Integrity Scanner: v0.1.1 Release — Update Checker and Auto-Update","image":"https://drafts.mcgarrah.org/assets/images/og/jellyfin-media-integrity-release-and-updates.png","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/jellyfin-media-integrity-release-and-updates/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/jellyfin-media-integrity-release-and-updates/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+
+
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = isDarkMode ? 'dark' : 'default';
+  mermaid.initialize({ startOnLoad: true, theme: theme });
+  await mermaid.run({ querySelector: '.language-mermaid' });
+</script>
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+
+<!-- Favicons -->
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="shortcut icon" href="/favicon.ico">
+<meta name="theme-color" content="#ffffff">
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="Substack" href="https://mcgarrah.substack.com/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#substack"></use></svg>
+      <span aria-hidden="true">Substack</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Engineering deep dives on infrastructure, distributed systems, and AI/ML — from homelab experiments to enterprise architecture.</div>
+</aside>
+
+
+
+
+
+<div style="background:#e67e00;color:#fff;text-align:center;padding:0.5em 1em;font-size:0.9em;font-weight:bold;">
+  ⚠ DRAFT PREVIEW SITE — unpublished content, may change.
+  <a href="https://mcgarrah.org" style="color:#fff;text-decoration:underline;margin-left:0.5em;">Go to the main site →</a>
+</div>
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+  
+  <nav class="drafts-nav"><a href="/substack/"><svg aria-label="Substack Drafts" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#newspaper"></use></svg><span>Substack Drafts</span>
+    </a><a href="/linkedin/"><svg aria-label="LinkedIn Drafts" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg><span>LinkedIn Drafts</span>
+    </a></nav>
+  
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/jellyfin-media-integrity-release-and-updates/">Jellyfin Media Integrity Scanner: v0.1.1 Release — Update Checker and Auto-Update</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-08-19T00:00:00+00:00">August 19, 2026</time><span class="reading-time">19 min read</span></header>
+
+  <p>The first five articles in this series documented the development path from problem statement through operational deployment of the Media Integrity Scanner plugin. By the end of that arc (2026-07-31), the plugin was functionally complete — two-phase scanning, SQLite persistence, REST API, dashboard, and event-driven library monitoring all shipping and tested.</p>
+
+<p>But “functionally complete” and “production-ready” are different things. Between v0.1.0 and the v0.1.1 stable release (2026-08-02), the plugin gained automatic update checking, session-aware restart logic, comprehensive end-to-end testing, and critical packaging fixes. This article covers what changed and why.</p>
+
+<!-- excerpt-end -->
+
+<p>No plan survives contact with real data. The first five articles designed a scanner, a dashboard, and a release pipeline that all looked correct on paper — and every one of them still had a gap that only showed up once something real got involved: a real installed release instead of five hand-copied DLLs, a real dashboard response parsed by real browser JavaScript, a real Jellyfin server that has no idea whether anyone’s mid-episode when a restart gets triggered. This article is that reckoning, not a sixth increment of new features.</p>
+
+<h2 id="the-v010--v011-journey">The v0.1.0 → v0.1.1 Journey</h2>
+
+<p>The path from the initial v0.1.0 release to v0.1.1 stable involved:</p>
+
+<ol>
+  <li><strong>Development channel releases</strong> — Three pre-releases (v0.1.0-dev.1 through dev.4) to test fixes before marking them stable</li>
+  <li><strong>Critical packaging bugs</strong> — Discovered and fixed two issues that broke cross-platform installation</li>
+  <li><strong>Testing infrastructure</strong> — Added Playwright E2E suite and media corruption matrix to validate real-world behavior</li>
+  <li><strong>Update mechanism</strong> — Implemented automatic update checking with smart restart logic to prevent scan interruption</li>
+  <li><strong>Documentation</strong> — Created ARCHITECTURE.md with event-flow diagrams, complementing the blog series</li>
+</ol>
+
+<p>This article is Part 6 of the <a href="/jellyfin-media-integrity-scanner-introduction/">Jellyfin Media Integrity Scanner</a> development series. Unlike the previous five parts, it’s not required reading before deploying v0.1.0 — those articles describe a complete, working plugin. This is a “what came next” article for users interested in how production release engineering shaped the project after initial functionality shipped.</p>
+
+<h2 id="feature-1-update-checker-with-stabledevelopment-channels">Feature 1: Update Checker with Stable/Development Channels</h2>
+
+<p>Users installing the plugin via <code class="language-plaintext highlighter-rouge">manifest.json</code> could see updates listed in Jellyfin’s own Plugins → Catalog page, but nothing surfaced that from <em>inside</em> the plugin — no dashboard banner, no way to trigger an install without going through Jellyfin’s generic catalog UI. The natural fix leans on machinery Jellyfin already has rather than reinventing it: <code class="language-plaintext highlighter-rouge">IInstallationManager</code>, the same DI-registered service the Catalog page itself uses to list and install plugin versions.</p>
+
+<p>That interface only ever returns versions from plugin repositories an admin has <strong>already registered</strong> under Dashboard → Plugins → Repositories — a plugin has no way to discover its own updates from a manifest Jellyfin doesn’t know about, and this plugin deliberately doesn’t register one on the admin’s behalf, since that’s global server config, not this plugin’s own. Registering <code class="language-plaintext highlighter-rouge">manifest.json</code> (stable) and, optionally, <code class="language-plaintext highlighter-rouge">manifest-unstable.json</code> (development) is a one-time, explicit setup step, documented on the settings page rather than done silently.</p>
+
+<pre><code class="language-mermaid">%%{init: {"theme": "base", "themeVariables": {
+  "primaryColor": "#17221f",
+  "primaryTextColor": "#e7ede9",
+  "primaryBorderColor": "#3e6e67",
+  "lineColor": "#7c93a3",
+  "secondaryColor": "#1d2b27",
+  "tertiaryColor": "#101a18",
+  "fontFamily": "monospace",
+  "fontSize": "14px"
+}}}%%
+flowchart TD
+    subgraph DAILY["CheckForUpdatesTask — daily, 04:00"]
+        A["RefreshAsync"]:::act --&gt; B["IInstallationManager&lt;br/&gt;.GetAvailablePackages"]:::act
+        B --&gt; C{"classify each version&lt;br/&gt;by RepositoryUrl"}:::gate
+        C --&gt;|"manifest.json"| D["Stable"]:::pipe
+        C --&gt;|"manifest-unstable.json"| E["Development"]:::pipe
+        D --&gt; F[("cached UpdateStatus")]:::db
+        E --&gt; F
+    end
+
+    subgraph WEEKLY["AutoUpdateTask — weekly, Sunday 04:00"]
+        G{"EnableAutoUpdate?"}:::gate
+        G --&gt;|"no"| SKIP1["skip"]:::stop
+        G --&gt;|"yes"| H{"update available for&lt;br/&gt;configured channel?"}:::gate
+        H --&gt;|"no"| SKIP2["skip"]:::stop
+        H --&gt;|"yes"| I["InstallPackage via&lt;br/&gt;IInstallationManager"]:::act
+        I --&gt; J{"AutoRestartAfterUpdate?"}:::gate
+        J --&gt;|"no"| STAGED["leave staged,&lt;br/&gt;admin restarts manually"]:::pipe
+        J --&gt;|"yes"| K["wait for zero active&lt;br/&gt;playback sessions"]:::wait
+        K --&gt; L["ISystemManager.Restart()"]:::pipe
+    end
+
+    F -.-&gt;|"read by"| H
+
+    classDef gate fill:#2a2013,stroke:#e3a857,color:#f4d9a8
+    classDef wait fill:#2a2013,stroke:#e3a857,color:#f4d9a8,stroke-dasharray: 3 3
+    classDef act fill:#16332c,stroke:#5fa88f,color:#cfefe2
+    classDef db fill:#17221f,stroke:#7c93a3,color:#e7ede9
+    classDef pipe fill:#101a18,stroke:#e3a857,color:#e3a857,stroke-width:2px
+    classDef stop fill:#331c1a,stroke:#d96c5d,color:#f3c8c2
+</code></pre>
+
+<p><code class="language-plaintext highlighter-rouge">UpdateStatus</code> — the cached object both tasks and the dashboard read — tracks <code class="language-plaintext highlighter-rouge">CurrentVersion</code>, <code class="language-plaintext highlighter-rouge">LatestStableVersion</code>, <code class="language-plaintext highlighter-rouge">LatestDevVersion</code>, <code class="language-plaintext highlighter-rouge">UpdateAvailable</code>, <code class="language-plaintext highlighter-rouge">AvailableVersion</code>, and which <code class="language-plaintext highlighter-rouge">Channel</code> it was computed against. Splitting the check (daily, cheap, read-only) from the install-and-maybe-restart step (weekly, and off by default) means opening the dashboard never triggers a live network call or an unexpected install — it just reads whatever the last scheduled check found.</p>
+
+<h3 id="channel-selection">Channel Selection</h3>
+
+<p>Since a single registered repository can list many versions and Jellyfin has no first-class idea of “channels,” this plugin publishes two separate manifests and classifies each <code class="language-plaintext highlighter-rouge">VersionInfo</code> Jellyfin returns by which registered repository URL it came from — not by a repository’s free-text display name, which an admin could label anything:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Setting</th>
+      <th>Default</th>
+      <th>Effect</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">UpdateChannel</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Stable</code></td>
+      <td><code class="language-plaintext highlighter-rouge">Stable</code> or <code class="language-plaintext highlighter-rouge">Development</code> — which channel counts as “available”</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">StableManifestUrl</code></td>
+      <td>this repo’s <code class="language-plaintext highlighter-rouge">manifest.json</code></td>
+      <td>Advanced override; rarely touched</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">DevManifestUrl</code></td>
+      <td>this repo’s <code class="language-plaintext highlighter-rouge">manifest-unstable.json</code></td>
+      <td>Advanced override; rarely touched</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">EnableAutoUpdate</code></td>
+      <td><code class="language-plaintext highlighter-rouge">false</code></td>
+      <td>Weekly task installs (stages) a newer version automatically</td>
+    </tr>
+    <tr>
+      <td><code class="language-plaintext highlighter-rouge">AutoRestartAfterUpdate</code></td>
+      <td><code class="language-plaintext highlighter-rouge">false</code></td>
+      <td>After an automatic install, also restart once nobody’s watching</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>All four update-related settings default to off — a conservative install only ever sees update notifications and clicks “Update Now” on the dashboard by hand. <code class="language-plaintext highlighter-rouge">EnableAutoUpdate</code> and <code class="language-plaintext highlighter-rouge">AutoRestartAfterUpdate</code> are deliberately separate toggles: the first lets the plugin stage a newer version without touching the running process at all, the second is what actually restarts Jellyfin to load it, covered next.</p>
+
+<p>Full source: <a href="https://github.com/mcgarrah/jellyfin-plugin-media-integrity-scanner/blob/main/Jellyfin.Plugin.MediaIntegrityScanner/Updates/UpdateChecker.cs"><code class="language-plaintext highlighter-rouge">Updates/UpdateChecker.cs</code></a>, <a href="https://github.com/mcgarrah/jellyfin-plugin-media-integrity-scanner/blob/main/Jellyfin.Plugin.MediaIntegrityScanner/ScheduledTasks/CheckForUpdatesTask.cs"><code class="language-plaintext highlighter-rouge">ScheduledTasks/CheckForUpdatesTask.cs</code></a>.</p>
+
+<h2 id="feature-2-session-aware-auto-restart">Feature 2: Session-Aware Auto-Restart</h2>
+
+<p>Automatic updates are only useful if they actually apply, but blindly restarting Jellyfin the moment a new version installs is a terrible user experience: an in-progress scan gets cut off mid-file, and anyone mid-episode loses playback outright. <code class="language-plaintext highlighter-rouge">AutoUpdateTask</code> — the same weekly task that performs the install — handles this by refusing to restart until it’s actually safe:</p>
+
+<div class="language-csharp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">public</span> <span class="k">async</span> <span class="n">Task</span> <span class="nf">ExecuteAsync</span><span class="p">(</span><span class="n">IProgress</span><span class="p">&lt;</span><span class="kt">double</span><span class="p">&gt;</span> <span class="n">progress</span><span class="p">,</span> <span class="n">CancellationToken</span> <span class="n">cancellationToken</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(!</span><span class="n">config</span><span class="p">.</span><span class="n">EnableAutoUpdate</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span><span class="p">;</span> <span class="p">}</span>
+
+    <span class="kt">var</span> <span class="n">status</span> <span class="p">=</span> <span class="k">await</span> <span class="n">_updateChecker</span><span class="p">.</span><span class="nf">RefreshAsync</span><span class="p">(</span><span class="n">cancellationToken</span><span class="p">);</span>
+    <span class="k">if</span> <span class="p">(!</span><span class="n">status</span><span class="p">.</span><span class="n">UpdateAvailable</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span><span class="p">;</span> <span class="p">}</span>
+
+    <span class="k">await</span> <span class="n">_updateChecker</span><span class="p">.</span><span class="nf">InstallAsync</span><span class="p">(</span><span class="n">status</span><span class="p">.</span><span class="n">Channel</span><span class="p">,</span> <span class="n">cancellationToken</span><span class="p">);</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">config</span><span class="p">.</span><span class="n">AutoRestartAfterUpdate</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="k">await</span> <span class="nf">WaitForNoActivePlaybackAsync</span><span class="p">(</span><span class="n">cancellationToken</span><span class="p">);</span>
+        <span class="n">_systemManager</span><span class="p">.</span><span class="nf">Restart</span><span class="p">();</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="k">private</span> <span class="k">async</span> <span class="n">Task</span> <span class="nf">WaitForNoActivePlaybackAsync</span><span class="p">(</span><span class="n">CancellationToken</span> <span class="n">cancellationToken</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">while</span> <span class="p">(</span><span class="n">_sessions</span><span class="p">.</span><span class="n">Sessions</span><span class="p">.</span><span class="nf">Any</span><span class="p">(</span><span class="n">s</span> <span class="p">=&gt;</span> <span class="n">s</span><span class="p">.</span><span class="n">NowPlayingItem</span> <span class="p">!=</span> <span class="k">null</span><span class="p">)</span> <span class="p">&amp;&amp;</span> <span class="p">!</span><span class="n">cancellationToken</span><span class="p">.</span><span class="n">IsCancellationRequested</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="k">await</span> <span class="n">Task</span><span class="p">.</span><span class="nf">Delay</span><span class="p">(</span><span class="n">TimeSpan</span><span class="p">.</span><span class="nf">FromSeconds</span><span class="p">(</span><span class="m">30</span><span class="p">),</span> <span class="n">cancellationToken</span><span class="p">);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Notice what’s <em>not</em> there: no forced restart after some maximum wait. That was a deliberate call, not an oversight — <code class="language-plaintext highlighter-rouge">ISystemManager.Restart()</code> is a one-way door with no way to defer or cancel it once called (confirmed by decompiling Jellyfin’s own implementation rather than assuming), so there’s no safe way to “restart soon anyway” without risking the exact scenario this feature exists to prevent. If playback never stops, the update simply stays installed-but-not-loaded until an admin restarts manually — which is also exactly why <code class="language-plaintext highlighter-rouge">EnableAutoUpdate</code> and <code class="language-plaintext highlighter-rouge">AutoRestartAfterUpdate</code> are two separate settings: an install with no restart is a strictly safer default than an install that eventually forces one.</p>
+
+<h3 id="what-triggers-a-restart">What Triggers a Restart</h3>
+
+<p>Restarts only ever come from this one path:</p>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">EnableAutoUpdate</code> is on, a newer version exists for the configured channel, <strong>and</strong> <code class="language-plaintext highlighter-rouge">AutoRestartAfterUpdate</code> is also on.</li>
+</ul>
+
+<p>Scanning, API requests, and dashboard access never trigger a restart under any circumstances — and the wait loop above re-checks playback every 30 seconds indefinitely, so a scan or a movie that’s still running an hour after the update installed simply delays the restart by that same hour.</p>
+
+<p>Full source: <a href="https://github.com/mcgarrah/jellyfin-plugin-media-integrity-scanner/blob/main/Jellyfin.Plugin.MediaIntegrityScanner/ScheduledTasks/AutoUpdateTask.cs"><code class="language-plaintext highlighter-rouge">ScheduledTasks/AutoUpdateTask.cs</code></a>.</p>
+
+<h2 id="critical-fixes-packaging-and-cross-platform-support">Critical Fixes: Packaging and Cross-Platform Support</h2>
+
+<p>Two packaging bugs surfaced during testing and needed to be fixed before calling the release stable.</p>
+
+<h3 id="issue-1-shipping-redundant-assemblies">Issue 1: Shipping Redundant Assemblies</h3>
+
+<p>The initial plugin package included:</p>
+
+<ul>
+  <li>Every Jellyfin assembly (even though the host already provides them)</li>
+  <li>Platform-specific native SQLite libraries for Windows, Linux, and macOS (all bundled together)</li>
+</ul>
+
+<p>This bloated the plugin zip to ~40MB, most of it unused. Windows installs included Linux binaries and vice versa. Worse, the duplicate Jellyfin assemblies sometimes shadowed the host versions, causing unpredictable binding-redirect behavior.</p>
+
+<p><strong>Fix (PR #29):</strong> Removed all redundant assemblies and platform-specific natives from the package. The plugin now:</p>
+
+<ul>
+  <li>Declares Jellyfin assemblies as <code class="language-plaintext highlighter-rouge">&lt;FrameworkReference&gt;</code> (the server provides them)</li>
+  <li>Declares <code class="language-plaintext highlighter-rouge">Microsoft.Data.Sqlite</code> as a NuGet dependency (the runtime installs the right native library for the target platform)</li>
+  <li>Publishes only the plugin’s own code and essential cross-platform dependencies</li>
+</ul>
+
+<p><strong>Result:</strong> Package size dropped from ~40MB to ~3MB. Installation is faster, and cross-platform conflicts disappeared.</p>
+
+<h3 id="issue-2-assembly-whitelist-for-cross-platform-loading">Issue 2: Assembly Whitelist for Cross-Platform Loading</h3>
+
+<p>Trimming the package down to just <code class="language-plaintext highlighter-rouge">linux-x64</code>’s native SQLite binary (Issue 1’s fix) stopped the install crash, but it meant Windows, macOS, and every other Linux architecture would have shipped with no working native SQLite library at all. Restoring real cross-platform support meant bundling <em>every</em> server platform’s native binary back in — which reintroduced the original crash, just for a different set of files.</p>
+
+<p>The actual mechanism, found by decompiling Jellyfin’s own <code class="language-plaintext highlighter-rouge">PluginManager</code> (<code class="language-plaintext highlighter-rouge">Emby.Server.Implementations.dll</code>, pulled from a real 10.11.11 server image) rather than guessing: a plugin can ship its own <code class="language-plaintext highlighter-rouge">meta.json</code> with a populated <code class="language-plaintext highlighter-rouge">assemblies</code> list, and Jellyfin uses <strong>only that whitelist</strong> to decide what to load as a managed .NET assembly — instead of its default fallback of recursively loading every <code class="language-plaintext highlighter-rouge">.dll</code> under the plugin folder, which is what choked on a bundled native binary that merely <em>looked</em> like a managed assembly by extension.</p>
+
+<p><strong>Fix (PR #30):</strong> a flat <code class="language-plaintext highlighter-rouge">assemblies</code> whitelist in the plugin’s own bundled <code class="language-plaintext highlighter-rouge">meta.json</code> (not the repository-level <code class="language-plaintext highlighter-rouge">manifest.json</code> used earlier in this article — a different file, at a different layer):</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"guid"</span><span class="p">:</span><span class="w"> </span><span class="s2">"c8f4a3b2-1d5e-4f6a-9b7c-2e8d0f1a3b5c"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"assemblies"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+    </span><span class="s2">"Jellyfin.Plugin.MediaIntegrityScanner.dll"</span><span class="p">,</span><span class="w">
+    </span><span class="s2">"Microsoft.Data.Sqlite.dll"</span><span class="p">,</span><span class="w">
+    </span><span class="s2">"SQLitePCLRaw.batteries_v2.dll"</span><span class="p">,</span><span class="w">
+    </span><span class="s2">"SQLitePCLRaw.core.dll"</span><span class="p">,</span><span class="w">
+    </span><span class="s2">"SQLitePCLRaw.provider.e_sqlite3.dll"</span><span class="w">
+  </span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>With the whitelist in place, native runtime binaries for every platform (win-x64/arm64, linux-x64/arm/arm64/musl variants, osx-x64/arm64) never reach Jellyfin’s assembly loader at all, regardless of filename — so the package can safely bundle all of them in one universal zip. Verified against a real demo instance: staged a build containing every platform’s native binary (including the exact <code class="language-plaintext highlighter-rouge">win-x64</code> DLL that crashed the previous attempt) and confirmed via the server’s own logs that it loaded only the five whitelisted managed assemblies and never touched a native runtime file.</p>
+
+<p>Full file: <a href="https://github.com/mcgarrah/jellyfin-plugin-media-integrity-scanner/blob/main/Jellyfin.Plugin.MediaIntegrityScanner/meta.json"><code class="language-plaintext highlighter-rouge">meta.json</code></a>.</p>
+
+<h2 id="testing-infrastructure-playwright-e2e-and-corruption-matrix">Testing Infrastructure: Playwright E2E and Corruption Matrix</h2>
+
+<p>Between commits, two major testing initiatives shipped to reduce post-release surprises.</p>
+
+<h3 id="playwright-end-to-end-testing-pr-24">Playwright End-to-End Testing (PR #24)</h3>
+
+<p>The unit test suite (141 tests) covers the core logic: scan engine decisions, database queries, API responses, concurrency safety. But unit tests can’t catch everything — particularly UI integration bugs and Jellyfin API version mismatches.</p>
+
+<p>The plugin now includes a <strong>Playwright E2E test suite</strong> that:</p>
+
+<ol>
+  <li>Launches a real Jellyfin instance in Docker</li>
+  <li>Automates a real web browser (headless Chrome)</li>
+  <li>Logs in as admin</li>
+  <li>Navigates to the plugin dashboard</li>
+  <li>Triggers a scan</li>
+  <li>Verifies results appear in the dashboard</li>
+  <li>Edits settings</li>
+  <li>Confirms the UI reflects the changes</li>
+</ol>
+
+<p>This caught a real bug that slipped past unit tests: the dashboard JSON response was using wrong casing for some fields, causing the UI JavaScript to fail silently. The E2E suite caught it immediately by actually rendering the page.</p>
+
+<h3 id="media-corruption-test-matrix-pr-23">Media Corruption Test Matrix (PR #23)</h3>
+
+<p>The plugin’s core value is detecting corrupt media files. But how do you verify the detection logic works? You need actual corrupt files to scan.</p>
+
+<p>The project now includes a <strong>test fixture generator</strong> that creates good and bad video files:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Good files (valid containers, playable streams)</span>
+ffmpeg <span class="nt">-f</span> lavfi <span class="nt">-i</span> <span class="nv">testsrc</span><span class="o">=</span><span class="nv">size</span><span class="o">=</span>320x240:duration<span class="o">=</span>1 <span class="nt">-f</span> lavfi <span class="nt">-i</span> <span class="nv">sine</span><span class="o">=</span><span class="nv">f</span><span class="o">=</span>1000:d<span class="o">=</span>1 good_video.mp4
+ffmpeg <span class="nt">-f</span> lavfi <span class="nt">-i</span> <span class="nv">testsrc</span><span class="o">=</span><span class="nv">size</span><span class="o">=</span>320x240:duration<span class="o">=</span>1 good_video.mkv
+
+<span class="c"># Bad files (truncated, corrupt headers, invalid codecs)</span>
+<span class="nb">truncate</span> <span class="nt">-s</span> 1M good_video.mp4        <span class="c"># Truncated file</span>
+<span class="nb">dd </span><span class="k">if</span><span class="o">=</span>/dev/zero <span class="nv">of</span><span class="o">=</span>corrupt.mp4 <span class="nv">bs</span><span class="o">=</span>1 <span class="nv">count</span><span class="o">=</span>1024 <span class="nv">seek</span><span class="o">=</span>65536 <span class="nv">conv</span><span class="o">=</span>notrunc  <span class="c"># Corrupt middle</span>
+<span class="nb">dd </span><span class="k">if</span><span class="o">=</span>/dev/urandom <span class="nv">of</span><span class="o">=</span>badheader.mp4 <span class="nv">bs</span><span class="o">=</span>1 <span class="nv">count</span><span class="o">=</span>100  <span class="c"># Corrupt header</span>
+</code></pre></div></div>
+
+<p>The matrix validates that:</p>
+<ul>
+  <li><strong>Phase 1 (ffprobe)</strong> catches truncated files, corrupt containers, invalid codecs</li>
+  <li><strong>Phase 2 (ffmpeg decode)</strong> catches mid-file corruption and encoding errors</li>
+  <li><strong>False positives</strong> don’t occur on actually valid files</li>
+</ul>
+
+<p>This gives confidence that the plugin’s detection logic matches what real ffmpeg does, not what the developer <em>thinks</em> ffmpeg does.</p>
+
+<h2 id="documentation-architecturemd">Documentation: ARCHITECTURE.md</h2>
+
+<p>The first five articles in this series cover the design, but operators and developers need to understand <strong>every single code path</strong> that can trigger a scan — Jellyfin events, scheduled tasks, manual API calls. A single diagram that shows all of these helps immensely.</p>
+
+<p><a href="https://github.com/mcgarrah/jellyfin-plugin-media-integrity-scanner/blob/main/ARCHITECTURE.md">ARCHITECTURE.md</a> includes:</p>
+
+<ol>
+  <li><strong>Event-flow diagram</strong> — Every Jellyfin event that feeds into the scan engine:
+    <ul>
+      <li>Library item added/removed</li>
+      <li>Scheduled tasks (header scan, deep scan)</li>
+      <li>REST API calls (manual triggers)</li>
+      <li>Settings changes that affect throttling</li>
+    </ul>
+  </li>
+  <li><strong>Gate pipeline diagram</strong> — Every decision the scan engine makes before actually starting a scan:
+    <ul>
+      <li>Is it quiet hours? Stop.</li>
+      <li>Is playback active? Pause.</li>
+      <li>Are we at concurrency limit? Queue.</li>
+      <li>Does Phase 1 pass? Skip Phase 2 (unless configured otherwise).</li>
+    </ul>
+  </li>
+  <li><strong>Two worked scenarios</strong>:
+    <ul>
+      <li>Scenario 1: User adds a new file to the library while deep scan is running</li>
+      <li>Scenario 2: User manually triggers a deep scan from the dashboard during active playback</li>
+    </ul>
+  </li>
+</ol>
+
+<p>These diagrams live in the repository, not in the blog series, because they update as the code evolves. The blog articles describe <em>why</em> the design works; ARCHITECTURE.md documents <em>how</em> it works in real code.</p>
+
+<h2 id="the-release-checklist">The Release Checklist</h2>
+
+<p>Getting from v0.1.0-dev to v0.1.1 stable required a formal checklist:</p>
+
+<ul>
+  <li>✅ Unit tests passing (141 tests)</li>
+  <li>✅ Integration tests passing (Docker + real Jellyfin instance)</li>
+  <li>✅ E2E tests passing (Playwright browser automation)</li>
+  <li>✅ Media corruption matrix validated</li>
+  <li>✅ Cross-platform packaging verified (Windows, Linux, macOS)</li>
+  <li>✅ Update checker tested and working</li>
+  <li>✅ Session-aware restart logic verified</li>
+  <li>✅ Documentation complete (README.md, ARCHITECTURE.md, INSTALL.md, RELEASE.md)</li>
+  <li>✅ GitHub releases API workflow automated (manifest.json version bumps on tagged release)</li>
+  <li>✅ Both stable and development channel builds working</li>
+</ul>
+
+<p>The development channel (<code class="language-plaintext highlighter-rouge">v0.1.0-dev.1</code> through <code class="language-plaintext highlighter-rouge">dev.4</code>) provided a staging ground for the fixes. Each dev release was a stepping stone toward stability.</p>
+
+<h2 id="for-users-what-changed">For Users: What Changed</h2>
+
+<p>If you’re running v0.1.0 and upgrading to v0.1.1:</p>
+
+<ol>
+  <li><strong>Installation is easier</strong> — Package is 13x smaller (3MB vs 40MB)</li>
+  <li><strong>Cross-platform works now</strong> — If you’re on Windows or macOS, the plugin now works reliably</li>
+  <li><strong>Auto-update is optional</strong> — Disabled by default. Enable in <strong>Dashboard → Plugins → Media Integrity Scanner → Settings</strong> if you want automatic updates</li>
+  <li><strong>Scans never interrupted by restarts</strong> — Even if you enable auto-update, restarts wait for idle periods</li>
+  <li><strong>Everything else is the same</strong> — The scanning logic, throttling, database schema, and API are unchanged</li>
+</ol>
+
+<p>No action required. The upgrade is transparent.</p>
+
+<h2 id="for-developers-what-matters">For Developers: What Matters</h2>
+
+<p>If you’re using this plugin as a reference for Jellyfin plugin development:</p>
+
+<ol>
+  <li><strong>Platform-specific artifacts belong in manifest.json, not the package</strong> — Declare them and let the plugin loader sort out what to install where</li>
+  <li><strong>Update checking is worth doing</strong> — GitHub releases API is free and reliable. Users expect to see “Update available” notifications</li>
+  <li><strong>Session awareness prevents disasters</strong> — Check playback sessions and scan state before auto-restarting</li>
+  <li><strong>E2E testing catches what unit tests miss</strong> — Browser automation finds UI bugs, casing bugs, and integration mismatches</li>
+  <li><strong>Test fixture generation validates detection logic</strong> — Create the edge cases you’re trying to detect</li>
+  <li><strong>Architectural diagrams live in code, not blog articles</strong> — Blog articles explain <em>why</em>; diagrams document <em>what</em></li>
+</ol>
+
+<h2 id="series-recap">Series Recap</h2>
+
+<p>The six-part series now covers:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Article</th>
+      <th>Focus</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td><a href="/jellyfin-media-integrity-scanner-introduction/">Introduction</a></td>
+      <td>Problem statement, project scope, architecture overview</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><a href="/jellyfin-media-integrity-architecture-design/">Architecture &amp; Design Decisions</a></td>
+      <td>Plugin vs. script, two-phase scanning, I/O throttling, SQLite</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td><a href="/jellyfin-media-integrity-scanner-core/">Building the Scanner Core</a></td>
+      <td>FFmpeg integration, plugin structure, scan engine</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td><a href="/jellyfin-media-integrity-dashboard-api/">The Dashboard &amp; API</a></td>
+      <td>Admin UI, REST API, real-time status</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td><a href="/jellyfin-media-integrity-deployment-operations/">Deployment &amp; Operations</a></td>
+      <td>Proxmox/CephFS setup, monitoring, CI/CD pipeline</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td><strong>v0.1.1 Release</strong> (this post)</td>
+      <td>Update checker, auto-update, testing, packaging</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Together, these articles document a complete development and release cycle: from identifying a problem, designing a solution, implementing it, shipping it, and then hardening it for production use based on real-world feedback.</p>
+
+<h2 id="future-work">Future Work</h2>
+
+<p>The plugin is stable and production-ready, but v0.1.1 is the end of the <em>development series</em>, not the end of the plugin’s evolution. Some of these are old ideas that never got past a bullet point; others came out of specifically sitting down and asking hard questions about parts of the design that had started to feel too convenient to be true. None of it is scheduled — this is the honest state of “things worth doing,” not a roadmap with dates.</p>
+
+<h3 id="operational-improvements">Operational improvements</h3>
+
+<ul>
+  <li><strong>A CLI mode.</strong> Right now every interaction goes through the dashboard or the REST API — there’s no way to, say, initialize the database or kick off a scan from a script after a fresh install. The catch: a Jellyfin plugin has no <code class="language-plaintext highlighter-rouge">Main()</code> and depends entirely on Jellyfin’s own DI container, so this only works cleanly if it turns out to mean “a thin CLI wrapper over the existing API,” not “run the plugin binary standalone.”</li>
+  <li><strong>Database size and maintenance visibility.</strong> The SQLite cache has no size reporting and no exposed way to <code class="language-plaintext highlighter-rouge">VACUUM</code> or run an integrity check — currently that’s a manual <code class="language-plaintext highlighter-rouge">sqlite3</code> shell session. A dashboard stat plus a manual “run maintenance now” button would close that gap, assuming <code class="language-plaintext highlighter-rouge">VACUUM</code> really is safe to run against the live WAL-mode database without stopping Jellyfin, which needs confirming for real rather than assumed from documentation.</li>
+  <li><strong>Prometheus metrics export</strong> — a native <code class="language-plaintext highlighter-rouge">/metrics</code> endpoint instead of the polling script from the <a href="/jellyfin-media-integrity-deployment-operations/#monitoring--alerting">deployment article</a>.</li>
+  <li><strong>Scan result export</strong> (CSV, for analysis or archival) and <strong>bulk rescan operations</strong> (scan everything matching a media type, library, or date range).</li>
+  <li><strong>Storage-level integrations</strong> — alerts when CephFS/RAID health itself degrades, not just when a file fails a scan.</li>
+  <li><strong>Webhook notifications</strong> to Discord/Slack/ntfy on failures, and <strong>repair automation</strong> that attempts an <code class="language-plaintext highlighter-rouge">ffmpeg -c copy</code> remux on the subset of failures that kind of fix can actually help.</li>
+</ul>
+
+<h3 id="under-the-hood">Under the hood</h3>
+
+<ul>
+  <li><strong>The throttling model is more naive than it looks.</strong> <code class="language-plaintext highlighter-rouge">MaxConcurrentScans</code> is a flat, manually-set number with no relationship to the host’s actual CPU count, and <code class="language-plaintext highlighter-rouge">MaxReadRateMbPerSec</code> is enforced <em>per file</em>, not system-wide — run more concurrent scans and the real aggregate read rate off storage can exceed the configured cap by a multiple of however many scans are running at once. Worth a real redesign: a vCPU-aware default for concurrency, and a shared rate limiter every scan draws from instead of each one pacing itself in isolation.</li>
+  <li><strong>The scan-results database is add-and-remove, but only while something’s listening.</strong> A removed library item does get purged — confirmed by reading the real code, not assumed — but only if the plugin happens to be running at the exact moment Jellyfin reports the removal. There’s no periodic reconciliation pass that catches whatever that missed. Jellyfin’s own <code class="language-plaintext highlighter-rouge">ILibraryManager.GetItemIds()</code> is exactly the primitive a “diff the database against what’s actually in the library” task would need; nothing’s built against it yet.</li>
+  <li><strong>A per-library throttle profile and a scan-priority queue</strong> (recently-added files first) — both straightforward extensions of the existing throttling model, just not built.</li>
+  <li><strong>Live-reload of Jellyfin’s own ffmpeg path.</strong> The resolver already checks Jellyfin’s global transcoding ffmpeg override, which is nice — but it’s only read once, at plugin startup, and cached from then on. Change that setting in Jellyfin’s own dashboard later and this plugin won’t notice until a restart.</li>
+</ul>
+
+<h3 id="testing-and-platform-coverage">Testing and platform coverage</h3>
+
+<ul>
+  <li><strong>Every CI check runs on Linux only.</strong> The unit tests, integration suite, and Playwright suite all execute on <code class="language-plaintext highlighter-rouge">ubuntu-latest</code> — nothing runs on Windows or macOS, despite the plugin explicitly shipping and claiming support for both. One test file even says so directly in a code comment: the Windows/macOS branches of the ffmpeg path resolver “are not covered.” Real proof of cross-platform support means actually running somewhere other than Linux, not just packaging correctly for it.</li>
+</ul>
+
+<h3 id="an-idea-that-hit-a-real-wall">An idea that hit a real wall</h3>
+
+<p>The one genuinely appealing idea that turned out not to be buildable, at least not yet: using Jellyfin’s own playback-failure signal to trigger an immediate follow-up scan on whatever file a client just reported trouble with, instead of waiting for the next scheduled sweep. Jellyfin’s client-facing API <em>does</em> carry a <code class="language-plaintext highlighter-rouge">Failed</code> flag when a session stops — but reading the real, decompiled <code class="language-plaintext highlighter-rouge">SessionManager</code> source shows that flag gets read internally to decide whether to update watch state, and is never copied onto the event a plugin actually receives. A playback that failed and a playback someone simply stopped early look identical from the one hook a plugin can subscribe to. This isn’t a plugin design problem to solve — it’s a gap in what Jellyfin exposes, and the honest next step is raising it upstream rather than working around something that isn’t there.</p>
+
+<hr />
+
+<p><strong>Related Articles:</strong></p>
+<ul>
+  <li><a href="/managing-cross-ai-agent-context/">Managing Context and Rules Across Multiple AI Coding Assistants</a> — Bonus: how this plugin was built</li>
+  <li><a href="/ai-coding-agent-context-files-reference/">AI Coding Agent Context Files: A Reference Guide</a> — The methodology behind coordinating multiple AI agents on the project</li>
+  <li><a href="/ai-agent-context-files-in-practice/">AI Agent Context Files in Practice: One Repo, Five Agents</a> — The same plugin as a case study in cross-agent collaboration</li>
+</ul>
+
+<p><strong>Project Links:</strong></p>
+<ul>
+  <li><a href="https://github.com/mcgarrah/jellyfin-plugin-media-integrity-scanner">Repository</a></li>
+  <li><a href="https://github.com/mcgarrah/jellyfin-plugin-media-integrity-scanner/blob/main/ARCHITECTURE.md">ARCHITECTURE.md</a> — Event-flow and gate-pipeline diagrams</li>
+  <li><a href="https://github.com/mcgarrah/jellyfin-plugin-media-integrity-scanner/releases">Releases</a> — Stable and development channel</li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/jellyfin/">jellyfin</a>, 
+        
+          <a href="/tags/media-integrity/">media-integrity</a>, 
+        
+          <a href="/tags/release-management/">release-management</a>, 
+        
+          <a href="/tags/auto-update/">auto-update</a>, 
+        
+          <a href="/tags/testing/">testing</a>, 
+        
+          <a href="/tags/plugin-development/">plugin-development</a>, 
+        
+          <a href="/tags/dotnet/">dotnet</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/homelab/">homelab</a>, 
+        
+          <a href="/categories/media-server/">media-server</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://mcgarrah.substack.com/" rel="me">Substack</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Engineering deep dives on infrastructure, distributed systems, and AI/ML — from homelab experiments to enterprise architecture.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://mcgarrah.substack.com/" ><svg aria-label="Substack" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#substack"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

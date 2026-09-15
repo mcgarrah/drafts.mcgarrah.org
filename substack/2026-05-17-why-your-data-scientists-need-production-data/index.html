@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Why Your Data Scientists Need Production Data (And How to Give It to Them Safely) | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Why Your Data Scientists Need Production Data (And How to Give It to Them Safely)" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="Why Your Data Scientists Need Production Data (And How to Give It to Them Safely) Subtitle: A five-stage framework for the platform decision that determines whether your AI initiatives succeed or fail Author: McGarrah Published: May 17, 2026 URL: TBD Tags: Machine Learning, Data Science, Platform Engineering, Security, Enterprise Architecture, AI/ML, Leadership A quick note before we begin: if you’ve been reading my earlier newsletters — From Homelabs to Machine Learning and From Markdown to Production — you’ll notice a shift in tone here. Those pieces established the technical foundation: the infrastructure I build, the engineering discipline I practice, the tools I create. This newsletter builds on that foundation but steps back to the strategic level. The question is no longer “how do I build this?” but “how do I design the platform architecture that lets an entire data science organization succeed?” That shift reflects where I am professionally — bridging deep technical execution with the organizational and business strategy decisions that determine whether AI initiatives deliver value or die in pilot. I am not abandoning the technical articles — those will continue roughly once a month as the foundation they have always been. What I am adding is a second thread focused on the “why” and the architecture: the platform decisions, the organizational patterns, and the leadership thinking that sits above the implementation. Think of it as two cadences: the technical pieces show I still build things; the strategic pieces show I know which things to build and why. Every enterprise I have worked in over the past decade has hit the same wall. Data scientists need production data to build useful models. The standard software development lifecycle assumes production data stays in production. These two facts are architecturally incompatible — and most organizations resolve the conflict by either giving data scientists garbage data (producing garbage models) or granting security exceptions that erode their compliance posture. Neither outcome is acceptable. And the root cause is not a tooling problem — it is an organizational architecture problem that sits at the intersection of data engineering, security, compliance, and platform engineering. The Conflict In classic SDLC, the environment hierarchy is clean: development has synthetic data, staging has sanitized data, production has real data. Security and flexibility are inversely correlated as you move up the stack. This works because application developers do not need real data to write and test code. Data science is fundamentally different. Training a machine learning model on synthetic or sanitized data produces a model that has learned the patterns of synthetic data — not the patterns of your actual business. Feature engineering on sanitized datasets misses the edge cases, distributions, and correlations that exist in production. The entire value proposition of ML depends on learning from real data. I have had this argument with development managers, project managers, and security teams across healthcare, financial services, and government. The conversation always starts the same way: “Why can’t they just use the staging data?” And the answer is always the same: because staging data is not production data, and the model quality difference is measurable. The Framework The resolution is a promotion framework designed specifically for data science workloads. Instead of forcing DS into the SDLC model, you build a parallel track that acknowledges the production data requirement from the start. Five stages — framed by who owns them and what risk they mitigate: Infrastructure Development (Owner: Platform Engineering Risk: None — no production data) — where you develop the platform itself. Standard IaC development. Break things here, not in the environments your data scientists depend on. Infrastructure Pre-Production (Owner: Platform Engineering Risk: Deployment consistency) — validated infra changes before release to production-data environments. The gate between “we’re experimenting with Terraform” and “this is ready for the people who use real data.” Prod Discovery: The Safe Space for Messy Data Science (Owner: Data Science Risk: Data exposure — mitigated by audit logging, network segmentation, read-only access, no public internet) — the interactive, exploratory environment where data scientists work. Has production data with real statistical distributions intact. The CISO can sleep at night because: every query is logged, the network is isolated, direct identifiers (SSN, patient name) are masked while preserving the mathematical properties models actually learn from, and there is no path from this environment to the public internet. Prod Integration: The Factory Gate (Owner: MLOps/Platform Engineering Risk: Unvalidated logic reaching production) — no interactive work. This is where experimental notebooks become version-controlled, automated Python packages or containers. The research model hands off to the engineering model. If a pipeline fails here, customers never see it. Production (Final Prod) (Owner: Operations Risk: Customer impact) — where customers consume AI/ML insights. Most restrictive controls. Changes arrive only through automated promotion from Integration. For the full technical framework with architecture diagrams and implementation details, I wrote a companion blog post: Five Stages of a Successful Cloud Data Science Platform. Why This Is a Leadership Problem, Not a Technical Problem The technical architecture is the straightforward part. The hard part is getting three constituencies to agree: The CISO wants minimal data exposure, maximum controls, and no exceptions to the standard SDLC model. Their incentive structure punishes data breaches and audit findings — not slow model development. The CDO / Data Science team wants production data access with development-like flexibility and minimal friction. Their incentive structure rewards model accuracy and time-to-production — not security posture. The business unit leaders want ML models that actually work (which requires real data) without compliance risk. Their incentive structure rewards revenue impact — not architectural elegance. The five-stage framework gives each constituency what they need: security gets production-grade controls and audit logging on every environment with real data; data science gets interactive access to production data; business gets models trained on real data with a documented compliance posture. This is a negotiation artifact, not a technical specification. The framework succeeds because it gives each stakeholder a way to say yes without compromising their core requirements. Where I Have Applied This This is not theoretical. I have built or operated variants of this framework across: Regulated industries (BD Biosciences, NC DOR, SAS Institute — 2006–2013) — FDA quality systems, IRS Safeguard compliance, and pharmaceutical clinical trial data under CFR Part 11. These roles established the principle that interactive access to sensitive data and auditable controls are not mutually exclusive — you design for both simultaneously. Machine learning at scale (Measurement Incorporated — 2013–2015) — PhD researchers building NLP models for automated essay scoring. The chaos of researchers breaking production with untested model changes is where I first witnessed the DS-vs-SDLC conflict and began evolving toward this framework. Healthcare (BCBSNC — 2019–2021) — Where the framework was fully realized and tested. CarePath ML platform on EKS under HIPAA constraints, processing claims data from all NC members. It survived production pressure and became the standard I carried forward. Financial services (Envestnet — 2021–present) — SageMaker and Bedrock across shared services and workload accounts. The mature DataLake (vEMR, Snowflake, Airflow) exemplifies this model in data engineering — phased promotion with gates at every stage. The pattern is consistent across industries: the organizations that get this right build the platform first, then scale AI initiatives on top of it. The organizations that get it wrong try to bolt security onto an ad-hoc data access model after the data scientists have already built dependencies on it. The Decision Point If you are building an AI organization — or evaluating whether your current platform can support one — this is the first infrastructure decision you need to get right. Everything downstream depends on it: Model quality depends on training data quality, which depends on production data access MLOps maturity depends on a promotion path from experimentation to production Compliance posture depends on controls designed into the architecture, not bolted on after the fact Team velocity depends on data scientists not waiting weeks for data access approvals The standard SDLC model will not give you this. You need a purpose-built framework that acknowledges the fundamental difference between application development and data science: production data is not the destination — it is the starting point. If you found this useful, share it with someone building a data science platform. The full technical framework with architecture diagrams is on my blog: Five Stages of a Successful Cloud Data Science Platform. About Me I’m Michael McGarrah. I’ve spent 30 years building and leading technology organizations — from enterprise architecture for North Carolina state government to cloud platforms running production ML models in healthcare and financial services. I hold an M.S. in Computer Science (AI/ML) from Georgia Tech and I’m completing an Executive MBA at UNC Wilmington, deliberately bridging the gap between technical depth and business strategy. I still write code, debug distributed systems, and build infrastructure — because the best technology leaders never stop being engineers. You can find more of my writing at mcgarrah.org, my detailed resume at mcgarrah.org/resume, and my profiles on LinkedIn, Substack, GitHub, and Google Scholar." />
+<meta property="og:description" content="Why Your Data Scientists Need Production Data (And How to Give It to Them Safely) Subtitle: A five-stage framework for the platform decision that determines whether your AI initiatives succeed or fail Author: McGarrah Published: May 17, 2026 URL: TBD Tags: Machine Learning, Data Science, Platform Engineering, Security, Enterprise Architecture, AI/ML, Leadership A quick note before we begin: if you’ve been reading my earlier newsletters — From Homelabs to Machine Learning and From Markdown to Production — you’ll notice a shift in tone here. Those pieces established the technical foundation: the infrastructure I build, the engineering discipline I practice, the tools I create. This newsletter builds on that foundation but steps back to the strategic level. The question is no longer “how do I build this?” but “how do I design the platform architecture that lets an entire data science organization succeed?” That shift reflects where I am professionally — bridging deep technical execution with the organizational and business strategy decisions that determine whether AI initiatives deliver value or die in pilot. I am not abandoning the technical articles — those will continue roughly once a month as the foundation they have always been. What I am adding is a second thread focused on the “why” and the architecture: the platform decisions, the organizational patterns, and the leadership thinking that sits above the implementation. Think of it as two cadences: the technical pieces show I still build things; the strategic pieces show I know which things to build and why. Every enterprise I have worked in over the past decade has hit the same wall. Data scientists need production data to build useful models. The standard software development lifecycle assumes production data stays in production. These two facts are architecturally incompatible — and most organizations resolve the conflict by either giving data scientists garbage data (producing garbage models) or granting security exceptions that erode their compliance posture. Neither outcome is acceptable. And the root cause is not a tooling problem — it is an organizational architecture problem that sits at the intersection of data engineering, security, compliance, and platform engineering. The Conflict In classic SDLC, the environment hierarchy is clean: development has synthetic data, staging has sanitized data, production has real data. Security and flexibility are inversely correlated as you move up the stack. This works because application developers do not need real data to write and test code. Data science is fundamentally different. Training a machine learning model on synthetic or sanitized data produces a model that has learned the patterns of synthetic data — not the patterns of your actual business. Feature engineering on sanitized datasets misses the edge cases, distributions, and correlations that exist in production. The entire value proposition of ML depends on learning from real data. I have had this argument with development managers, project managers, and security teams across healthcare, financial services, and government. The conversation always starts the same way: “Why can’t they just use the staging data?” And the answer is always the same: because staging data is not production data, and the model quality difference is measurable. The Framework The resolution is a promotion framework designed specifically for data science workloads. Instead of forcing DS into the SDLC model, you build a parallel track that acknowledges the production data requirement from the start. Five stages — framed by who owns them and what risk they mitigate: Infrastructure Development (Owner: Platform Engineering Risk: None — no production data) — where you develop the platform itself. Standard IaC development. Break things here, not in the environments your data scientists depend on. Infrastructure Pre-Production (Owner: Platform Engineering Risk: Deployment consistency) — validated infra changes before release to production-data environments. The gate between “we’re experimenting with Terraform” and “this is ready for the people who use real data.” Prod Discovery: The Safe Space for Messy Data Science (Owner: Data Science Risk: Data exposure — mitigated by audit logging, network segmentation, read-only access, no public internet) — the interactive, exploratory environment where data scientists work. Has production data with real statistical distributions intact. The CISO can sleep at night because: every query is logged, the network is isolated, direct identifiers (SSN, patient name) are masked while preserving the mathematical properties models actually learn from, and there is no path from this environment to the public internet. Prod Integration: The Factory Gate (Owner: MLOps/Platform Engineering Risk: Unvalidated logic reaching production) — no interactive work. This is where experimental notebooks become version-controlled, automated Python packages or containers. The research model hands off to the engineering model. If a pipeline fails here, customers never see it. Production (Final Prod) (Owner: Operations Risk: Customer impact) — where customers consume AI/ML insights. Most restrictive controls. Changes arrive only through automated promotion from Integration. For the full technical framework with architecture diagrams and implementation details, I wrote a companion blog post: Five Stages of a Successful Cloud Data Science Platform. Why This Is a Leadership Problem, Not a Technical Problem The technical architecture is the straightforward part. The hard part is getting three constituencies to agree: The CISO wants minimal data exposure, maximum controls, and no exceptions to the standard SDLC model. Their incentive structure punishes data breaches and audit findings — not slow model development. The CDO / Data Science team wants production data access with development-like flexibility and minimal friction. Their incentive structure rewards model accuracy and time-to-production — not security posture. The business unit leaders want ML models that actually work (which requires real data) without compliance risk. Their incentive structure rewards revenue impact — not architectural elegance. The five-stage framework gives each constituency what they need: security gets production-grade controls and audit logging on every environment with real data; data science gets interactive access to production data; business gets models trained on real data with a documented compliance posture. This is a negotiation artifact, not a technical specification. The framework succeeds because it gives each stakeholder a way to say yes without compromising their core requirements. Where I Have Applied This This is not theoretical. I have built or operated variants of this framework across: Regulated industries (BD Biosciences, NC DOR, SAS Institute — 2006–2013) — FDA quality systems, IRS Safeguard compliance, and pharmaceutical clinical trial data under CFR Part 11. These roles established the principle that interactive access to sensitive data and auditable controls are not mutually exclusive — you design for both simultaneously. Machine learning at scale (Measurement Incorporated — 2013–2015) — PhD researchers building NLP models for automated essay scoring. The chaos of researchers breaking production with untested model changes is where I first witnessed the DS-vs-SDLC conflict and began evolving toward this framework. Healthcare (BCBSNC — 2019–2021) — Where the framework was fully realized and tested. CarePath ML platform on EKS under HIPAA constraints, processing claims data from all NC members. It survived production pressure and became the standard I carried forward. Financial services (Envestnet — 2021–present) — SageMaker and Bedrock across shared services and workload accounts. The mature DataLake (vEMR, Snowflake, Airflow) exemplifies this model in data engineering — phased promotion with gates at every stage. The pattern is consistent across industries: the organizations that get this right build the platform first, then scale AI initiatives on top of it. The organizations that get it wrong try to bolt security onto an ad-hoc data access model after the data scientists have already built dependencies on it. The Decision Point If you are building an AI organization — or evaluating whether your current platform can support one — this is the first infrastructure decision you need to get right. Everything downstream depends on it: Model quality depends on training data quality, which depends on production data access MLOps maturity depends on a promotion path from experimentation to production Compliance posture depends on controls designed into the architecture, not bolted on after the fact Team velocity depends on data scientists not waiting weeks for data access approvals The standard SDLC model will not give you this. You need a purpose-built framework that acknowledges the fundamental difference between application development and data science: production data is not the destination — it is the starting point. If you found this useful, share it with someone building a data science platform. The full technical framework with architecture diagrams is on my blog: Five Stages of a Successful Cloud Data Science Platform. About Me I’m Michael McGarrah. I’ve spent 30 years building and leading technology organizations — from enterprise architecture for North Carolina state government to cloud platforms running production ML models in healthcare and financial services. I hold an M.S. in Computer Science (AI/ML) from Georgia Tech and I’m completing an Executive MBA at UNC Wilmington, deliberately bridging the gap between technical depth and business strategy. I still write code, debug distributed systems, and build infrastructure — because the best technology leaders never stop being engineers. You can find more of my writing at mcgarrah.org, my detailed resume at mcgarrah.org/resume, and my profiles on LinkedIn, Substack, GitHub, and Google Scholar." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/substack/2026-05-17-why-your-data-scientists-need-production-data/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/substack/2026-05-17-why-your-data-scientists-need-production-data/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-05-17T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Why Your Data Scientists Need Production Data (And How to Give It to Them Safely)" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah","url":"https://mcgarrah.org"},"dateModified":"2026-05-17T00:00:00+00:00","datePublished":"2026-05-17T00:00:00+00:00","description":"Why Your Data Scientists Need Production Data (And How to Give It to Them Safely) Subtitle: A five-stage framework for the platform decision that determines whether your AI initiatives succeed or fail Author: McGarrah Published: May 17, 2026 URL: TBD Tags: Machine Learning, Data Science, Platform Engineering, Security, Enterprise Architecture, AI/ML, Leadership A quick note before we begin: if you’ve been reading my earlier newsletters — From Homelabs to Machine Learning and From Markdown to Production — you’ll notice a shift in tone here. Those pieces established the technical foundation: the infrastructure I build, the engineering discipline I practice, the tools I create. This newsletter builds on that foundation but steps back to the strategic level. The question is no longer “how do I build this?” but “how do I design the platform architecture that lets an entire data science organization succeed?” That shift reflects where I am professionally — bridging deep technical execution with the organizational and business strategy decisions that determine whether AI initiatives deliver value or die in pilot. I am not abandoning the technical articles — those will continue roughly once a month as the foundation they have always been. What I am adding is a second thread focused on the “why” and the architecture: the platform decisions, the organizational patterns, and the leadership thinking that sits above the implementation. Think of it as two cadences: the technical pieces show I still build things; the strategic pieces show I know which things to build and why. Every enterprise I have worked in over the past decade has hit the same wall. Data scientists need production data to build useful models. The standard software development lifecycle assumes production data stays in production. These two facts are architecturally incompatible — and most organizations resolve the conflict by either giving data scientists garbage data (producing garbage models) or granting security exceptions that erode their compliance posture. Neither outcome is acceptable. And the root cause is not a tooling problem — it is an organizational architecture problem that sits at the intersection of data engineering, security, compliance, and platform engineering. The Conflict In classic SDLC, the environment hierarchy is clean: development has synthetic data, staging has sanitized data, production has real data. Security and flexibility are inversely correlated as you move up the stack. This works because application developers do not need real data to write and test code. Data science is fundamentally different. Training a machine learning model on synthetic or sanitized data produces a model that has learned the patterns of synthetic data — not the patterns of your actual business. Feature engineering on sanitized datasets misses the edge cases, distributions, and correlations that exist in production. The entire value proposition of ML depends on learning from real data. I have had this argument with development managers, project managers, and security teams across healthcare, financial services, and government. The conversation always starts the same way: “Why can’t they just use the staging data?” And the answer is always the same: because staging data is not production data, and the model quality difference is measurable. The Framework The resolution is a promotion framework designed specifically for data science workloads. Instead of forcing DS into the SDLC model, you build a parallel track that acknowledges the production data requirement from the start. Five stages — framed by who owns them and what risk they mitigate: Infrastructure Development (Owner: Platform Engineering Risk: None — no production data) — where you develop the platform itself. Standard IaC development. Break things here, not in the environments your data scientists depend on. Infrastructure Pre-Production (Owner: Platform Engineering Risk: Deployment consistency) — validated infra changes before release to production-data environments. The gate between “we’re experimenting with Terraform” and “this is ready for the people who use real data.” Prod Discovery: The Safe Space for Messy Data Science (Owner: Data Science Risk: Data exposure — mitigated by audit logging, network segmentation, read-only access, no public internet) — the interactive, exploratory environment where data scientists work. Has production data with real statistical distributions intact. The CISO can sleep at night because: every query is logged, the network is isolated, direct identifiers (SSN, patient name) are masked while preserving the mathematical properties models actually learn from, and there is no path from this environment to the public internet. Prod Integration: The Factory Gate (Owner: MLOps/Platform Engineering Risk: Unvalidated logic reaching production) — no interactive work. This is where experimental notebooks become version-controlled, automated Python packages or containers. The research model hands off to the engineering model. If a pipeline fails here, customers never see it. Production (Final Prod) (Owner: Operations Risk: Customer impact) — where customers consume AI/ML insights. Most restrictive controls. Changes arrive only through automated promotion from Integration. For the full technical framework with architecture diagrams and implementation details, I wrote a companion blog post: Five Stages of a Successful Cloud Data Science Platform. Why This Is a Leadership Problem, Not a Technical Problem The technical architecture is the straightforward part. The hard part is getting three constituencies to agree: The CISO wants minimal data exposure, maximum controls, and no exceptions to the standard SDLC model. Their incentive structure punishes data breaches and audit findings — not slow model development. The CDO / Data Science team wants production data access with development-like flexibility and minimal friction. Their incentive structure rewards model accuracy and time-to-production — not security posture. The business unit leaders want ML models that actually work (which requires real data) without compliance risk. Their incentive structure rewards revenue impact — not architectural elegance. The five-stage framework gives each constituency what they need: security gets production-grade controls and audit logging on every environment with real data; data science gets interactive access to production data; business gets models trained on real data with a documented compliance posture. This is a negotiation artifact, not a technical specification. The framework succeeds because it gives each stakeholder a way to say yes without compromising their core requirements. Where I Have Applied This This is not theoretical. I have built or operated variants of this framework across: Regulated industries (BD Biosciences, NC DOR, SAS Institute — 2006–2013) — FDA quality systems, IRS Safeguard compliance, and pharmaceutical clinical trial data under CFR Part 11. These roles established the principle that interactive access to sensitive data and auditable controls are not mutually exclusive — you design for both simultaneously. Machine learning at scale (Measurement Incorporated — 2013–2015) — PhD researchers building NLP models for automated essay scoring. The chaos of researchers breaking production with untested model changes is where I first witnessed the DS-vs-SDLC conflict and began evolving toward this framework. Healthcare (BCBSNC — 2019–2021) — Where the framework was fully realized and tested. CarePath ML platform on EKS under HIPAA constraints, processing claims data from all NC members. It survived production pressure and became the standard I carried forward. Financial services (Envestnet — 2021–present) — SageMaker and Bedrock across shared services and workload accounts. The mature DataLake (vEMR, Snowflake, Airflow) exemplifies this model in data engineering — phased promotion with gates at every stage. The pattern is consistent across industries: the organizations that get this right build the platform first, then scale AI initiatives on top of it. The organizations that get it wrong try to bolt security onto an ad-hoc data access model after the data scientists have already built dependencies on it. The Decision Point If you are building an AI organization — or evaluating whether your current platform can support one — this is the first infrastructure decision you need to get right. Everything downstream depends on it: Model quality depends on training data quality, which depends on production data access MLOps maturity depends on a promotion path from experimentation to production Compliance posture depends on controls designed into the architecture, not bolted on after the fact Team velocity depends on data scientists not waiting weeks for data access approvals The standard SDLC model will not give you this. You need a purpose-built framework that acknowledges the fundamental difference between application development and data science: production data is not the destination — it is the starting point. If you found this useful, share it with someone building a data science platform. The full technical framework with architecture diagrams is on my blog: Five Stages of a Successful Cloud Data Science Platform. About Me I’m Michael McGarrah. I’ve spent 30 years building and leading technology organizations — from enterprise architecture for North Carolina state government to cloud platforms running production ML models in healthcare and financial services. I hold an M.S. in Computer Science (AI/ML) from Georgia Tech and I’m completing an Executive MBA at UNC Wilmington, deliberately bridging the gap between technical depth and business strategy. I still write code, debug distributed systems, and build infrastructure — because the best technology leaders never stop being engineers. You can find more of my writing at mcgarrah.org, my detailed resume at mcgarrah.org/resume, and my profiles on LinkedIn, Substack, GitHub, and Google Scholar.","headline":"Why Your Data Scientists Need Production Data (And How to Give It to Them Safely)","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/substack/2026-05-17-why-your-data-scientists-need-production-data/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/substack/2026-05-17-why-your-data-scientists-need-production-data/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+
+<!-- Favicons -->
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="shortcut icon" href="/favicon.ico">
+<meta name="theme-color" content="#ffffff">
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="Substack" href="https://mcgarrah.substack.com/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#substack"></use></svg>
+      <span aria-hidden="true">Substack</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Engineering deep dives on infrastructure, distributed systems, and AI/ML — from homelab experiments to enterprise architecture.</div>
+</aside>
+
+
+
+
+
+<div style="background:#e67e00;color:#fff;text-align:center;padding:0.5em 1em;font-size:0.9em;font-weight:bold;">
+  ⚠ DRAFT PREVIEW SITE — unpublished content, may change.
+  <a href="https://mcgarrah.org" style="color:#fff;text-decoration:underline;margin-left:0.5em;">Go to the main site →</a>
+</div>
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+  
+  <nav class="drafts-nav"><a href="/substack/"><svg aria-label="Substack Drafts" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#newspaper"></use></svg><span>Substack Drafts</span>
+    </a><a href="/linkedin/"><svg aria-label="LinkedIn Drafts" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg><span>LinkedIn Drafts</span>
+    </a></nav>
+  
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/substack/2026-05-17-why-your-data-scientists-need-production-data/">Why Your Data Scientists Need Production Data (And How to Give It to Them Safely)</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-05-17T00:00:00+00:00">May 17, 2026</time><span class="reading-time">7 min read</span></header>
+
+  <h1 id="why-your-data-scientists-need-production-data-and-how-to-give-it-to-them-safely">Why Your Data Scientists Need Production Data (And How to Give It to Them Safely)</h1>
+
+<p><strong>Subtitle:</strong> A five-stage framework for the platform decision that determines whether your AI initiatives succeed or fail</p>
+
+<p><strong>Author:</strong> McGarrah</p>
+
+<p><strong>Published:</strong> May 17, 2026</p>
+
+<p><strong>URL:</strong> TBD</p>
+
+<p><strong>Tags:</strong> Machine Learning, Data Science, Platform Engineering, Security, Enterprise Architecture, AI/ML, Leadership</p>
+
+<hr />
+
+<p>A quick note before we begin: if you’ve been reading my earlier newsletters — <a href="https://mcgarrah.substack.com/p/from-homelabs-to-machine-learning">From Homelabs to Machine Learning</a> and <a href="https://mcgarrah.substack.com/p/from-markdown-to-production-building">From Markdown to Production</a> — you’ll notice a shift in tone here. Those pieces established the technical foundation: the infrastructure I build, the engineering discipline I practice, the tools I create. This newsletter builds on that foundation but steps back to the strategic level. The question is no longer “how do I build this?” but “how do I design the platform architecture that lets an entire data science organization succeed?” That shift reflects where I am professionally — bridging deep technical execution with the organizational and business strategy decisions that determine whether AI initiatives deliver value or die in pilot.</p>
+
+<p>I am not abandoning the technical articles — those will continue roughly once a month as the foundation they have always been. What I am adding is a second thread focused on the “why” and the architecture: the platform decisions, the organizational patterns, and the leadership thinking that sits above the implementation. Think of it as two cadences: the technical pieces show I still build things; the strategic pieces show I know which things to build and why.</p>
+
+<hr />
+
+<p>Every enterprise I have worked in over the past decade has hit the same wall.</p>
+
+<p>Data scientists need production data to build useful models. The standard software development lifecycle assumes production data stays in production. These two facts are architecturally incompatible — and most organizations resolve the conflict by either giving data scientists garbage data (producing garbage models) or granting security exceptions that erode their compliance posture.</p>
+
+<p>Neither outcome is acceptable. And the root cause is not a tooling problem — it is an organizational architecture problem that sits at the intersection of data engineering, security, compliance, and platform engineering.</p>
+
+<h2 id="the-conflict">The Conflict</h2>
+
+<p>In classic SDLC, the environment hierarchy is clean: development has synthetic data, staging has sanitized data, production has real data. Security and flexibility are inversely correlated as you move up the stack. This works because application developers do not need real data to write and test code.</p>
+
+<p>Data science is fundamentally different. Training a machine learning model on synthetic or sanitized data produces a model that has learned the patterns of synthetic data — not the patterns of your actual business. Feature engineering on sanitized datasets misses the edge cases, distributions, and correlations that exist in production. The entire value proposition of ML depends on learning from real data.</p>
+
+<p>I have had this argument with development managers, project managers, and security teams across healthcare, financial services, and government. The conversation always starts the same way: “Why can’t they just use the staging data?” And the answer is always the same: because staging data is not production data, and the model quality difference is measurable.</p>
+
+<h2 id="the-framework">The Framework</h2>
+
+<p>The resolution is a promotion framework designed specifically for data science workloads. Instead of forcing DS into the SDLC model, you build a parallel track that acknowledges the production data requirement from the start.</p>
+
+<p><strong>Five stages — framed by who owns them and what risk they mitigate:</strong></p>
+
+<ol>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td><strong>Infrastructure Development</strong> (Owner: Platform Engineering</td>
+          <td>Risk: None — no production data) — where you develop the platform itself. Standard IaC development. Break things here, not in the environments your data scientists depend on.</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td><strong>Infrastructure Pre-Production</strong> (Owner: Platform Engineering</td>
+          <td>Risk: Deployment consistency) — validated infra changes before release to production-data environments. The gate between “we’re experimenting with Terraform” and “this is ready for the people who use real data.”</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td><strong>Prod Discovery: The Safe Space for Messy Data Science</strong> (Owner: Data Science</td>
+          <td>Risk: Data exposure — mitigated by audit logging, network segmentation, read-only access, no public internet) — the interactive, exploratory environment where data scientists work. <strong>Has production data with real statistical distributions intact.</strong> The CISO can sleep at night because: every query is logged, the network is isolated, direct identifiers (SSN, patient name) are masked while preserving the mathematical properties models actually learn from, and there is no path from this environment to the public internet.</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td><strong>Prod Integration: The Factory Gate</strong> (Owner: MLOps/Platform Engineering</td>
+          <td>Risk: Unvalidated logic reaching production) — no interactive work. This is where experimental notebooks become version-controlled, automated Python packages or containers. The research model hands off to the engineering model. If a pipeline fails here, customers never see it.</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td><strong>Production (Final Prod)</strong> (Owner: Operations</td>
+          <td>Risk: Customer impact) — where customers consume AI/ML insights. Most restrictive controls. Changes arrive only through automated promotion from Integration.</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+</ol>
+
+<p>For the full technical framework with architecture diagrams and implementation details, I wrote a companion blog post: <a href="https://mcgarrah.org/five-stages-cloud-data-science-platform/">Five Stages of a Successful Cloud Data Science Platform</a>.</p>
+
+<h2 id="why-this-is-a-leadership-problem-not-a-technical-problem">Why This Is a Leadership Problem, Not a Technical Problem</h2>
+
+<p>The technical architecture is the straightforward part. The hard part is getting three constituencies to agree:</p>
+
+<p><strong>The CISO</strong> wants minimal data exposure, maximum controls, and no exceptions to the standard SDLC model. Their incentive structure punishes data breaches and audit findings — not slow model development.</p>
+
+<p><strong>The CDO / Data Science team</strong> wants production data access with development-like flexibility and minimal friction. Their incentive structure rewards model accuracy and time-to-production — not security posture.</p>
+
+<p><strong>The business unit leaders</strong> want ML models that actually work (which requires real data) without compliance risk. Their incentive structure rewards revenue impact — not architectural elegance.</p>
+
+<p>The five-stage framework gives each constituency what they need: security gets production-grade controls and audit logging on every environment with real data; data science gets interactive access to production data; business gets models trained on real data with a documented compliance posture.</p>
+
+<p>This is a negotiation artifact, not a technical specification. The framework succeeds because it gives each stakeholder a way to say yes without compromising their core requirements.</p>
+
+<h2 id="where-i-have-applied-this">Where I Have Applied This</h2>
+
+<p>This is not theoretical. I have built or operated variants of this framework across:</p>
+
+<ul>
+  <li><strong>Regulated industries (BD Biosciences, NC DOR, SAS Institute — 2006–2013)</strong> — FDA quality systems, IRS Safeguard compliance, and pharmaceutical clinical trial data under CFR Part 11. These roles established the principle that interactive access to sensitive data and auditable controls are not mutually exclusive — you design for both simultaneously.</li>
+  <li><strong>Machine learning at scale (Measurement Incorporated — 2013–2015)</strong> — PhD researchers building NLP models for automated essay scoring. The chaos of researchers breaking production with untested model changes is where I first witnessed the DS-vs-SDLC conflict and began evolving toward this framework.</li>
+  <li><strong>Healthcare (BCBSNC — 2019–2021)</strong> — Where the framework was fully realized and tested. CarePath ML platform on EKS under HIPAA constraints, processing claims data from all NC members. It survived production pressure and became the standard I carried forward.</li>
+  <li><strong>Financial services (Envestnet — 2021–present)</strong> — SageMaker and Bedrock across shared services and workload accounts. The mature DataLake (vEMR, Snowflake, Airflow) exemplifies this model in data engineering — phased promotion with gates at every stage.</li>
+</ul>
+
+<p>The pattern is consistent across industries: the organizations that get this right build the platform first, then scale AI initiatives on top of it. The organizations that get it wrong try to bolt security onto an ad-hoc data access model after the data scientists have already built dependencies on it.</p>
+
+<h2 id="the-decision-point">The Decision Point</h2>
+
+<p>If you are building an AI organization — or evaluating whether your current platform can support one — this is the first infrastructure decision you need to get right. Everything downstream depends on it:</p>
+
+<ul>
+  <li><strong>Model quality</strong> depends on training data quality, which depends on production data access</li>
+  <li><strong>MLOps maturity</strong> depends on a promotion path from experimentation to production</li>
+  <li><strong>Compliance posture</strong> depends on controls designed into the architecture, not bolted on after the fact</li>
+  <li><strong>Team velocity</strong> depends on data scientists not waiting weeks for data access approvals</li>
+</ul>
+
+<p>The standard SDLC model will not give you this. You need a purpose-built framework that acknowledges the fundamental difference between application development and data science: production data is not the destination — it is the starting point.</p>
+
+<hr />
+
+<p><em>If you found this useful, share it with someone building a data science platform. The full technical framework with architecture diagrams is on my blog: <a href="https://mcgarrah.org/five-stages-cloud-data-science-platform/">Five Stages of a Successful Cloud Data Science Platform</a>.</em></p>
+
+<h2 id="about-me">About Me</h2>
+
+<p>I’m Michael McGarrah. I’ve spent 30 years building and leading technology organizations — from enterprise architecture for North Carolina state government to cloud platforms running production ML models in healthcare and financial services. I hold an M.S. in Computer Science (AI/ML) from Georgia Tech and I’m completing an Executive MBA at UNC Wilmington, deliberately bridging the gap between technical depth and business strategy. I still write code, debug distributed systems, and build infrastructure — because the best technology leaders never stop being engineers.</p>
+
+<p>You can find more of my writing at <a href="https://mcgarrah.org">mcgarrah.org</a>, my detailed resume at <a href="https://mcgarrah.org/resume">mcgarrah.org/resume</a>, and my profiles on <a href="https://www.linkedin.com/in/michaelmcgarrah/">LinkedIn</a>, <a href="https://mcgarrah.substack.com/">Substack</a>, <a href="https://github.com/mcgarrah">GitHub</a>, and <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ">Google Scholar</a>.</p>
+
+
+  <div class="post-tags-categories">
+    
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://mcgarrah.substack.com/" rel="me">Substack</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Engineering deep dives on infrastructure, distributed systems, and AI/ML — from homelab experiments to enterprise architecture.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://mcgarrah.substack.com/" ><svg aria-label="Substack" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#substack"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>
