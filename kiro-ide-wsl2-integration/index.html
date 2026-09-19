@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Kiro IDE + WSL2: Fixing the Agent Shell Execution Layer | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Kiro IDE + WSL2: Fixing the Agent Shell Execution Layer" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="A practical guide to fixing Kiro IDE’s agent shell execution in WSL2 — adding Linux terminal profiles, shell integration scripts, and steering context for reliable AI agent interactions on Ubuntu 24.04." />
+<meta property="og:description" content="A practical guide to fixing Kiro IDE’s agent shell execution in WSL2 — adding Linux terminal profiles, shell integration scripts, and steering context for reliable AI agent interactions on Ubuntu 24.04." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/kiro-ide-wsl2-integration/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/kiro-ide-wsl2-integration/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:image" content="https://drafts.mcgarrah.org/assets/images/og/kiro-ide-wsl2-integration.png" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-08-21T00:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta property="twitter:image" content="https://drafts.mcgarrah.org/assets/images/og/kiro-ide-wsl2-integration.png" />
+<meta property="twitter:title" content="Kiro IDE + WSL2: Fixing the Agent Shell Execution Layer" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah","url":"https://mcgarrah.org"},"dateModified":"2026-08-21T00:00:00+00:00","datePublished":"2026-08-21T00:00:00+00:00","description":"A practical guide to fixing Kiro IDE’s agent shell execution in WSL2 — adding Linux terminal profiles, shell integration scripts, and steering context for reliable AI agent interactions on Ubuntu 24.04.","headline":"Kiro IDE + WSL2: Fixing the Agent Shell Execution Layer","image":"https://drafts.mcgarrah.org/assets/images/og/kiro-ide-wsl2-integration.png","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/kiro-ide-wsl2-integration/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/kiro-ide-wsl2-integration/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+
+<!-- Favicons -->
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="shortcut icon" href="/favicon.ico">
+<meta name="theme-color" content="#ffffff">
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="Substack" href="https://mcgarrah.substack.com/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#substack"></use></svg>
+      <span aria-hidden="true">Substack</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Engineering deep dives on infrastructure, distributed systems, and AI/ML — from homelab experiments to enterprise architecture.</div>
+</aside>
+
+
+
+
+
+<div style="background:#e67e00;color:#fff;text-align:center;padding:0.5em 1em;font-size:0.9em;font-weight:bold;">
+  ⚠ DRAFT PREVIEW SITE — unpublished content, may change.
+  <a href="https://mcgarrah.org" style="color:#fff;text-decoration:underline;margin-left:0.5em;">Go to the main site →</a>
+</div>
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+  
+  <nav class="drafts-nav"><a href="/substack/"><svg aria-label="Substack Drafts" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#newspaper"></use></svg><span>Substack Drafts</span>
+    </a><a href="/linkedin/"><svg aria-label="LinkedIn Drafts" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg><span>LinkedIn Drafts</span>
+    </a></nav>
+  
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/kiro-ide-wsl2-integration/">Kiro IDE + WSL2: Fixing the Agent Shell Execution Layer</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-08-21T00:00:00+00:00">August 21, 2026</time><span class="reading-time">13 min read</span></header>
+
+  <p>Kiro is AWS’s AI-native IDE — a Code OSS fork with agentic coding capabilities baked in. Unlike VS Code, it doesn’t ship with Microsoft’s proprietary Remote - WSL extension. Instead, WSL2 connectivity relies on the community-maintained <a href="https://open-vsx.org/extension/jeanp413/open-remote-wsl">Open Remote - WSL</a> extension (<code class="language-plaintext highlighter-rouge">jeanp413.open-remote-wsl</code>), which is available on Open VSX. I covered the full setup — installation, <code class="language-plaintext highlighter-rouge">argv.json</code> configuration, the update breakage cycle, and recovery — in a <a href="/kiro-ide-wsl2-support-open-remote-extension/">previous article</a>.</p>
+
+<p>This article tackles what happens <em>after</em> WSL2 connectivity is working: the agent’s shell execution layer still misbehaves. Kiro’s AI agent can run terminal commands inside your WSL2 environment, but without explicit Linux terminal profiles and shell integration, the results are garbled, unreliable, and frustrating.</p>
+
+<!-- excerpt-end -->
+
+<p>I hit this after migrating from VS Code to Kiro. Every shell command the agent tried to run came back with double-echoed output, <code class="language-plaintext highlighter-rouge">Exit Code: 1</code>, and Windows-style path escaping — despite the commands actually executing successfully inside my WSL2 Ubuntu 24.04 environment. This article documents the fixes.</p>
+
+<h2 id="the-trigger-im-clearly-stuck-in-a-loop">The Trigger: “I’m Clearly Stuck in a Loop”</h2>
+
+<p>The moment that sent me down this rabbit hole was Kiro’s agent announcing:</p>
+
+<blockquote>
+  <p>“I’ve been trying to use <code class="language-plaintext highlighter-rouge">execute_pwsh</code> but it’s failed 7 times in a row. I’m clearly stuck in a loop. What would you like me to do?”</p>
+</blockquote>
+
+<p>My immediate reaction: <em>why is it using PowerShell?</em> I’m in WSL2 running Ubuntu 24.04 with zsh. There is no PowerShell here. I told the agent — repeatedly across multiple sessions — that it cannot use PowerShell in this environment, and each time it acknowledged the constraint but kept invoking the same <code class="language-plaintext highlighter-rouge">execute_pwsh</code> tool.</p>
+
+<p>The confusion is understandable. The tool is <em>named</em> <code class="language-plaintext highlighter-rouge">execute_pwsh</code>. If you’re a developer who sees “pwsh” in a tool name, you think PowerShell. The agent thinks PowerShell. Everyone assumes the wrong thing.</p>
+
+<p>Here’s the reality: <code class="language-plaintext highlighter-rouge">execute_pwsh</code> is just the name of Kiro’s <em>only</em> shell execution tool. It’s not actually calling PowerShell — it dispatches commands to whatever terminal backend the IDE is configured to use. In a WSL Remote context, that terminal <em>should</em> be your Linux shell. The name is a misnomer inherited from the tool’s original Windows-first design.</p>
+
+<p>The real problem isn’t that PowerShell is being invoked. It’s that the terminal backend, despite reaching your Linux shell, is misconfigured — the path escaping, echo handling, and exit code parsing are all broken because Kiro doesn’t have explicit Linux terminal profiles telling it how to behave in this context.</p>
+
+<p>Once I understood that distinction — <code class="language-plaintext highlighter-rouge">execute_pwsh</code> ≠ PowerShell, it’s just a badly-named shell dispatch tool — the fix became obvious: tell Kiro what shell to actually use on the Linux side.</p>
+
+<p><strong>Prerequisites:</strong> You should already have <code class="language-plaintext highlighter-rouge">jeanp413.open-remote-wsl</code> installed and configured with the <code class="language-plaintext highlighter-rouge">enable-proposed-api</code> entry in <code class="language-plaintext highlighter-rouge">~/.kiro/argv.json</code>. If you haven’t done that yet, start with <a href="/kiro-ide-wsl2-support-open-remote-extension/">Kiro IDE on Windows: WSL2 Support via Open Remote Extension</a>.</p>
+
+<h2 id="the-problem">The Problem</h2>
+
+<p>When Kiro’s agent executes terminal commands via its <code class="language-plaintext highlighter-rouge">execute_pwsh</code> tool (yes, the name is hardcoded regardless of your actual shell), it does the following in a WSL Remote context:</p>
+
+<ol>
+  <li><strong>Mangles the <code class="language-plaintext highlighter-rouge">cwd</code> parameter</strong> — Converts Linux paths to Windows UNC notation before passing them, causing <code class="language-plaintext highlighter-rouge">cd</code> failures.</li>
+  <li><strong>Double-echoes commands</strong> — Every command appears twice in the output, garbled with character insertions.</li>
+  <li><strong>Reports false exit codes</strong> — Commands succeed but the tool reports <code class="language-plaintext highlighter-rouge">Exit Code: 1</code>.</li>
+  <li><strong>Treats paths as Windows</strong> — Backslash escaping and quoting patterns break Linux commands.</li>
+</ol>
+
+<p>The commands actually execute — <code class="language-plaintext highlighter-rouge">git pull</code> succeeds, files get modified — but the agent can’t reliably parse its own output, leading to confusion, retries, and a frustrating developer experience.</p>
+
+<h2 id="why-this-worked-in-vs-code">Why This Worked in VS Code</h2>
+
+<p>VS Code extensions like GitHub Copilot, Amazon Q, and Continue dispatch shell commands through the <code class="language-plaintext highlighter-rouge">terminal.integrated.automationProfile</code> settings. When you’re connected to WSL2 via Remote WSL, VS Code correctly uses the Linux automation profile for command execution.</p>
+
+<p>Kiro’s agent tool (<code class="language-plaintext highlighter-rouge">execute_pwsh</code>) appears to bypass or ignore this setting chain in certain configurations. The fix is to explicitly declare Linux terminal profiles so there’s no ambiguity.</p>
+
+<p>Note: VS Code uses Microsoft’s proprietary Remote - WSL extension, which is not available on Open VSX and cannot be used in Kiro. Kiro uses <code class="language-plaintext highlighter-rouge">jeanp413.open-remote-wsl</code> — a community-built alternative that provides the same WSL2 filesystem and terminal bridging. The terminal profile fix below applies regardless of which remote extension provides the WSL2 connection.</p>
+
+<h2 id="the-fix-three-parts">The Fix: Three Parts</h2>
+
+<h3 id="1-kiro-user-settings-settingsjson">1. Kiro User Settings (settings.json)</h3>
+
+<p>Location on the Windows filesystem: <code class="language-plaintext highlighter-rouge">%APPDATA%\Kiro\User\settings.json</code></p>
+
+<p>From WSL: <code class="language-plaintext highlighter-rouge">/mnt/c/Users/&lt;username&gt;/AppData/Roaming/Kiro/User/settings.json</code></p>
+
+<p>Add these settings:</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"terminal.integrated.defaultProfile.linux"</span><span class="p">:</span><span class="w"> </span><span class="s2">"zsh"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"terminal.integrated.automationProfile.linux"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"/bin/zsh"</span><span class="w">
+  </span><span class="p">},</span><span class="w">
+  </span><span class="nl">"terminal.integrated.profiles.linux"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"zsh"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nl">"path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"/bin/zsh"</span><span class="w"> </span><span class="p">},</span><span class="w">
+    </span><span class="nl">"bash"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nl">"path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"/bin/bash"</span><span class="w"> </span><span class="p">}</span><span class="w">
+  </span><span class="p">}</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>The key insight: even though <code class="language-plaintext highlighter-rouge">terminal.integrated.defaultProfile.windows</code> was already set to a WSL profile, the <strong>Linux-side profiles</strong> were never declared. When Kiro’s Remote WSL connection needs to execute commands inside the Linux environment, it looks for <code class="language-plaintext highlighter-rouge">*.linux</code> settings — and without them, falls back to behavior that doesn’t match your environment.</p>
+
+<p>You should also have the Windows-side WSL profile configured:</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"terminal.integrated.defaultProfile.windows"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Ubuntu-24.04 (WSL)"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"terminal.integrated.profiles.windows"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"Ubuntu-24.04 (WSL)"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+      </span><span class="nl">"path"</span><span class="p">:</span><span class="w"> </span><span class="s2">"C:</span><span class="se">\\</span><span class="s2">WINDOWS</span><span class="se">\\</span><span class="s2">System32</span><span class="se">\\</span><span class="s2">wsl.exe"</span><span class="p">,</span><span class="w">
+      </span><span class="nl">"args"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"-d"</span><span class="p">,</span><span class="w"> </span><span class="s2">"Ubuntu-24.04"</span><span class="p">]</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+  </span><span class="p">}</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<h3 id="2-shell-integration-scripts">2. Shell Integration Scripts</h3>
+
+<p>Kiro provides shell integration that improves command tracking, exit code detection, and working directory awareness. Without these, the agent has to infer results from raw terminal output — which is where the garbling and false errors come from.</p>
+
+<p><strong>For zsh</strong> — add to the end of <code class="language-plaintext highlighter-rouge">~/.zshrc</code>:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Kiro shell integration</span>
+<span class="o">[[</span> <span class="s2">"</span><span class="nv">$TERM_PROGRAM</span><span class="s2">"</span> <span class="o">==</span> <span class="s2">"kiro"</span> <span class="o">]]</span> <span class="o">&amp;&amp;</span> <span class="nb">.</span> <span class="s2">"</span><span class="si">$(</span>kiro <span class="nt">--locate-shell-integration-path</span> zsh<span class="si">)</span><span class="s2">"</span>
+</code></pre></div></div>
+
+<p><strong>For bash</strong> — add to the end of <code class="language-plaintext highlighter-rouge">~/.bashrc</code>:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Kiro shell integration</span>
+<span class="o">[[</span> <span class="s2">"</span><span class="nv">$TERM_PROGRAM</span><span class="s2">"</span> <span class="o">==</span> <span class="s2">"kiro"</span> <span class="o">]]</span> <span class="o">&amp;&amp;</span> <span class="nb">.</span> <span class="s2">"</span><span class="si">$(</span>kiro <span class="nt">--locate-shell-integration-path</span> bash<span class="si">)</span><span class="s2">"</span>
+</code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">[[ "$TERM_PROGRAM" == "kiro" ]]</code> guard ensures these only activate when running inside Kiro — no impact on your regular terminal sessions.</p>
+
+<h3 id="3-reload-kiro">3. Reload Kiro</h3>
+
+<p>After making these changes:</p>
+
+<ol>
+  <li>Close and reopen Kiro, <strong>or</strong> use Command Palette → “Developer: Reload Window”</li>
+  <li>Open a new agent session to test</li>
+</ol>
+
+<p>The shell integration loads at terminal startup, so existing sessions won’t pick up the changes.</p>
+
+<h2 id="bonus-wsl-launcher-function">Bonus: WSL Launcher Function</h2>
+
+<p>If you want to launch Kiro from your WSL terminal (like <code class="language-plaintext highlighter-rouge">code .</code> opens VS Code), add this to <code class="language-plaintext highlighter-rouge">~/.zshrc</code>:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>kiro<span class="o">()</span> <span class="o">{</span>
+    <span class="nb">local </span><span class="nv">KIRO_BIN</span><span class="o">=</span><span class="s2">"/mnt/c/Users/&lt;username&gt;/AppData/Local/Programs/Kiro/Kiro.exe"</span>
+    <span class="nb">env</span> <span class="nt">-i</span> /init <span class="s2">"</span><span class="nv">$KIRO_BIN</span><span class="s2">"</span> <span class="s2">"</span><span class="si">$(</span>wslpath <span class="nt">-w</span> <span class="s2">"</span><span class="k">${</span><span class="nv">1</span><span class="k">:-</span><span class="p">.</span><span class="k">}</span><span class="s2">"</span><span class="si">)</span><span class="s2">"</span> <span class="o">&gt;</span> /dev/null 2&gt;&amp;1 &amp;
+<span class="o">}</span>
+</code></pre></div></div>
+
+<p>Usage:</p>
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">kiro .</code> — Open current directory in Kiro</li>
+  <li><code class="language-plaintext highlighter-rouge">kiro ~/github/myproject</code> — Open a specific project</li>
+</ul>
+
+<p>The <code class="language-plaintext highlighter-rouge">env -i /init</code> pattern is key — it uses the WSL interop bridge (<code class="language-plaintext highlighter-rouge">/init</code>) to launch the Windows binary while cleaning the environment so Linux environment variables don’t leak into the Windows process. The <code class="language-plaintext highlighter-rouge">&amp;</code> backgrounds it so your terminal stays usable.</p>
+
+<h2 id="kiro-steering-files">Kiro Steering Files</h2>
+
+<p>If you’re using Kiro’s steering system (<code class="language-plaintext highlighter-rouge">.kiro/steering/*.md</code>) to provide project context to the agent, add a note about the shell environment. I keep this at the user level (<code class="language-plaintext highlighter-rouge">~/.kiro/steering/shell-environment.md</code>) so it applies across all workspaces:</p>
+
+<div class="language-markdown highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nn">---</span>
+<span class="na">inclusion</span><span class="pi">:</span> <span class="s">auto</span>
+<span class="nn">---</span>
+
+<span class="gh"># Shell &amp; Platform Environment</span>
+<span class="p">
+-</span> <span class="gs">**Execution environment:**</span> WSL2 running Ubuntu 24.04 LTS
+<span class="p">-</span> <span class="gs">**Shell:**</span> zsh with Oh My Zsh (omz)
+<span class="p">-</span> <span class="gs">**This is a Linux environment.**</span> Always use Linux commands, paths, and tooling.
+<span class="p">-</span> Do NOT use PowerShell, <span class="sb">`cmd.exe`</span>, or Windows-style paths in shell commands.
+<span class="p">-</span> Native paths use <span class="sb">`/home/&lt;username&gt;/...`</span> format, not Windows UNC paths.
+</code></pre></div></div>
+
+<p>This gives the agent explicit context about the execution environment, reducing the chance it tries to use Windows-style commands or paths.</p>
+
+<h2 id="phantom-diffs-in-the-source-control-panel">Phantom Diffs in the Source Control Panel</h2>
+
+<p>After getting shell execution working, you may notice another oddity: Kiro’s Source Control panel shows files as “modified” even when <code class="language-plaintext highlighter-rouge">git status</code> from the terminal reports a clean working tree. The phantom diffs almost always affect shell scripts (<code class="language-plaintext highlighter-rouge">.sh</code> files) — specifically those with the executable bit (<code class="language-plaintext highlighter-rouge">chmod +x</code>) set.</p>
+
+<p><strong>Root cause:</strong> Kiro’s built-in git SCM extension reads file metadata through the <code class="language-plaintext highlighter-rouge">\\wsl$\</code> UNC path (the 9P filesystem bridge between Windows and WSL2). The 9P bridge does not faithfully translate Unix file permissions — Windows sees all files without the executable bit. Git’s index stores these files as <code class="language-plaintext highlighter-rouge">100755</code> (executable), but when the SCM extension stats them through the UNC path, it sees <code class="language-plaintext highlighter-rouge">100644</code> (non-executable). That permission mismatch registers as a modification.</p>
+
+<p>You can confirm this is a phantom diff by running:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git status          <span class="c"># Clean — nothing to commit</span>
+git ls-files <span class="nt">-m</span>     <span class="c"># Empty — no modifications</span>
+git diff            <span class="c"># Empty — no content changes</span>
+git ls-tree HEAD jekyll-caddy.sh  <span class="c"># Shows 100755 — executable in index</span>
+<span class="nb">ls</span> <span class="nt">-la</span> jekyll-caddy.sh            <span class="c"># Shows -rwxr-xr-x — executable on disk</span>
+</code></pre></div></div>
+
+<p>If all of those are clean but the SCM panel still shows “M”, the issue is filemode detection through the 9P bridge.</p>
+
+<h3 id="what-doesnt-work">What Doesn’t Work</h3>
+
+<p>I tried several approaches before finding the solution:</p>
+
+<ul>
+  <li><strong><code class="language-plaintext highlighter-rouge">.gitattributes</code> with <code class="language-plaintext highlighter-rouge">eol=lf</code></strong> — This fixes line-ending phantom diffs but has no effect on permission/filemode diffs. The problem isn’t line endings.</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">git.path</code> pointing to a wrapper script</strong> — I created <code class="language-plaintext highlighter-rouge">~/.local/bin/git-kiro</code> that injected <code class="language-plaintext highlighter-rouge">-c core.fileMode=false</code> and set <code class="language-plaintext highlighter-rouge">"git.path"</code> in both the Kiro user settings and workspace <code class="language-plaintext highlighter-rouge">.vscode/settings.json</code>. The SCM extension ignored it entirely — it appears to use its own git integration that doesn’t honor <code class="language-plaintext highlighter-rouge">git.path</code> when connected via WSL Remote.</li>
+  <li><strong>Global git attributes</strong> (<code class="language-plaintext highlighter-rouge">~/.config/git/attributes</code>) — Same story. Attributes control line-ending normalization, not filemode comparison.</li>
+</ul>
+
+<h3 id="the-fix-corefilemodefalse-per-repository">The Fix: <code class="language-plaintext highlighter-rouge">core.fileMode=false</code> Per Repository</h3>
+
+<p>The only approach that works is setting <code class="language-plaintext highlighter-rouge">core.fileMode=false</code> directly in each repository’s <code class="language-plaintext highlighter-rouge">.git/config</code>:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git config core.fileMode <span class="nb">false</span>
+</code></pre></div></div>
+
+<p>This tells git to stop comparing the executable bit between the index and the working tree. Files already committed as <code class="language-plaintext highlighter-rouge">100755</code> remain <code class="language-plaintext highlighter-rouge">100755</code> in the repository — this setting only affects the working-tree comparison.</p>
+
+<p>Apply to all affected repos:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git <span class="nt">-C</span> ~/github/mcgarrah.github.io config core.fileMode <span class="nb">false
+</span>git <span class="nt">-C</span> ~/github/jellyfin-plugin-media-integrity-scanner config core.fileMode <span class="nb">false
+</span>git <span class="nt">-C</span> ~/github/k8s-proxmox config core.fileMode <span class="nb">false
+</span>git <span class="nt">-C</span> ~/github/resume config core.fileMode <span class="nb">false</span>
+</code></pre></div></div>
+
+<p>For new clones, add it after cloning:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone &lt;url&gt; <span class="o">&amp;&amp;</span> git <span class="nt">-C</span> &lt;repo&gt; config core.fileMode <span class="nb">false</span>
+</code></pre></div></div>
+
+<h3 id="why-not-set-it-globally">Why Not Set It Globally?</h3>
+
+<p>You could run <code class="language-plaintext highlighter-rouge">git config --global core.fileMode false</code> to apply it everywhere, but that affects all tools on the system — Claude Code, Antigravity (Gemini), terminal git, CI scripts. The per-repo approach isolates the workaround to just the repositories open in Kiro.</p>
+
+<p>The tradeoff is minor: if you add a new shell script with <code class="language-plaintext highlighter-rouge">chmod +x</code>, git won’t automatically detect the permission change. You’ll need to explicitly tell git:</p>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git update-index <span class="nt">--chmod</span><span class="o">=</span>+x newscript.sh
+</code></pre></div></div>
+
+<p>Since this only matters when adding <em>new</em> executable files (not editing existing ones), it’s rarely an issue in practice.</p>
+
+<h3 id="why-this-happens">Why This Happens</h3>
+
+<p>The chain of events:</p>
+
+<ol>
+  <li>Kiro connects to WSL2 via <code class="language-plaintext highlighter-rouge">jeanp413.open-remote-wsl</code></li>
+  <li>The built-in git SCM extension runs on the remote side</li>
+  <li>But it reads file stats through a code path that goes via the 9P bridge (<code class="language-plaintext highlighter-rouge">\\wsl$\</code>)</li>
+  <li>The 9P bridge strips Unix permission bits — all files appear as <code class="language-plaintext highlighter-rouge">644</code></li>
+  <li>Git’s index says <code class="language-plaintext highlighter-rouge">755</code> for shell scripts</li>
+  <li>The SCM extension sees <code class="language-plaintext highlighter-rouge">755 → 644</code> = modified</li>
+</ol>
+
+<p>The Linux-native git binary doesn’t have this problem because it reads permissions directly from the ext4 filesystem. The SCM extension’s internal git implementation takes a different code path that hits the 9P translation layer.</p>
+
+<h3 id="supplementary-gitattributes-for-line-endings">Supplementary: <code class="language-plaintext highlighter-rouge">.gitattributes</code> for Line Endings</h3>
+
+<p>While <code class="language-plaintext highlighter-rouge">.gitattributes</code> doesn’t fix the permission issue, it’s still worth adding for line-ending normalization — a separate class of phantom diffs that can occur with other file types:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code># .gitattributes — normalize line endings for cross-platform sanity
+*.sh text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.py text eol=lf
+*.html text eol=lf
+*.svg text eol=lf
+*.png binary
+*.jpg binary
+*.pdf binary
+</code></pre></div></div>
+
+<p>This handles the case where a file is committed with LF but the 9P bridge serves it with CRLF (less common, but possible depending on mount options).</p>
+
+<h2 id="known-remaining-limitations">Known Remaining Limitations</h2>
+
+<p>Even with these fixes, some quirks persist:</p>
+
+<ul>
+  <li><strong>The tool is still named <code class="language-plaintext highlighter-rouge">execute_pwsh</code></strong> — This is cosmetic but confusing in logs. The name doesn’t change the actual shell used.</li>
+  <li><strong>File read/write tools use Windows UNC paths</strong> — Kiro’s file tools resolve paths as <code class="language-plaintext highlighter-rouge">\\wsl$\Ubuntu-24.04\...</code>. Shell commands must use native Linux paths. The agent needs to handle both.</li>
+  <li><strong>The <code class="language-plaintext highlighter-rouge">cwd</code> parameter may still be unreliable</strong> — For git operations, using <code class="language-plaintext highlighter-rouge">git -C /path/to/repo</code> is more reliable than depending on the <code class="language-plaintext highlighter-rouge">cwd</code> parameter.</li>
+  <li><strong>Exit code reporting</strong> — Even after fixes, the tool may still report non-zero exit codes for successful commands. This is a Kiro-side issue worth tracking.</li>
+</ul>
+
+<h2 id="filing-a-bug">Filing a Bug</h2>
+
+<p>If you’re still experiencing issues after these changes, file a bug at the <a href="https://github.com/kirodotdev/kiro/issues">Kiro GitHub repository</a>. The <a href="https://github.com/kirodotdev/kiro/issues/17">tracking issue #17</a> covers WSL2 support broadly. For agent-specific shell execution problems, a separate issue may be warranted. Include:</p>
+
+<ul>
+  <li>Your OS (Windows 11 + WSL2 distribution and version)</li>
+  <li>Kiro version (Help → About)</li>
+  <li>Open Remote - WSL extension version (<code class="language-plaintext highlighter-rouge">jeanp413.open-remote-wsl</code>)</li>
+  <li>The terminal settings from your <code class="language-plaintext highlighter-rouge">settings.json</code></li>
+  <li>Example of garbled output from the agent</li>
+</ul>
+
+<h2 id="summary">Summary</h2>
+
+<p>The fix boils down to: <strong>explicitly declare Linux terminal profiles</strong> in Kiro’s settings and <strong>enable shell integration</strong> in your RC files. VS Code inferred this correctly; Kiro (as of mid-2026) needs the explicit configuration.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Component</th>
+      <th>File</th>
+      <th>Change</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Terminal profiles</td>
+      <td><code class="language-plaintext highlighter-rouge">%APPDATA%\Kiro\User\settings.json</code></td>
+      <td>Add <code class="language-plaintext highlighter-rouge">automationProfile.linux</code> and <code class="language-plaintext highlighter-rouge">profiles.linux</code></td>
+    </tr>
+    <tr>
+      <td>Shell integration (zsh)</td>
+      <td><code class="language-plaintext highlighter-rouge">~/.zshrc</code></td>
+      <td>Source Kiro integration when <code class="language-plaintext highlighter-rouge">TERM_PROGRAM == kiro</code></td>
+    </tr>
+    <tr>
+      <td>Shell integration (bash)</td>
+      <td><code class="language-plaintext highlighter-rouge">~/.bashrc</code></td>
+      <td>Source Kiro integration when <code class="language-plaintext highlighter-rouge">TERM_PROGRAM == kiro</code></td>
+    </tr>
+    <tr>
+      <td>Agent context</td>
+      <td><code class="language-plaintext highlighter-rouge">~/.kiro/steering/shell-environment.md</code></td>
+      <td>Tell agent it’s in Linux/zsh</td>
+    </tr>
+    <tr>
+      <td>Phantom SCM diffs</td>
+      <td>Each repo’s <code class="language-plaintext highlighter-rouge">.git/config</code></td>
+      <td><code class="language-plaintext highlighter-rouge">core.fileMode=false</code> to suppress permission phantom diffs</td>
+    </tr>
+    <tr>
+      <td>Line-ending normalization</td>
+      <td><code class="language-plaintext highlighter-rouge">.gitattributes</code> (per-repo) or <code class="language-plaintext highlighter-rouge">~/.config/git/attributes</code> (global)</td>
+      <td><code class="language-plaintext highlighter-rouge">eol=lf</code> declarations for text files</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Once configured, Kiro’s agent can reliably execute shell commands in your WSL2 environment — making the agentic coding experience actually functional for Linux-first developers on Windows hardware.</p>
+
+<h2 id="related">Related</h2>
+
+<ul>
+  <li><a href="/kiro-ide-wsl2-support-open-remote-extension/">Kiro IDE on Windows: WSL2 Support via Open Remote Extension</a> — The prerequisite setup: installing <code class="language-plaintext highlighter-rouge">jeanp413.open-remote-wsl</code>, the <code class="language-plaintext highlighter-rouge">argv.json</code> requirement, the update breakage cycle, and recovery procedures.</li>
+  <li><a href="https://open-vsx.org/extension/jeanp413/open-remote-wsl">Open Remote - WSL on Open VSX</a></li>
+  <li><a href="https://github.com/jeanp413/open-remote-wsl">jeanp413/open-remote-wsl on GitHub</a></li>
+  <li><a href="https://github.com/kirodotdev/kiro/issues/17">Kiro GitHub Issue #17</a> — WSL support tracking issue</li>
+  <li><a href="https://kiro.dev/docs/">Kiro IDE Documentation</a></li>
+</ul>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/kiro/">kiro</a>, 
+        
+          <a href="/tags/wsl2/">wsl2</a>, 
+        
+          <a href="/tags/ubuntu/">ubuntu</a>, 
+        
+          <a href="/tags/ide/">ide</a>, 
+        
+          <a href="/tags/ai-coding/">ai-coding</a>, 
+        
+          <a href="/tags/zsh/">zsh</a>, 
+        
+          <a href="/tags/shell-integration/">shell-integration</a>, 
+        
+          <a href="/tags/open-remote-wsl/">open-remote-wsl</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/development/">development</a>, 
+        
+          <a href="/categories/tools/">tools</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://mcgarrah.substack.com/" rel="me">Substack</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Engineering deep dives on infrastructure, distributed systems, and AI/ML — from homelab experiments to enterprise architecture.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://mcgarrah.substack.com/" ><svg aria-label="Substack" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#substack"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

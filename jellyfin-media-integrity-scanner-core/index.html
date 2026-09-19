@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Jellyfin Media Integrity Scanner: Building the Scanner Core | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Jellyfin Media Integrity Scanner: Building the Scanner Core" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="Building the core scanning engine for the Jellyfin Media Integrity Scanner plugin. Covers .NET 8 plugin scaffolding, FFmpeg process wrapper, bounded concurrent task queue, cross-platform path resolution, and production-safe error handling. Part 3 of a 6-part development series." />
+<meta property="og:description" content="Building the core scanning engine for the Jellyfin Media Integrity Scanner plugin. Covers .NET 8 plugin scaffolding, FFmpeg process wrapper, bounded concurrent task queue, cross-platform path resolution, and production-safe error handling. Part 3 of a 6-part development series." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/jellyfin-media-integrity-scanner-core/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/jellyfin-media-integrity-scanner-core/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:image" content="https://drafts.mcgarrah.org/assets/images/og/jellyfin-media-integrity-scanner-core.png" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-08-10T00:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta property="twitter:image" content="https://drafts.mcgarrah.org/assets/images/og/jellyfin-media-integrity-scanner-core.png" />
+<meta property="twitter:title" content="Jellyfin Media Integrity Scanner: Building the Scanner Core" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah","url":"https://mcgarrah.org"},"dateModified":"2026-08-10T00:00:00+00:00","datePublished":"2026-08-10T00:00:00+00:00","description":"Building the core scanning engine for the Jellyfin Media Integrity Scanner plugin. Covers .NET 8 plugin scaffolding, FFmpeg process wrapper, bounded concurrent task queue, cross-platform path resolution, and production-safe error handling. Part 3 of a 6-part development series.","headline":"Jellyfin Media Integrity Scanner: Building the Scanner Core","image":"https://drafts.mcgarrah.org/assets/images/og/jellyfin-media-integrity-scanner-core.png","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/jellyfin-media-integrity-scanner-core/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/jellyfin-media-integrity-scanner-core/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+
+
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = isDarkMode ? 'dark' : 'default';
+  mermaid.initialize({ startOnLoad: true, theme: theme });
+  await mermaid.run({ querySelector: '.language-mermaid' });
+</script>
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+
+<!-- Favicons -->
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="shortcut icon" href="/favicon.ico">
+<meta name="theme-color" content="#ffffff">
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="Substack" href="https://mcgarrah.substack.com/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#substack"></use></svg>
+      <span aria-hidden="true">Substack</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Engineering deep dives on infrastructure, distributed systems, and AI/ML — from homelab experiments to enterprise architecture.</div>
+</aside>
+
+
+
+
+
+<div style="background:#e67e00;color:#fff;text-align:center;padding:0.5em 1em;font-size:0.9em;font-weight:bold;">
+  ⚠ DRAFT PREVIEW SITE — unpublished content, may change.
+  <a href="https://mcgarrah.org" style="color:#fff;text-decoration:underline;margin-left:0.5em;">Go to the main site →</a>
+</div>
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+  
+  <nav class="drafts-nav"><a href="/substack/"><svg aria-label="Substack Drafts" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#newspaper"></use></svg><span>Substack Drafts</span>
+    </a><a href="/linkedin/"><svg aria-label="LinkedIn Drafts" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg><span>LinkedIn Drafts</span>
+    </a></nav>
+  
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/jellyfin-media-integrity-scanner-core/">Jellyfin Media Integrity Scanner: Building the Scanner Core</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-08-10T00:00:00+00:00">August 10, 2026</time><span class="reading-time">18 min read</span></header>
+
+  <p>The <a href="/jellyfin-media-integrity-architecture-design/">architecture article</a> laid out the design decisions — two-phase scanning, I/O throttling, SQLite persistence, event-driven updates. This article implements the core: the plugin skeleton, FFmpeg integration, and the bounded scan engine.</p>
+
+<!-- excerpt-end -->
+
+<p>This is Part 3 of the <a href="/jellyfin-media-integrity-scanner-introduction/">Jellyfin Media Integrity Scanner</a> development series. The scanner core described below is real, shipped code, not a target design, built and tested against a dedicated Proxmox LXC container running .NET 9 and <code class="language-plaintext highlighter-rouge">jellyfin-ffmpeg</code> alongside GitHub Actions CI. A few things evolved from the version shown here as testing surfaced real gaps: the FFmpeg process wrapper now drains stdout/stderr concurrently with process exit, to avoid an OS pipe-buffer deadlock on large stderr output, and kills the process tree on cancellation instead of leaving orphaned ffmpeg processes; <code class="language-plaintext highlighter-rouge">IsScanning</code> is tracked with <code class="language-plaintext highlighter-rouge">Interlocked</code> counters rather than a semaphore-count comparison; and the scan engine gained two pacing mechanisms not shown below — a quiet-hours window and a post-scan read-rate throttle, covered in the <a href="#update-quiet-hours-and-read-rate-throttling">Scan Pacing update</a> further down.</p>
+
+<h2 id="project-structure">Project Structure</h2>
+
+<p>Following the <a href="https://github.com/jellyfin/jellyfin-plugin-template">jellyfin-plugin-template</a> pattern:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>jellyfin-plugin-media-integrity-scanner/
+├── Jellyfin.Plugin.MediaIntegrityScanner/
+│   ├── Plugin.cs                    # Plugin entry point
+│   ├── PluginConfiguration.cs       # User-configurable settings
+│   ├── ScheduledTasks/
+│   │   ├── HeaderScanTask.cs        # Phase 1 scheduled task
+│   │   └── DeepScanTask.cs          # Phase 2 scheduled task
+│   ├── Scanner/
+│   │   ├── IScanEngine.cs           # Scanner interface
+│   │   ├── ScanEngine.cs            # Bounded, throttled scan orchestrator
+│   │   ├── FfmpegWrapper.cs         # FFmpeg/ffprobe process management
+│   │   ├── FfmpegResolver.cs        # Cross-platform binary resolution
+│   │   └── ScanResult.cs            # Result model
+│   ├── Data/
+│   │   ├── IDatabaseManager.cs      # Database interface
+│   │   ├── SqliteDatabaseManager.cs # SQLite implementation
+│   │   └── Models/
+│   │       └── ScanRecord.cs        # Database entity
+│   ├── EventHandlers/
+│   │   └── LibraryMonitor.cs        # ItemAdded/Removed hooks
+│   ├── Api/
+│   │   └── MediaIntegrityController.cs  # REST API
+│   └── Web/
+│       └── integrity_dashboard.html # Admin UI
+├── Jellyfin.Plugin.MediaIntegrityScanner.csproj
+├── Jellyfin.Plugin.MediaIntegrityScanner.sln
+├── Directory.Build.props
+├── .github/workflows/build.yml
+└── manifest.json
+</code></pre></div></div>
+
+<h2 id="plugin-entry-point">Plugin Entry Point</h2>
+
+<p>Every Jellyfin plugin extends <code class="language-plaintext highlighter-rouge">BasePlugin&lt;TConfiguration&gt;</code>, and Jellyfin constructs it once at startup via DI. A lot of this plugin’s <em>other</em> classes — <code class="language-plaintext highlighter-rouge">ScanEngine</code>, the scheduled tasks, the API controller — reach back into it through a static <code class="language-plaintext highlighter-rouge">Instance</code> property rather than getting <code class="language-plaintext highlighter-rouge">PluginConfiguration</code> injected directly, since Jellyfin’s container doesn’t thread plugin config through to every consumer on its own:</p>
+
+<div class="language-csharp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">public</span> <span class="k">class</span> <span class="nc">Plugin</span> <span class="p">:</span> <span class="n">BasePlugin</span><span class="p">&lt;</span><span class="n">PluginConfiguration</span><span class="p">&gt;,</span> <span class="n">IHasWebPages</span>
+<span class="p">{</span>
+    <span class="k">public</span> <span class="nf">Plugin</span><span class="p">(</span><span class="n">IApplicationPaths</span> <span class="n">applicationPaths</span><span class="p">,</span> <span class="n">IXmlSerializer</span> <span class="n">xmlSerializer</span><span class="p">)</span>
+        <span class="p">:</span> <span class="k">base</span><span class="p">(</span><span class="n">applicationPaths</span><span class="p">,</span> <span class="n">xmlSerializer</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">Instance</span> <span class="p">=</span> <span class="k">this</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="k">public</span> <span class="k">static</span> <span class="n">Plugin</span><span class="p">?</span> <span class="n">Instance</span> <span class="p">{</span> <span class="k">get</span><span class="p">;</span> <span class="k">private</span> <span class="k">set</span><span class="p">;</span> <span class="p">}</span>
+    <span class="k">public</span> <span class="k">override</span> <span class="n">Guid</span> <span class="n">Id</span> <span class="p">=&gt;</span> <span class="n">Guid</span><span class="p">.</span><span class="nf">Parse</span><span class="p">(</span><span class="s">"c8f4a3b2-1d5e-4f6a-9b7c-2e8d0f1a3b5c"</span><span class="p">);</span>
+
+    <span class="k">public</span> <span class="n">IEnumerable</span><span class="p">&lt;</span><span class="n">PluginPageInfo</span><span class="p">&gt;</span> <span class="nf">GetPages</span><span class="p">()</span> <span class="p">=&gt;</span> <span class="k">new</span><span class="p">[]</span>
+    <span class="p">{</span>
+        <span class="k">new</span> <span class="n">PluginPageInfo</span>
+        <span class="p">{</span>
+            <span class="n">Name</span> <span class="p">=</span> <span class="s">"Media Integrity"</span><span class="p">,</span>
+            <span class="n">EmbeddedResourcePath</span> <span class="p">=</span> <span class="nf">GetType</span><span class="p">().</span><span class="n">Namespace</span> <span class="p">+</span> <span class="s">".Web.integrity_dashboard.html"</span>
+        <span class="p">}</span>
+    <span class="p">};</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">GetPages()</code> is what makes the admin dashboard show up under Dashboard → Plugins at all — Jellyfin sees <code class="language-plaintext highlighter-rouge">IHasWebPages</code> and serves each <code class="language-plaintext highlighter-rouge">EmbeddedResourcePath</code> as a config page (it later grew a second entry for the settings page; see the <a href="/jellyfin-media-integrity-dashboard-api/#update-a-real-settings-page">dashboard article’s update</a>). The <code class="language-plaintext highlighter-rouge">Id</code> GUID has to match <code class="language-plaintext highlighter-rouge">manifest.json</code> exactly, or Jellyfin treats an upgrade as installing an unrelated plugin.</p>
+
+<p>Full file: <a href="https://github.com/mcgarrah/jellyfin-plugin-media-integrity-scanner/blob/main/Jellyfin.Plugin.MediaIntegrityScanner/Plugin.cs"><code class="language-plaintext highlighter-rouge">Plugin.cs</code></a>.</p>
+
+<h2 id="plugin-configuration">Plugin Configuration</h2>
+
+<p><code class="language-plaintext highlighter-rouge">PluginConfiguration</code> is a plain settings bag — Jellyfin serializes it to XML on disk and, later, exposes it to an in-app settings page (see the <a href="/jellyfin-media-integrity-dashboard-api/#update-a-real-settings-page">dashboard article</a>). The fields fall into a few groups; here’s the scanning-related subset:</p>
+
+<div class="language-csharp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">public</span> <span class="k">class</span> <span class="nc">PluginConfiguration</span> <span class="p">:</span> <span class="n">BasePluginConfiguration</span>
+<span class="p">{</span>
+    <span class="c1">// Scanning behavior</span>
+    <span class="k">public</span> <span class="kt">int</span> <span class="n">MaxConcurrentScans</span> <span class="p">{</span> <span class="k">get</span><span class="p">;</span> <span class="k">set</span><span class="p">;</span> <span class="p">}</span> <span class="p">=</span> <span class="m">1</span><span class="p">;</span>
+    <span class="k">public</span> <span class="kt">int</span> <span class="n">DelayBetweenFilesMs</span> <span class="p">{</span> <span class="k">get</span><span class="p">;</span> <span class="k">set</span><span class="p">;</span> <span class="p">}</span> <span class="p">=</span> <span class="m">5000</span><span class="p">;</span>
+    <span class="k">public</span> <span class="kt">bool</span> <span class="n">PauseDuringPlayback</span> <span class="p">{</span> <span class="k">get</span><span class="p">;</span> <span class="k">set</span><span class="p">;</span> <span class="p">}</span> <span class="p">=</span> <span class="k">true</span><span class="p">;</span>
+    <span class="k">public</span> <span class="kt">bool</span> <span class="n">EnableDeepScan</span> <span class="p">{</span> <span class="k">get</span><span class="p">;</span> <span class="k">set</span><span class="p">;</span> <span class="p">}</span> <span class="p">=</span> <span class="k">false</span><span class="p">;</span>
+
+    <span class="c1">// Throttling / scheduling</span>
+    <span class="k">public</span> <span class="kt">int</span> <span class="n">MaxReadRateMbPerSec</span> <span class="p">{</span> <span class="k">get</span><span class="p">;</span> <span class="k">set</span><span class="p">;</span> <span class="p">}</span> <span class="p">=</span> <span class="m">10</span><span class="p">;</span>
+    <span class="k">public</span> <span class="kt">bool</span> <span class="n">UseQuietHoursOnly</span> <span class="p">{</span> <span class="k">get</span><span class="p">;</span> <span class="k">set</span><span class="p">;</span> <span class="p">}</span> <span class="p">=</span> <span class="k">false</span><span class="p">;</span>
+    <span class="k">public</span> <span class="kt">string</span> <span class="n">QuietHoursStart</span> <span class="p">{</span> <span class="k">get</span><span class="p">;</span> <span class="k">set</span><span class="p">;</span> <span class="p">}</span> <span class="p">=</span> <span class="s">"02:00"</span><span class="p">;</span>
+    <span class="k">public</span> <span class="kt">string</span> <span class="n">QuietHoursEnd</span> <span class="p">{</span> <span class="k">get</span><span class="p">;</span> <span class="k">set</span><span class="p">;</span> <span class="p">}</span> <span class="p">=</span> <span class="s">"06:00"</span><span class="p">;</span>
+
+    <span class="c1">// FFmpeg path overrides, event-driven scan toggles...</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>None of these fields <em>do</em> anything by themselves — they’re read by whoever cares. <code class="language-plaintext highlighter-rouge">MaxConcurrentScans</code> only matters because <code class="language-plaintext highlighter-rouge">ScanEngine</code>’s constructor sizes a <code class="language-plaintext highlighter-rouge">SemaphoreSlim</code> from it; <code class="language-plaintext highlighter-rouge">UseQuietHoursOnly</code>/<code class="language-plaintext highlighter-rouge">QuietHoursStart</code>/<code class="language-plaintext highlighter-rouge">QuietHoursEnd</code> only matter because <code class="language-plaintext highlighter-rouge">ScanThrottle.IsWithinQuietHours</code> checks them (see the <a href="#update-quiet-hours-and-read-rate-throttling">pacing update</a> below). The real file has grown a second set of fields since — update-channel and manifest-URL settings for the <a href="/jellyfin-media-integrity-release-and-updates/">v0.1.1 update checker</a> — omitted here since they’re unrelated to the scanner core.</p>
+
+<p>Full file: <a href="https://github.com/mcgarrah/jellyfin-plugin-media-integrity-scanner/blob/main/Jellyfin.Plugin.MediaIntegrityScanner/PluginConfiguration.cs"><code class="language-plaintext highlighter-rouge">PluginConfiguration.cs</code></a>.</p>
+
+<h2 id="ffmpeg-binary-resolution">FFmpeg Binary Resolution</h2>
+
+<p>Jellyfin ships its own bundled <code class="language-plaintext highlighter-rouge">jellyfin-ffmpeg</code>, but this plugin can’t assume it’s on <code class="language-plaintext highlighter-rouge">PATH</code>, or even that the admin is running the packaged build. <code class="language-plaintext highlighter-rouge">FfmpegResolver</code> tries four things in order, falling through only if the previous one comes up empty:</p>
+
+<ol>
+  <li><strong>A user-configured override</strong> (<code class="language-plaintext highlighter-rouge">FfmpegPathOverride</code>/<code class="language-plaintext highlighter-rouge">FfprobePathOverride</code>) — respected first, so an admin can always pin a specific build.</li>
+  <li><strong>Jellyfin’s own configured ffmpeg path</strong> (<code class="language-plaintext highlighter-rouge">IServerConfigurationManager.GetEncodingOptions().EncoderAppPath</code>) — the server already resolved this once for its own transcoding, so reuse it instead of asking the admin to configure the same path twice.</li>
+  <li><strong>Known install locations per OS</strong> — <code class="language-plaintext highlighter-rouge">/usr/lib/jellyfin-ffmpeg/ffmpeg</code> on Linux, the Jellyfin Server folder on Windows, Homebrew’s prefix on macOS.</li>
+  <li><strong>A plain <code class="language-plaintext highlighter-rouge">PATH</code> lookup</strong>, the same way a shell would find it.</li>
+</ol>
+
+<div class="language-csharp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">public</span> <span class="kt">string</span> <span class="nf">ResolveFfmpegPath</span><span class="p">()</span> <span class="p">=&gt;</span>
+    <span class="nf">ResolveBinary</span><span class="p">(</span><span class="s">"ffmpeg"</span><span class="p">,</span> <span class="n">Plugin</span><span class="p">.</span><span class="n">Instance</span><span class="p">?.</span><span class="n">Configuration</span><span class="p">?.</span><span class="n">FfmpegPathOverride</span><span class="p">);</span>
+
+<span class="k">private</span> <span class="kt">string</span> <span class="nf">ResolveBinary</span><span class="p">(</span><span class="kt">string</span> <span class="n">binaryName</span><span class="p">,</span> <span class="kt">string</span><span class="p">?</span> <span class="n">userOverride</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(!</span><span class="kt">string</span><span class="p">.</span><span class="nf">IsNullOrEmpty</span><span class="p">(</span><span class="n">userOverride</span><span class="p">)</span> <span class="p">&amp;&amp;</span> <span class="n">File</span><span class="p">.</span><span class="nf">Exists</span><span class="p">(</span><span class="n">userOverride</span><span class="p">))</span>
+    <span class="p">{</span>
+        <span class="k">return</span> <span class="n">userOverride</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="kt">var</span> <span class="n">serverFfmpeg</span> <span class="p">=</span> <span class="n">_config</span><span class="p">.</span><span class="nf">GetEncodingOptions</span><span class="p">().</span><span class="n">EncoderAppPath</span><span class="p">;</span>
+    <span class="c1">// ... then platform-specific candidates, then a PATH lookup ...</span>
+
+    <span class="k">throw</span> <span class="k">new</span> <span class="nf">InvalidOperationException</span><span class="p">(</span>
+        <span class="s">$"</span><span class="p">{</span><span class="n">binaryName</span><span class="p">}</span><span class="s"> not found. Install ffmpeg or configure the path in Media Integrity Scanner settings."</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>If all four come up empty, it throws rather than silently disabling scanning — a scanner that can’t run ffmpeg has no useful degraded mode. <code class="language-plaintext highlighter-rouge">ResolveFfprobePath</code> shares the exact same <code class="language-plaintext highlighter-rouge">ResolveBinary</code> helper, just parameterized on <code class="language-plaintext highlighter-rouge">"ffprobe"</code> and its own override field.</p>
+
+<p>Full file: <a href="https://github.com/mcgarrah/jellyfin-plugin-media-integrity-scanner/blob/main/Jellyfin.Plugin.MediaIntegrityScanner/Scanner/FfmpegResolver.cs"><code class="language-plaintext highlighter-rouge">Scanner/FfmpegResolver.cs</code></a>.</p>
+
+<h2 id="the-scan-engine">The Scan Engine</h2>
+
+<p><code class="language-plaintext highlighter-rouge">ScanEngine</code> is the one choke point every trigger — library events, scheduled tasks, manual API calls — eventually calls into, which is what makes “bounded” and “thread-safe” actual guarantees rather than just words: a <code class="language-plaintext highlighter-rouge">SemaphoreSlim</code> sized to <code class="language-plaintext highlighter-rouge">MaxConcurrentScans</code> gates every concurrent scan through the same instance, no matter what kicked it off.</p>
+
+<div class="language-csharp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">public</span> <span class="nf">ScanEngine</span><span class="p">(</span><span class="n">FfmpegWrapper</span> <span class="n">ffmpeg</span><span class="p">,</span> <span class="n">IDatabaseManager</span> <span class="n">db</span><span class="p">,</span> <span class="n">ISessionManager</span> <span class="n">sessions</span><span class="p">,</span> <span class="n">ILogger</span><span class="p">&lt;</span><span class="n">ScanEngine</span><span class="p">&gt;</span> <span class="n">logger</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">var</span> <span class="n">maxConcurrent</span> <span class="p">=</span> <span class="n">Plugin</span><span class="p">.</span><span class="n">Instance</span><span class="p">?.</span><span class="n">Configuration</span><span class="p">?.</span><span class="n">MaxConcurrentScans</span> <span class="p">??</span> <span class="m">1</span><span class="p">;</span>
+    <span class="n">_scanLock</span> <span class="p">=</span> <span class="k">new</span> <span class="nf">SemaphoreSlim</span><span class="p">(</span><span class="n">maxConcurrent</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="k">public</span> <span class="k">async</span> <span class="n">Task</span> <span class="nf">ScanItemAsync</span><span class="p">(</span><span class="n">BaseItem</span> <span class="n">item</span><span class="p">,</span> <span class="n">ScanPhase</span> <span class="n">phase</span><span class="p">,</span> <span class="n">CancellationToken</span> <span class="n">cancellationToken</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">await</span> <span class="n">_scanLock</span><span class="p">.</span><span class="nf">WaitAsync</span><span class="p">(</span><span class="n">cancellationToken</span><span class="p">);</span>
+    <span class="k">try</span>
+    <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="nf">ShouldPauseForPlayback</span><span class="p">())</span>
+        <span class="p">{</span>
+            <span class="k">await</span> <span class="nf">WaitForPlaybackEnd</span><span class="p">(</span><span class="n">cancellationToken</span><span class="p">);</span>
+        <span class="p">}</span>
+
+        <span class="kt">var</span> <span class="n">delay</span> <span class="p">=</span> <span class="n">Plugin</span><span class="p">.</span><span class="n">Instance</span><span class="p">?.</span><span class="n">Configuration</span><span class="p">?.</span><span class="n">DelayBetweenFilesMs</span> <span class="p">??</span> <span class="m">5000</span><span class="p">;</span>
+        <span class="k">await</span> <span class="n">Task</span><span class="p">.</span><span class="nf">Delay</span><span class="p">(</span><span class="n">delay</span><span class="p">,</span> <span class="n">cancellationToken</span><span class="p">);</span>
+
+        <span class="kt">var</span> <span class="n">result</span> <span class="p">=</span> <span class="n">phase</span> <span class="k">switch</span>
+        <span class="p">{</span>
+            <span class="n">ScanPhase</span><span class="p">.</span><span class="n">Header</span> <span class="p">=&gt;</span> <span class="k">await</span> <span class="n">_ffmpeg</span><span class="p">.</span><span class="nf">ProbeAsync</span><span class="p">(</span><span class="n">item</span><span class="p">.</span><span class="n">Path</span><span class="p">,</span> <span class="n">cancellationToken</span><span class="p">),</span>
+            <span class="n">ScanPhase</span><span class="p">.</span><span class="n">FullDecode</span> <span class="p">=&gt;</span> <span class="k">await</span> <span class="n">_ffmpeg</span><span class="p">.</span><span class="nf">DecodeAsync</span><span class="p">(</span><span class="n">item</span><span class="p">.</span><span class="n">Path</span><span class="p">,</span> <span class="n">cancellationToken</span><span class="p">),</span>
+            <span class="n">_</span> <span class="p">=&gt;</span> <span class="k">throw</span> <span class="k">new</span> <span class="nf">ArgumentException</span><span class="p">(</span><span class="s">$"Unknown phase: </span><span class="p">{</span><span class="n">phase</span><span class="p">}</span><span class="s">"</span><span class="p">)</span>
+        <span class="p">};</span>
+
+        <span class="k">await</span> <span class="n">_db</span><span class="p">.</span><span class="nf">SaveResultAsync</span><span class="p">(</span><span class="k">new</span> <span class="n">ScanRecord</span> <span class="p">{</span> <span class="cm">/* item id, path, phase, pass/fail, duration ... */</span> <span class="p">});</span>
+    <span class="p">}</span>
+    <span class="k">finally</span>
+    <span class="p">{</span>
+        <span class="n">_scanLock</span><span class="p">.</span><span class="nf">Release</span><span class="p">();</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Every scan takes a slot, checks whether it should pause for active playback, applies the configured inter-file delay, runs the right ffmpeg phase, then persists the result — always in that order, whether it came from a scheduled task or a dashboard button. <code class="language-plaintext highlighter-rouge">ShouldPauseForPlayback</code>/<code class="language-plaintext highlighter-rouge">WaitForPlaybackEnd</code> and <code class="language-plaintext highlighter-rouge">Dispose</code> are omitted above for length; the full gate pipeline — including the quiet-hours window and read-rate throttle added later — is diagrammed further down in this article.</p>
+
+<p>Full file: <a href="https://github.com/mcgarrah/jellyfin-plugin-media-integrity-scanner/blob/main/Jellyfin.Plugin.MediaIntegrityScanner/Scanner/ScanEngine.cs"><code class="language-plaintext highlighter-rouge">Scanner/ScanEngine.cs</code></a>.</p>
+
+<h2 id="ffmpeg-process-wrapper">FFmpeg Process Wrapper</h2>
+
+<p><code class="language-plaintext highlighter-rouge">FfmpegWrapper</code> is the only place that actually shells out to ffmpeg/ffprobe. <code class="language-plaintext highlighter-rouge">ProbeAsync</code> is Phase 1 — ffprobe reading container/stream metadata, cheap and fast. <code class="language-plaintext highlighter-rouge">DecodeAsync</code> is Phase 2 — a full ffmpeg decode with <code class="language-plaintext highlighter-rouge">-f null -</code> (decode every frame, write nowhere), expensive but able to catch mid-file frame corruption a header check can’t see. Both funnel through the same process runner:</p>
+
+<div class="language-csharp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">public</span> <span class="k">async</span> <span class="n">Task</span><span class="p">&lt;</span><span class="n">ScanResult</span><span class="p">&gt;</span> <span class="nf">ProbeAsync</span><span class="p">(</span><span class="kt">string</span> <span class="n">filePath</span><span class="p">,</span> <span class="n">CancellationToken</span> <span class="n">ct</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="kt">var</span> <span class="n">args</span> <span class="p">=</span> <span class="s">"-v error -show_entries format=duration,size "</span> <span class="p">+</span>
+               <span class="s">"-show_entries stream=codec_type,codec_name -of json \""</span> <span class="p">+</span> <span class="n">filePath</span> <span class="p">+</span> <span class="s">"\""</span><span class="p">;</span>
+    <span class="kt">var</span> <span class="p">(</span><span class="n">exitCode</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">stderr</span><span class="p">)</span> <span class="p">=</span> <span class="k">await</span> <span class="nf">RunProcessAsync</span><span class="p">(</span><span class="n">_ffprobePath</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">ct</span><span class="p">);</span>
+    <span class="k">return</span> <span class="k">new</span> <span class="n">ScanResult</span> <span class="p">{</span> <span class="n">Success</span> <span class="p">=</span> <span class="n">exitCode</span> <span class="p">==</span> <span class="m">0</span> <span class="p">&amp;&amp;</span> <span class="kt">string</span><span class="p">.</span><span class="nf">IsNullOrWhiteSpace</span><span class="p">(</span><span class="n">stderr</span><span class="p">),</span> <span class="n">ErrorOutput</span> <span class="p">=</span> <span class="n">stderr</span> <span class="p">};</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">DecodeAsync</code> has the same shape, just against <code class="language-plaintext highlighter-rouge">ffmpeg -v error -i "&lt;file&gt;" -f null -</code>. The real <code class="language-plaintext highlighter-rouge">RunProcessAsync</code> (not shown) redirects stdout/stderr and drains both <em>concurrently</em> with the process exit — an earlier version awaited them sequentially after <code class="language-plaintext highlighter-rouge">WaitForExitAsync</code>, which deadlocks once a large stderr stream fills the OS pipe buffer — and kills the whole process tree on cancellation, so a cancelled deep scan doesn’t leave an orphaned ffmpeg process running against a file nobody’s waiting on anymore.</p>
+
+<p>Full file: <a href="https://github.com/mcgarrah/jellyfin-plugin-media-integrity-scanner/blob/main/Jellyfin.Plugin.MediaIntegrityScanner/Scanner/FfmpegWrapper.cs"><code class="language-plaintext highlighter-rouge">Scanner/FfmpegWrapper.cs</code></a>.</p>
+
+<h2 id="scheduled-task-registration">Scheduled Task Registration</h2>
+
+<p>Jellyfin discovers <code class="language-plaintext highlighter-rouge">IScheduledTask</code> implementations via DI and lists them under Dashboard → Scheduled Tasks automatically — <code class="language-plaintext highlighter-rouge">Name</code>/<code class="language-plaintext highlighter-rouge">Key</code>/<code class="language-plaintext highlighter-rouge">Category</code> are what show up there, and <code class="language-plaintext highlighter-rouge">GetDefaultTriggers()</code> is only the <em>default</em>; an admin can reconfigure the schedule from that same page.</p>
+
+<div class="language-csharp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">public</span> <span class="k">class</span> <span class="nc">HeaderScanTask</span> <span class="p">:</span> <span class="n">IScheduledTask</span>
+<span class="p">{</span>
+    <span class="k">public</span> <span class="kt">string</span> <span class="n">Name</span> <span class="p">=&gt;</span> <span class="s">"Media Integrity - Header Scan"</span><span class="p">;</span>
+    <span class="k">public</span> <span class="kt">string</span> <span class="n">Category</span> <span class="p">=&gt;</span> <span class="s">"Media Integrity"</span><span class="p">;</span>
+
+    <span class="k">public</span> <span class="n">IEnumerable</span><span class="p">&lt;</span><span class="n">TaskTriggerInfo</span><span class="p">&gt;</span> <span class="nf">GetDefaultTriggers</span><span class="p">()</span> <span class="p">=&gt;</span> <span class="k">new</span><span class="p">[]</span>
+    <span class="p">{</span>
+        <span class="k">new</span> <span class="n">TaskTriggerInfo</span> <span class="p">{</span> <span class="n">Type</span> <span class="p">=</span> <span class="n">TaskTriggerInfoType</span><span class="p">.</span><span class="n">DailyTrigger</span><span class="p">,</span> <span class="n">TimeOfDayTicks</span> <span class="p">=</span> <span class="n">TimeSpan</span><span class="p">.</span><span class="nf">FromHours</span><span class="p">(</span><span class="m">3</span><span class="p">).</span><span class="n">Ticks</span> <span class="p">}</span>
+    <span class="p">};</span>
+
+    <span class="k">public</span> <span class="n">Task</span> <span class="nf">ExecuteAsync</span><span class="p">(</span><span class="n">IProgress</span><span class="p">&lt;</span><span class="kt">double</span><span class="p">&gt;</span> <span class="n">progress</span><span class="p">,</span> <span class="n">CancellationToken</span> <span class="n">cancellationToken</span><span class="p">)</span> <span class="p">=&gt;</span>
+        <span class="n">_scanner</span><span class="p">.</span><span class="nf">ScanLibraryAsync</span><span class="p">(</span><span class="k">null</span><span class="p">,</span> <span class="n">ScanPhase</span><span class="p">.</span><span class="n">Header</span><span class="p">,</span> <span class="n">cancellationToken</span><span class="p">,</span> <span class="n">progress</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">DeepScanTask</code> is the same shape, wired to a weekly Sunday trigger and <code class="language-plaintext highlighter-rouge">ScanPhase.FullDecode</code> instead, and only runs at all if <code class="language-plaintext highlighter-rouge">EnableDeepScan</code> is on. Both tasks just delegate straight into <code class="language-plaintext highlighter-rouge">ScanEngine</code>, so a scheduled sweep and a manual “scan library” API call walk the exact same gating logic described above — there’s no separate scheduled-task-only code path to keep in sync. (An earlier version of this loop lived directly in the task and had its own concurrency bug — see the <a href="#update-maxconcurrentscans-wasnt-honored-by-bulk-scans">MaxConcurrentScans update</a> below.)</p>
+
+<p>Full file: <a href="https://github.com/mcgarrah/jellyfin-plugin-media-integrity-scanner/blob/main/Jellyfin.Plugin.MediaIntegrityScanner/ScheduledTasks/HeaderScanTask.cs"><code class="language-plaintext highlighter-rouge">ScheduledTasks/HeaderScanTask.cs</code></a>.</p>
+
+<h2 id="update-quiet-hours-and-read-rate-throttling">Update: Quiet Hours and Read-Rate Throttling</h2>
+
+<p>The <a href="/jellyfin-media-integrity-deployment-operations/">deployment article</a> recommends specific <code class="language-plaintext highlighter-rouge">MaxReadRateMbPerSec</code> and <code class="language-plaintext highlighter-rouge">UseQuietHoursOnly</code>/<code class="language-plaintext highlighter-rouge">QuietHoursStart</code>/<code class="language-plaintext highlighter-rouge">QuietHoursEnd</code> values for CephFS and NFS backends. Those config fields existed from the start, but nothing actually enforced them — a gap caught during a later review pass. Two additions to <code class="language-plaintext highlighter-rouge">ScanEngine</code> close it:</p>
+
+<div class="language-csharp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">public</span> <span class="k">static</span> <span class="k">class</span> <span class="nc">ScanThrottle</span>
+<span class="p">{</span>
+    <span class="c1">// Supports windows that wrap past midnight (e.g., 22:00-06:00).</span>
+    <span class="c1">// Fails open (returns true) if either bound can't be parsed.</span>
+    <span class="k">public</span> <span class="k">static</span> <span class="kt">bool</span> <span class="nf">IsWithinQuietHours</span><span class="p">(</span><span class="kt">string</span><span class="p">?</span> <span class="n">start</span><span class="p">,</span> <span class="kt">string</span><span class="p">?</span> <span class="n">end</span><span class="p">,</span> <span class="n">TimeSpan</span> <span class="n">timeOfDay</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+
+    <span class="c1">// Pads wall-clock time after a scan so the average MB/s for that</span>
+    <span class="c1">// file doesn't exceed the configured cap.</span>
+    <span class="k">public</span> <span class="k">static</span> <span class="n">TimeSpan</span> <span class="nf">ComputeReadRateDelay</span><span class="p">(</span><span class="kt">long</span> <span class="n">fileSizeBytes</span><span class="p">,</span> <span class="kt">int</span> <span class="n">maxReadRateMbPerSec</span><span class="p">,</span> <span class="kt">int</span> <span class="n">actualDurationMs</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">ScanItemAsync</code> checks <code class="language-plaintext highlighter-rouge">IsWithinQuietHours</code> before scanning (waiting in a loop if outside the window, same pattern as the existing playback-pause check), and calls <code class="language-plaintext highlighter-rouge">ComputeReadRateDelay</code> after each scan to pad the inter-file gap so the <em>average</em> rate for that file doesn’t exceed the cap.</p>
+
+<p>The read-rate throttle is deliberately <strong>not</strong> a literal in-flight byte cap. An earlier design considered piping the file through ffmpeg’s stdin (<code class="language-plaintext highlighter-rouge">pipe:0</code>) to get precise control over read bytes/sec, but that breaks seekability — and many MP4/MOV files store the <code class="language-plaintext highlighter-rouge">moov</code> atom at the end of the file, so probing them over a non-seekable pipe produces a false <code class="language-plaintext highlighter-rouge">"moov atom not found"</code> failure. That’s exactly the corruption signature this plugin exists to detect, so a naive throttle could turn healthy files into false positives. Padding wall-clock time after the fact has zero risk to decode correctness, since ffmpeg still opens the file directly and reads at full speed — it only bounds the long-run average throughput the scanner pulls from storage, which is the actual concern behind the CephFS/NFS tuning guidance.</p>
+
+<p>Both functions are pure and dependency-free (no Jellyfin types), so they’re covered by a small xUnit test project — see the <a href="/jellyfin-media-integrity-deployment-operations/">deployment article</a> for the CI wiring.</p>
+
+<p>Stacking all of this on top of the original <code class="language-plaintext highlighter-rouge">ScanItemAsync</code> gives a longer gate pipeline than the code above suggests — concurrency slot, quiet hours, playback pause, the fixed inter-file delay, the scan itself, then the read-rate throttle:</p>
+
+<pre><code class="language-mermaid">%%{init: {"theme": "base", "themeVariables": {
+  "primaryColor": "#17221f",
+  "primaryTextColor": "#e7ede9",
+  "primaryBorderColor": "#3e6e67",
+  "lineColor": "#7c93a3",
+  "secondaryColor": "#1d2b27",
+  "tertiaryColor": "#101a18",
+  "fontFamily": "monospace",
+  "fontSize": "14px"
+}}}%%
+flowchart TD
+    START(["ScanItemAsync called&lt;br/&gt;from any trigger"]):::pipe
+    SEM["wait for a free slot&lt;br/&gt;MaxConcurrentScans (1)"]:::act
+    QH{"UseQuietHoursOnly (false)&lt;br/&gt;and outside window?"}:::gate
+    WAITQH["poll every 5 min&lt;br/&gt;until inside 02:00–06:00"]:::wait
+    PP{"PauseDuringPlayback (true)&lt;br/&gt;and any session playing?"}:::gate
+    WAITPP["poll every 30 sec&lt;br/&gt;until playback ends"]:::wait
+    DELAY["fixed pause&lt;br/&gt;DelayBetweenFilesMs (5000)"]:::act
+    PHASE{"which phase?"}:::gate
+    HEADER["ffprobe&lt;br/&gt;Header check"]:::exec
+    DECODE["ffmpeg null-decode&lt;br/&gt;FullDecode check"]:::exec
+    THROTTLE["paced delay&lt;br/&gt;MaxReadRateMbPerSec (10)"]:::act
+    SAVE[("SaveResultAsync&lt;br/&gt;scan_results")]:::db
+    ERRSAVE[("SaveResultAsync&lt;br/&gt;Status: Error")]:::db
+    DONE(["slot released,&lt;br/&gt;IsScanning re-evaluated"]):::pipe
+    CANCELLED(["OperationCanceledException&lt;br/&gt;propagates, nothing saved"]):::stop
+
+    START --&gt; SEM --&gt; QH
+    QH --&gt;|"yes"| WAITQH --&gt; QH
+    QH --&gt;|"no"| PP
+    PP --&gt;|"yes"| WAITPP --&gt; PP
+    PP --&gt;|"no"| DELAY --&gt; PHASE
+    PHASE --&gt;|"Header"| HEADER
+    PHASE --&gt;|"FullDecode"| DECODE
+    HEADER --&gt; THROTTLE
+    DECODE --&gt; THROTTLE
+    HEADER -.-&gt;|"exception,&lt;br/&gt;e.g. ffmpeg missing"| ERRSAVE
+    DECODE -.-&gt;|"exception"| ERRSAVE
+    THROTTLE --&gt; SAVE --&gt; DONE
+    ERRSAVE --&gt; DONE
+
+    WAITQH -.-&gt;|"Cancel() called"| CANCELLED
+    WAITPP -.-&gt;|"Cancel() called"| CANCELLED
+    SEM -.-&gt;|"Cancel() called"| CANCELLED
+
+    classDef gate fill:#2a2013,stroke:#e3a857,color:#f4d9a8
+    classDef wait fill:#2a2013,stroke:#e3a857,color:#f4d9a8,stroke-dasharray: 3 3
+    classDef act fill:#16332c,stroke:#5fa88f,color:#cfefe2
+    classDef exec fill:#16332c,stroke:#5fa88f,color:#cfefe2,stroke-width:2px
+    classDef db fill:#17221f,stroke:#7c93a3,color:#e7ede9
+    classDef pipe fill:#101a18,stroke:#e3a857,color:#e3a857,stroke-width:2px
+    classDef stop fill:#331c1a,stroke:#d96c5d,color:#f3c8c2
+</code></pre>
+
+<p>Every file, whoever triggered its scan, walks this same path — a manually-triggered API scan and a scheduled sweep get no special treatment once they’re queued.</p>
+
+<h2 id="update-maxconcurrentscans-wasnt-honored-by-bulk-scans">Update: <code class="language-plaintext highlighter-rouge">MaxConcurrentScans</code> Wasn’t Honored by Bulk Scans</h2>
+
+<p>The <code class="language-plaintext highlighter-rouge">HeaderScanTask</code> loop shown above has a subtle bug: it’s a plain <code class="language-plaintext highlighter-rouge">foreach</code> with a single <code class="language-plaintext highlighter-rouge">await</code> per iteration. <code class="language-plaintext highlighter-rouge">ScanEngine</code>’s internal <code class="language-plaintext highlighter-rouge">SemaphoreSlim</code> is sized to <code class="language-plaintext highlighter-rouge">MaxConcurrentScans</code>, but a sequential loop never asks it for more than one slot at a time — so setting <code class="language-plaintext highlighter-rouge">MaxConcurrentScans</code> above <code class="language-plaintext highlighter-rouge">1</code> had no effect on a scheduled or library-wide scan. It only mattered for manual single-item scans issued concurrently from the API, which almost nobody does.</p>
+
+<p>Fixed by switching both scheduled tasks and <code class="language-plaintext highlighter-rouge">ScanEngine.ScanLibraryAsync</code> to <code class="language-plaintext highlighter-rouge">Parallel.ForEachAsync</code> with <code class="language-plaintext highlighter-rouge">MaxDegreeOfParallelism</code> set to the configured value:</p>
+
+<div class="language-csharp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kt">var</span> <span class="n">maxConcurrent</span> <span class="p">=</span> <span class="n">Math</span><span class="p">.</span><span class="nf">Max</span><span class="p">(</span><span class="m">1</span><span class="p">,</span> <span class="n">config</span><span class="p">?.</span><span class="n">MaxConcurrentScans</span> <span class="p">??</span> <span class="m">1</span><span class="p">);</span>
+<span class="k">await</span> <span class="n">Parallel</span><span class="p">.</span><span class="nf">ForEachAsync</span><span class="p">(</span>
+    <span class="n">items</span><span class="p">,</span>
+    <span class="k">new</span> <span class="n">ParallelOptions</span> <span class="p">{</span> <span class="n">MaxDegreeOfParallelism</span> <span class="p">=</span> <span class="n">maxConcurrent</span><span class="p">,</span> <span class="n">CancellationToken</span> <span class="p">=</span> <span class="n">cancellationToken</span> <span class="p">},</span>
+    <span class="k">async</span> <span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">ct</span><span class="p">)</span> <span class="p">=&gt;</span>
+    <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(!</span><span class="k">await</span> <span class="n">_db</span><span class="p">.</span><span class="nf">IsCurrentAsync</span><span class="p">(</span><span class="n">item</span><span class="p">.</span><span class="n">Id</span><span class="p">.</span><span class="nf">ToString</span><span class="p">(),</span> <span class="n">item</span><span class="p">.</span><span class="n">Path</span><span class="p">))</span>
+        <span class="p">{</span>
+            <span class="k">await</span> <span class="n">_scanner</span><span class="p">.</span><span class="nf">ScanItemAsync</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">ScanPhase</span><span class="p">.</span><span class="n">Header</span><span class="p">,</span> <span class="n">ct</span><span class="p">);</span>
+        <span class="p">}</span>
+
+        <span class="kt">var</span> <span class="n">done</span> <span class="p">=</span> <span class="n">Interlocked</span><span class="p">.</span><span class="nf">Increment</span><span class="p">(</span><span class="k">ref</span> <span class="n">processed</span><span class="p">);</span>
+        <span class="n">progress</span><span class="p">.</span><span class="nf">Report</span><span class="p">((</span><span class="kt">double</span><span class="p">)</span><span class="n">done</span> <span class="p">/</span> <span class="n">total</span> <span class="p">*</span> <span class="m">100</span><span class="p">);</span>
+    <span class="p">});</span>
+</code></pre></div></div>
+
+<p>The semaphore inside <code class="language-plaintext highlighter-rouge">ScanEngine</code> isn’t redundant with this — it’s still what keeps a manual single-item scan and a bulk scan from together exceeding the configured limit. This change fixes the half the semaphore alone couldn’t: the loop itself never asking for more than one slot. <code class="language-plaintext highlighter-rouge">Interlocked.Increment</code> replaces the plain <code class="language-plaintext highlighter-rouge">processed++</code>, since parallel iterations now complete out of order. Default behavior (<code class="language-plaintext highlighter-rouge">MaxConcurrentScans = 1</code>) is unchanged.</p>
+
+<h2 id="update-the-skip-check-didnt-know-about-scan-phase">Update: The Skip Check Didn’t Know About Scan Phase</h2>
+
+<p>The <code class="language-plaintext highlighter-rouge">IsCurrentAsync(item.Id.ToString(), item.Path)</code> check in the loop above — “does this item already have a passing scan with an unchanged mtime” — has a bug that took a while to surface: it never looked at <em>which phase</em> produced that passing record. Since files are normally Header-scanned first (either on library add or via <code class="language-plaintext highlighter-rouge">HeaderScanTask</code>), once a file passes that quick check, <code class="language-plaintext highlighter-rouge">IsCurrentAsync</code> reports it “current” for <strong>any</strong> later request — including a <code class="language-plaintext highlighter-rouge">DeepScanTask</code> run asking for a full <code class="language-plaintext highlighter-rouge">FullDecode</code> pass — as long as the file’s mtime hasn’t changed.</p>
+
+<p>That’s a real problem for <code class="language-plaintext highlighter-rouge">DeepScanTask</code> specifically: its entire purpose is catching mid-file corruption that a header check misses, but it would silently skip almost every file in the library on every scheduled run, forever, because they’d already “passed” at the Header level. The deep scan had likely never actually deep-scanned anything in a real deployment.</p>
+
+<p>Fixed by adding a <code class="language-plaintext highlighter-rouge">minPhase</code> parameter to <code class="language-plaintext highlighter-rouge">IsCurrentAsync</code>, requiring <code class="language-plaintext highlighter-rouge">scan_phase &gt;= minPhase</code> in the underlying query, and passing the right phase at each of the three call sites — <code class="language-plaintext highlighter-rouge">(int)phase</code> in <code class="language-plaintext highlighter-rouge">ScanLibraryAsync</code>, <code class="language-plaintext highlighter-rouge">Header</code> in <code class="language-plaintext highlighter-rouge">HeaderScanTask</code>, <code class="language-plaintext highlighter-rouge">FullDecode</code> in <code class="language-plaintext highlighter-rouge">DeepScanTask</code>. See the <a href="/jellyfin-media-integrity-architecture-design/#incremental-scanning-logic">architecture article’s incremental-scanning section</a> for how this interacts with the schema design.</p>
+
+<p>Here’s the failure mode laid out end to end, alongside the one path that was never affected by it — an <code class="language-plaintext highlighter-rouge">itemId</code>-scoped API call, which bypasses <code class="language-plaintext highlighter-rouge">IsCurrentAsync</code> entirely:</p>
+
+<pre><code class="language-mermaid">%%{init: {"theme": "base", "themeVariables": {
+  "actorBkg": "#17221f",
+  "actorBorder": "#3e6e67",
+  "actorTextColor": "#e7ede9",
+  "actorLineColor": "#3e6e67",
+  "signalColor": "#5c6b75",
+  "signalTextColor": "#2a2a2a",
+  "labelBoxBkgColor": "#2a2013",
+  "labelBoxBorderColor": "#e3a857",
+  "labelTextColor": "#f4d9a8",
+  "loopTextColor": "#2a2a2a",
+  "noteBkgColor": "#1d2b27",
+  "noteBorderColor": "#3e6e67",
+  "noteTextColor": "#e7ede9",
+  "activationBorderColor": "#5fa88f",
+  "activationBkgColor": "#16332c",
+  "sequenceNumberColor": "#101a18",
+  "fontFamily": "monospace",
+  "fontSize": "13px"
+}}}%%
+sequenceDiagram
+    participant SCH as Task Scheduler
+    participant DST as DeepScanTask
+    participant DB as scan_results
+    participant SE as ScanEngine
+    participant AD as Admin (dashboard)
+
+    SCH-&gt;&gt;DST: Sunday 01:00 trigger
+    activate DST
+    DST-&gt;&gt;DST: EnableDeepScan == true?
+    DST-&gt;&gt;DB: IsCurrentAsync(item, minPhase=FullDecode)
+    Note over DB: file already has a passing&lt;br/&gt;Header (phase 1) record —&lt;br/&gt;phase 1 is less than FullDecode (phase 2)
+    DB--&gt;&gt;DST: false, not current at this phase
+    DST-&gt;&gt;SE: ScanItemAsync(item, FullDecode)
+    SE-&gt;&gt;DB: SaveResultAsync(Pass, FullDecode)
+    deactivate DST
+
+    Note over DB,SE: before the phase-aware fix, that check&lt;br/&gt;returned true for ANY passing record —&lt;br/&gt;this file would have been skipped forever
+
+    AD-&gt;&gt;SE: POST /MediaIntegrity/Scan&lt;br/&gt;itemId + deepScan: true
+    activate SE
+    Note over SE: the itemId-scoped path calls&lt;br/&gt;ScanItemAsync directly —&lt;br/&gt;no currency check at all
+    SE-&gt;&gt;DB: SaveResultAsync(Pass, FullDecode)
+    deactivate SE
+</code></pre>
+
+<p>If <code class="language-plaintext highlighter-rouge">EnableDeepScan</code> ever seemed to do nothing against a library that had already loaded in cleanly, this was why.</p>
+
+<h2 id="whats-next">What’s Next</h2>
+
+<p>The <a href="/jellyfin-media-integrity-dashboard-api/">next article</a> adds the admin-facing layer: the REST API controller for querying scan results and triggering scans, and the HTML dashboard that gives at-a-glance library health visibility.</p>
+
+<h2 id="series-navigation">Series Navigation</h2>
+
+<ol>
+  <li><a href="/jellyfin-media-integrity-scanner-introduction/">Introduction &amp; Problem Statement</a></li>
+  <li><a href="/jellyfin-media-integrity-architecture-design/">Architecture &amp; Design Decisions</a></li>
+  <li><strong>Building the Scanner Core</strong> (this post)</li>
+  <li><a href="/jellyfin-media-integrity-dashboard-api/">The Dashboard &amp; API</a></li>
+  <li><a href="/jellyfin-media-integrity-deployment-operations/">Deployment &amp; Operations</a></li>
+  <li><a href="/jellyfin-media-integrity-release-and-updates/">v0.1.1 Release: Update Checker &amp; Auto-Update</a></li>
+</ol>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/jellyfin/">jellyfin</a>, 
+        
+          <a href="/tags/media-integrity/">media-integrity</a>, 
+        
+          <a href="/tags/ffmpeg/">ffmpeg</a>, 
+        
+          <a href="/tags/dotnet/">dotnet</a>, 
+        
+          <a href="/tags/csharp/">csharp</a>, 
+        
+          <a href="/tags/plugin-development/">plugin-development</a>, 
+        
+          <a href="/tags/cross-platform/">cross-platform</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/homelab/">homelab</a>, 
+        
+          <a href="/categories/media-server/">media-server</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://mcgarrah.substack.com/" rel="me">Substack</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Engineering deep dives on infrastructure, distributed systems, and AI/ML — from homelab experiments to enterprise architecture.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://mcgarrah.substack.com/" ><svg aria-label="Substack" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#substack"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

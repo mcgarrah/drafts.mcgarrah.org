@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Building in Public: Preview Sites, Domain Migrations, and the Google Tax | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Building in Public: Preview Sites, Domain Migrations, and the Google Tax" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="Building in Public: Preview Sites, Domain Migrations, and the Google Tax Subtitle: Infrastructure for writing, the registrar migration saga, and why Google makes simple things hard Author: McGarrah Planned: July 13, 2026 (Monday) URL: TBD Tags: Software Engineering, Web Development, Infrastructure, Open Source, DNS, Google, Jekyll My previous newsletters covered infrastructure, the blog platform, storage failures, and reviving a VS Code extension. This one covers the meta-work of running a technical blog — the infrastructure you build to support the writing itself, and the external dependencies that fight you every step of the way. Three threads this month: building a password-protected draft preview site so reviewers can see unpublished content, migrating 16 domains away from SquareSpace’s walled garden, and the ongoing battle with Google’s service sprawl. Thanks for reading! Subscribe for free to receive new posts and support my work. Building a Draft Preview Site I write 30-40 drafts at a time. I wanted trusted reviewers to see the rendered site — not raw markdown on GitHub — before I publish. Sounds simple. GitHub Pages has no authentication. My repo is public. And I didn’t want to add Netlify, Cloudflare, or any new external service. The solution: a separate GitHub repo at drafts.mcgarrah.org, built automatically via GitHub Actions with --drafts --future, selectively encrypted with Staticrypt, and deployed on every push to main. Three articles cover the full journey from “what are my options?” to “it’s live and working.” Building a Draft Preview Site — Part 1: Exploring the Options — Seven options evaluated, most eliminated. Netlify (new dependency), Cloudflare (new dependency), self-hosted (not ready), project page (shared robots.txt problem). Two survivors: Staticrypt on a subdomain, or no auth at all. Building a Draft Preview Site — Part 2: Refining the Design — The config overlay approach, Giscus feedback on a separate repo, Staticrypt navigation quirks, and the DNS routing trick that lets multiple GitHub repos serve different custom domains. Building a Draft Preview Site — Part 3: The Implementation — The real workflow with all the edge cases. Staticrypt’s -o flag doesn’t exist. Directory output flattens paths. Full-site encryption is wasteful. Hash-based verification catches silent failures. Eight issues hit during implementation, all documented with fixes. The system is live at drafts.mcgarrah.org and deploys automatically. Reviewers enter a shared password, see the full site with drafts and future posts visible, and can leave feedback via Giscus comments that stay separate from production. Migrating 16 Domains from SquareSpace to Porkbun Google Domains was great. Then Google sold it to SquareSpace. SquareSpace is expensive, has no API, and locks you into their ecosystem. For a homelab that needs programmatic DNS management (Technitium, PowerDNS, automation), that’s a dealbreaker. Migrating 16 Domains from SquareSpace to Porkbun — The multi-week process of transferring domains in batches, managing costs ($182 total for renewals), dealing with SquareSpace’s 5-day transfer holds, and the critical lesson: SquareSpace deletes all DNS records after transfer with no export option. You must back up records before initiating transfer. 9 of 16 domains complete (56%). The most complex domain — mcgarrah.org with 25+ DNS records across GitHub Pages, Mailgun email, DigitalOcean apps, and multiple subdomains — is deliberately last. Every other domain is practice for the big one. The Google Services Tax Running a technical blog shouldn’t require managing six interconnected Google services, each with its own dashboard, approval process, and opaque requirements. And yet. The Google Services Tax on a Simple Blog — Analytics, Search Console, Custom Search, AdSense, Tag Manager, PageSpeed Insights — each exists in its own silo with its own integration complexity. The most maddening part: Google’s own services don’t integrate seamlessly with each other. The article also documents months of work trying to get AdSense approved — GDPR compliance, E-E-A-T improvements, sitemap fixes, crawler access debugging — and still getting rejected with vague “your site isn’t ready” feedback. The battle continues. The Caddy Reverse Proxy Addition A quick infrastructure win that solved a daily annoyance: Caddy Reverse Proxy for Ceph Dashboard — The Ceph Dashboard runs on whichever node is the active ceph-mgr, which changes on failover. Adding it to the existing Caddy proxy with health checks gives a single stable URL that automatically routes to the active node. Five minutes of config, permanent fix. What These Have in Common All of these are meta-work — infrastructure that supports the actual creative output rather than being the output itself. The draft preview site makes writing better. The domain migration enables future automation. The Google services (theoretically) help readers find the content. The Caddy proxy makes monitoring easier. The trap is spending all your time on meta-work and never writing the actual content. The escape is recognizing when the infrastructure is “good enough” and shipping imperfect articles rather than perfecting the pipeline. I’m still working on that balance. What’s Next Game development — Returning to an old passion with StarVoyager (C++ modernization) and a Godot tower defense game Jekyll GDPR plugin — Extracting my custom GDPR implementation into a reusable Ruby gem Dark mode toggle — The site respects OS dark mode but has no manual override. Time to add a switch. Kubernetes on Proxmox — The k8s-proxmox project is ready for its first real workloads About Me I’m Michael McGarrah — a cloud architect and data scientist with 25+ years in enterprise infrastructure. I hold an M.S. in Computer Science (AI/ML) from Georgia Tech, a B.S. in Computer Science from NC State, and I’m currently pursuing an Executive MBA at UNC Wilmington. You can find more of my writing at mcgarrah.org, my detailed resume at mcgarrah.org/resume, and my profiles on LinkedIn, Substack, GitHub, and Google Scholar." />
+<meta property="og:description" content="Building in Public: Preview Sites, Domain Migrations, and the Google Tax Subtitle: Infrastructure for writing, the registrar migration saga, and why Google makes simple things hard Author: McGarrah Planned: July 13, 2026 (Monday) URL: TBD Tags: Software Engineering, Web Development, Infrastructure, Open Source, DNS, Google, Jekyll My previous newsletters covered infrastructure, the blog platform, storage failures, and reviving a VS Code extension. This one covers the meta-work of running a technical blog — the infrastructure you build to support the writing itself, and the external dependencies that fight you every step of the way. Three threads this month: building a password-protected draft preview site so reviewers can see unpublished content, migrating 16 domains away from SquareSpace’s walled garden, and the ongoing battle with Google’s service sprawl. Thanks for reading! Subscribe for free to receive new posts and support my work. Building a Draft Preview Site I write 30-40 drafts at a time. I wanted trusted reviewers to see the rendered site — not raw markdown on GitHub — before I publish. Sounds simple. GitHub Pages has no authentication. My repo is public. And I didn’t want to add Netlify, Cloudflare, or any new external service. The solution: a separate GitHub repo at drafts.mcgarrah.org, built automatically via GitHub Actions with --drafts --future, selectively encrypted with Staticrypt, and deployed on every push to main. Three articles cover the full journey from “what are my options?” to “it’s live and working.” Building a Draft Preview Site — Part 1: Exploring the Options — Seven options evaluated, most eliminated. Netlify (new dependency), Cloudflare (new dependency), self-hosted (not ready), project page (shared robots.txt problem). Two survivors: Staticrypt on a subdomain, or no auth at all. Building a Draft Preview Site — Part 2: Refining the Design — The config overlay approach, Giscus feedback on a separate repo, Staticrypt navigation quirks, and the DNS routing trick that lets multiple GitHub repos serve different custom domains. Building a Draft Preview Site — Part 3: The Implementation — The real workflow with all the edge cases. Staticrypt’s -o flag doesn’t exist. Directory output flattens paths. Full-site encryption is wasteful. Hash-based verification catches silent failures. Eight issues hit during implementation, all documented with fixes. The system is live at drafts.mcgarrah.org and deploys automatically. Reviewers enter a shared password, see the full site with drafts and future posts visible, and can leave feedback via Giscus comments that stay separate from production. Migrating 16 Domains from SquareSpace to Porkbun Google Domains was great. Then Google sold it to SquareSpace. SquareSpace is expensive, has no API, and locks you into their ecosystem. For a homelab that needs programmatic DNS management (Technitium, PowerDNS, automation), that’s a dealbreaker. Migrating 16 Domains from SquareSpace to Porkbun — The multi-week process of transferring domains in batches, managing costs ($182 total for renewals), dealing with SquareSpace’s 5-day transfer holds, and the critical lesson: SquareSpace deletes all DNS records after transfer with no export option. You must back up records before initiating transfer. 9 of 16 domains complete (56%). The most complex domain — mcgarrah.org with 25+ DNS records across GitHub Pages, Mailgun email, DigitalOcean apps, and multiple subdomains — is deliberately last. Every other domain is practice for the big one. The Google Services Tax Running a technical blog shouldn’t require managing six interconnected Google services, each with its own dashboard, approval process, and opaque requirements. And yet. The Google Services Tax on a Simple Blog — Analytics, Search Console, Custom Search, AdSense, Tag Manager, PageSpeed Insights — each exists in its own silo with its own integration complexity. The most maddening part: Google’s own services don’t integrate seamlessly with each other. The article also documents months of work trying to get AdSense approved — GDPR compliance, E-E-A-T improvements, sitemap fixes, crawler access debugging — and still getting rejected with vague “your site isn’t ready” feedback. The battle continues. The Caddy Reverse Proxy Addition A quick infrastructure win that solved a daily annoyance: Caddy Reverse Proxy for Ceph Dashboard — The Ceph Dashboard runs on whichever node is the active ceph-mgr, which changes on failover. Adding it to the existing Caddy proxy with health checks gives a single stable URL that automatically routes to the active node. Five minutes of config, permanent fix. What These Have in Common All of these are meta-work — infrastructure that supports the actual creative output rather than being the output itself. The draft preview site makes writing better. The domain migration enables future automation. The Google services (theoretically) help readers find the content. The Caddy proxy makes monitoring easier. The trap is spending all your time on meta-work and never writing the actual content. The escape is recognizing when the infrastructure is “good enough” and shipping imperfect articles rather than perfecting the pipeline. I’m still working on that balance. What’s Next Game development — Returning to an old passion with StarVoyager (C++ modernization) and a Godot tower defense game Jekyll GDPR plugin — Extracting my custom GDPR implementation into a reusable Ruby gem Dark mode toggle — The site respects OS dark mode but has no manual override. Time to add a switch. Kubernetes on Proxmox — The k8s-proxmox project is ready for its first real workloads About Me I’m Michael McGarrah — a cloud architect and data scientist with 25+ years in enterprise infrastructure. I hold an M.S. in Computer Science (AI/ML) from Georgia Tech, a B.S. in Computer Science from NC State, and I’m currently pursuing an Executive MBA at UNC Wilmington. You can find more of my writing at mcgarrah.org, my detailed resume at mcgarrah.org/resume, and my profiles on LinkedIn, Substack, GitHub, and Google Scholar." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/substack/2026-07-13-building-in-public/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/substack/2026-07-13-building-in-public/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-07-13T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Building in Public: Preview Sites, Domain Migrations, and the Google Tax" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah","url":"https://mcgarrah.org"},"dateModified":"2026-07-13T00:00:00+00:00","datePublished":"2026-07-13T00:00:00+00:00","description":"Building in Public: Preview Sites, Domain Migrations, and the Google Tax Subtitle: Infrastructure for writing, the registrar migration saga, and why Google makes simple things hard Author: McGarrah Planned: July 13, 2026 (Monday) URL: TBD Tags: Software Engineering, Web Development, Infrastructure, Open Source, DNS, Google, Jekyll My previous newsletters covered infrastructure, the blog platform, storage failures, and reviving a VS Code extension. This one covers the meta-work of running a technical blog — the infrastructure you build to support the writing itself, and the external dependencies that fight you every step of the way. Three threads this month: building a password-protected draft preview site so reviewers can see unpublished content, migrating 16 domains away from SquareSpace’s walled garden, and the ongoing battle with Google’s service sprawl. Thanks for reading! Subscribe for free to receive new posts and support my work. Building a Draft Preview Site I write 30-40 drafts at a time. I wanted trusted reviewers to see the rendered site — not raw markdown on GitHub — before I publish. Sounds simple. GitHub Pages has no authentication. My repo is public. And I didn’t want to add Netlify, Cloudflare, or any new external service. The solution: a separate GitHub repo at drafts.mcgarrah.org, built automatically via GitHub Actions with --drafts --future, selectively encrypted with Staticrypt, and deployed on every push to main. Three articles cover the full journey from “what are my options?” to “it’s live and working.” Building a Draft Preview Site — Part 1: Exploring the Options — Seven options evaluated, most eliminated. Netlify (new dependency), Cloudflare (new dependency), self-hosted (not ready), project page (shared robots.txt problem). Two survivors: Staticrypt on a subdomain, or no auth at all. Building a Draft Preview Site — Part 2: Refining the Design — The config overlay approach, Giscus feedback on a separate repo, Staticrypt navigation quirks, and the DNS routing trick that lets multiple GitHub repos serve different custom domains. Building a Draft Preview Site — Part 3: The Implementation — The real workflow with all the edge cases. Staticrypt’s -o flag doesn’t exist. Directory output flattens paths. Full-site encryption is wasteful. Hash-based verification catches silent failures. Eight issues hit during implementation, all documented with fixes. The system is live at drafts.mcgarrah.org and deploys automatically. Reviewers enter a shared password, see the full site with drafts and future posts visible, and can leave feedback via Giscus comments that stay separate from production. Migrating 16 Domains from SquareSpace to Porkbun Google Domains was great. Then Google sold it to SquareSpace. SquareSpace is expensive, has no API, and locks you into their ecosystem. For a homelab that needs programmatic DNS management (Technitium, PowerDNS, automation), that’s a dealbreaker. Migrating 16 Domains from SquareSpace to Porkbun — The multi-week process of transferring domains in batches, managing costs ($182 total for renewals), dealing with SquareSpace’s 5-day transfer holds, and the critical lesson: SquareSpace deletes all DNS records after transfer with no export option. You must back up records before initiating transfer. 9 of 16 domains complete (56%). The most complex domain — mcgarrah.org with 25+ DNS records across GitHub Pages, Mailgun email, DigitalOcean apps, and multiple subdomains — is deliberately last. Every other domain is practice for the big one. The Google Services Tax Running a technical blog shouldn’t require managing six interconnected Google services, each with its own dashboard, approval process, and opaque requirements. And yet. The Google Services Tax on a Simple Blog — Analytics, Search Console, Custom Search, AdSense, Tag Manager, PageSpeed Insights — each exists in its own silo with its own integration complexity. The most maddening part: Google’s own services don’t integrate seamlessly with each other. The article also documents months of work trying to get AdSense approved — GDPR compliance, E-E-A-T improvements, sitemap fixes, crawler access debugging — and still getting rejected with vague “your site isn’t ready” feedback. The battle continues. The Caddy Reverse Proxy Addition A quick infrastructure win that solved a daily annoyance: Caddy Reverse Proxy for Ceph Dashboard — The Ceph Dashboard runs on whichever node is the active ceph-mgr, which changes on failover. Adding it to the existing Caddy proxy with health checks gives a single stable URL that automatically routes to the active node. Five minutes of config, permanent fix. What These Have in Common All of these are meta-work — infrastructure that supports the actual creative output rather than being the output itself. The draft preview site makes writing better. The domain migration enables future automation. The Google services (theoretically) help readers find the content. The Caddy proxy makes monitoring easier. The trap is spending all your time on meta-work and never writing the actual content. The escape is recognizing when the infrastructure is “good enough” and shipping imperfect articles rather than perfecting the pipeline. I’m still working on that balance. What’s Next Game development — Returning to an old passion with StarVoyager (C++ modernization) and a Godot tower defense game Jekyll GDPR plugin — Extracting my custom GDPR implementation into a reusable Ruby gem Dark mode toggle — The site respects OS dark mode but has no manual override. Time to add a switch. Kubernetes on Proxmox — The k8s-proxmox project is ready for its first real workloads About Me I’m Michael McGarrah — a cloud architect and data scientist with 25+ years in enterprise infrastructure. I hold an M.S. in Computer Science (AI/ML) from Georgia Tech, a B.S. in Computer Science from NC State, and I’m currently pursuing an Executive MBA at UNC Wilmington. You can find more of my writing at mcgarrah.org, my detailed resume at mcgarrah.org/resume, and my profiles on LinkedIn, Substack, GitHub, and Google Scholar.","headline":"Building in Public: Preview Sites, Domain Migrations, and the Google Tax","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/substack/2026-07-13-building-in-public/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/substack/2026-07-13-building-in-public/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+
+<!-- Favicons -->
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="shortcut icon" href="/favicon.ico">
+<meta name="theme-color" content="#ffffff">
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="Substack" href="https://mcgarrah.substack.com/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#substack"></use></svg>
+      <span aria-hidden="true">Substack</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Engineering deep dives on infrastructure, distributed systems, and AI/ML — from homelab experiments to enterprise architecture.</div>
+</aside>
+
+
+
+
+
+<div style="background:#e67e00;color:#fff;text-align:center;padding:0.5em 1em;font-size:0.9em;font-weight:bold;">
+  ⚠ DRAFT PREVIEW SITE — unpublished content, may change.
+  <a href="https://mcgarrah.org" style="color:#fff;text-decoration:underline;margin-left:0.5em;">Go to the main site →</a>
+</div>
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+  
+  <nav class="drafts-nav"><a href="/substack/"><svg aria-label="Substack Drafts" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#newspaper"></use></svg><span>Substack Drafts</span>
+    </a><a href="/linkedin/"><svg aria-label="LinkedIn Drafts" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg><span>LinkedIn Drafts</span>
+    </a></nav>
+  
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/substack/2026-07-13-building-in-public/">Building in Public: Preview Sites, Domain Migrations, and the Google Tax</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-07-13T00:00:00+00:00">July 13, 2026</time><span class="reading-time">4 min read</span></header>
+
+  <h1 id="building-in-public-preview-sites-domain-migrations-and-the-google-tax">Building in Public: Preview Sites, Domain Migrations, and the Google Tax</h1>
+
+<p><strong>Subtitle:</strong> Infrastructure for writing, the registrar migration saga, and why Google makes simple things hard</p>
+
+<p><strong>Author:</strong> McGarrah</p>
+
+<p><strong>Planned:</strong> July 13, 2026 (Monday)</p>
+
+<p><strong>URL:</strong> TBD</p>
+
+<p><strong>Tags:</strong> Software Engineering, Web Development, Infrastructure, Open Source, DNS, Google, Jekyll</p>
+
+<hr />
+
+<p>My previous newsletters covered <a href="https://mcgarrah.substack.com/p/from-homelabs-to-machine-learning">infrastructure</a>, <a href="https://mcgarrah.substack.com/p/from-markdown-to-production">the blog platform</a>, <a href="https://mcgarrah.substack.com/p/when-storage-breaks">storage failures</a>, and <a href="TBD">reviving a VS Code extension</a>. This one covers the meta-work of running a technical blog — the infrastructure you build to support the writing itself, and the external dependencies that fight you every step of the way.</p>
+
+<p>Three threads this month: building a password-protected draft preview site so reviewers can see unpublished content, migrating 16 domains away from SquareSpace’s walled garden, and the ongoing battle with Google’s service sprawl.</p>
+
+<p><em>Thanks for reading! Subscribe for free to receive new posts and support my work.</em></p>
+
+<h2 id="building-a-draft-preview-site">Building a Draft Preview Site</h2>
+
+<p>I write 30-40 drafts at a time. I wanted trusted reviewers to see the <em>rendered</em> site — not raw markdown on GitHub — before I publish. Sounds simple. GitHub Pages has no authentication. My repo is public. And I didn’t want to add Netlify, Cloudflare, or any new external service.</p>
+
+<p>The solution: a separate GitHub repo at <code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code>, built automatically via GitHub Actions with <code class="language-plaintext highlighter-rouge">--drafts --future</code>, selectively encrypted with Staticrypt, and deployed on every push to main. Three articles cover the full journey from “what are my options?” to “it’s live and working.”</p>
+
+<ul>
+  <li>
+    <p><a href="https://mcgarrah.org/jekyll-draft-preview-site-part-1/">Building a Draft Preview Site — Part 1: Exploring the Options</a> — Seven options evaluated, most eliminated. Netlify (new dependency), Cloudflare (new dependency), self-hosted (not ready), project page (shared robots.txt problem). Two survivors: Staticrypt on a subdomain, or no auth at all.</p>
+  </li>
+  <li>
+    <p><a href="https://mcgarrah.org/jekyll-draft-preview-site-part-2/">Building a Draft Preview Site — Part 2: Refining the Design</a> — The config overlay approach, Giscus feedback on a separate repo, Staticrypt navigation quirks, and the DNS routing trick that lets multiple GitHub repos serve different custom domains.</p>
+  </li>
+  <li>
+    <p><a href="https://mcgarrah.org/jekyll-draft-preview-site-part-3/">Building a Draft Preview Site — Part 3: The Implementation</a> — The real workflow with all the edge cases. Staticrypt’s <code class="language-plaintext highlighter-rouge">-o</code> flag doesn’t exist. Directory output flattens paths. Full-site encryption is wasteful. Hash-based verification catches silent failures. Eight issues hit during implementation, all documented with fixes.</p>
+  </li>
+</ul>
+
+<p>The system is live at <code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code> and deploys automatically. Reviewers enter a shared password, see the full site with drafts and future posts visible, and can leave feedback via Giscus comments that stay separate from production.</p>
+
+<h2 id="migrating-16-domains-from-squarespace-to-porkbun">Migrating 16 Domains from SquareSpace to Porkbun</h2>
+
+<p>Google Domains was great. Then Google sold it to SquareSpace. SquareSpace is expensive, has no API, and locks you into their ecosystem. For a homelab that needs programmatic DNS management (Technitium, PowerDNS, automation), that’s a dealbreaker.</p>
+
+<ul>
+  <li><a href="https://mcgarrah.org/name-service-registrars/">Migrating 16 Domains from SquareSpace to Porkbun</a> — The multi-week process of transferring domains in batches, managing costs ($182 total for renewals), dealing with SquareSpace’s 5-day transfer holds, and the critical lesson: <strong>SquareSpace deletes all DNS records after transfer with no export option.</strong> You must back up records before initiating transfer. 9 of 16 domains complete (56%).</li>
+</ul>
+
+<p>The most complex domain — mcgarrah.org with 25+ DNS records across GitHub Pages, Mailgun email, DigitalOcean apps, and multiple subdomains — is deliberately last. Every other domain is practice for the big one.</p>
+
+<h2 id="the-google-services-tax">The Google Services Tax</h2>
+
+<p>Running a technical blog shouldn’t require managing six interconnected Google services, each with its own dashboard, approval process, and opaque requirements. And yet.</p>
+
+<ul>
+  <li><a href="https://mcgarrah.org/google-service-sprawl/">The Google Services Tax on a Simple Blog</a> — Analytics, Search Console, Custom Search, AdSense, Tag Manager, PageSpeed Insights — each exists in its own silo with its own integration complexity. The most maddening part: Google’s own services don’t integrate seamlessly with each other.</li>
+</ul>
+
+<p>The article also documents months of work trying to get AdSense approved — GDPR compliance, E-E-A-T improvements, sitemap fixes, crawler access debugging — and still getting rejected with vague “your site isn’t ready” feedback. The battle continues.</p>
+
+<h2 id="the-caddy-reverse-proxy-addition">The Caddy Reverse Proxy Addition</h2>
+
+<p>A quick infrastructure win that solved a daily annoyance:</p>
+
+<ul>
+  <li><a href="https://mcgarrah.org/caddy-reverse-proxy-ceph-dashboard/">Caddy Reverse Proxy for Ceph Dashboard</a> — The Ceph Dashboard runs on whichever node is the active ceph-mgr, which changes on failover. Adding it to the existing Caddy proxy with health checks gives a single stable URL that automatically routes to the active node. Five minutes of config, permanent fix.</li>
+</ul>
+
+<h2 id="what-these-have-in-common">What These Have in Common</h2>
+
+<p>All of these are meta-work — infrastructure that supports the actual creative output rather than being the output itself. The draft preview site makes writing better. The domain migration enables future automation. The Google services (theoretically) help readers find the content. The Caddy proxy makes monitoring easier.</p>
+
+<p>The trap is spending all your time on meta-work and never writing the actual content. The escape is recognizing when the infrastructure is “good enough” and shipping imperfect articles rather than perfecting the pipeline.</p>
+
+<p>I’m still working on that balance.</p>
+
+<h2 id="whats-next">What’s Next</h2>
+
+<ul>
+  <li><strong>Game development</strong> — Returning to an old passion with StarVoyager (C++ modernization) and a Godot tower defense game</li>
+  <li><strong>Jekyll GDPR plugin</strong> — Extracting my custom GDPR implementation into a reusable Ruby gem</li>
+  <li><strong>Dark mode toggle</strong> — The site respects OS dark mode but has no manual override. Time to add a switch.</li>
+  <li><strong>Kubernetes on Proxmox</strong> — The k8s-proxmox project is ready for its first real workloads</li>
+</ul>
+
+<h2 id="about-me">About Me</h2>
+
+<p>I’m Michael McGarrah — a cloud architect and data scientist with 25+ years in enterprise infrastructure. I hold an M.S. in Computer Science (AI/ML) from Georgia Tech, a B.S. in Computer Science from NC State, and I’m currently pursuing an Executive MBA at UNC Wilmington.</p>
+
+<p>You can find more of my writing at <a href="https://mcgarrah.org">mcgarrah.org</a>, my detailed resume at <a href="https://mcgarrah.org/resume">mcgarrah.org/resume</a>, and my profiles on <a href="https://www.linkedin.com/in/michaelmcgarrah/">LinkedIn</a>, <a href="https://mcgarrah.substack.com/">Substack</a>, <a href="https://github.com/mcgarrah">GitHub</a>, and <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ">Google Scholar</a>.</p>
+
+
+  <div class="post-tags-categories">
+    
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://mcgarrah.substack.com/" rel="me">Substack</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Engineering deep dives on infrastructure, distributed systems, and AI/ML — from homelab experiments to enterprise architecture.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://mcgarrah.substack.com/" ><svg aria-label="Substack" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#substack"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>
