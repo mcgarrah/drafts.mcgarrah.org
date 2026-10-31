@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Jellyfin Media Integrity Scanner: Deployment &amp; Operations | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Jellyfin Media Integrity Scanner: Deployment &amp; Operations" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="Deploying and operating the Jellyfin Media Integrity Scanner plugin in a production homelab. Covers Proxmox LXC installation, CephFS/NFS storage configuration, monitoring with Prometheus/Grafana, alerting on failures, and GitHub Actions CI/CD for automated builds and releases. Part 5 of a 6-part development series." />
+<meta property="og:description" content="Deploying and operating the Jellyfin Media Integrity Scanner plugin in a production homelab. Covers Proxmox LXC installation, CephFS/NFS storage configuration, monitoring with Prometheus/Grafana, alerting on failures, and GitHub Actions CI/CD for automated builds and releases. Part 5 of a 6-part development series." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/jellyfin-media-integrity-deployment-operations/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/jellyfin-media-integrity-deployment-operations/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:image" content="https://drafts.mcgarrah.org/assets/images/og/jellyfin-media-integrity-deployment-operations.png" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-08-17T00:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta property="twitter:image" content="https://drafts.mcgarrah.org/assets/images/og/jellyfin-media-integrity-deployment-operations.png" />
+<meta property="twitter:title" content="Jellyfin Media Integrity Scanner: Deployment &amp; Operations" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah","url":"https://mcgarrah.org"},"dateModified":"2026-08-17T00:00:00+00:00","datePublished":"2026-08-17T00:00:00+00:00","description":"Deploying and operating the Jellyfin Media Integrity Scanner plugin in a production homelab. Covers Proxmox LXC installation, CephFS/NFS storage configuration, monitoring with Prometheus/Grafana, alerting on failures, and GitHub Actions CI/CD for automated builds and releases. Part 5 of a 6-part development series.","headline":"Jellyfin Media Integrity Scanner: Deployment &amp; Operations","image":"https://drafts.mcgarrah.org/assets/images/og/jellyfin-media-integrity-deployment-operations.png","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/jellyfin-media-integrity-deployment-operations/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/jellyfin-media-integrity-deployment-operations/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+
+<!-- Favicons -->
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="shortcut icon" href="/favicon.ico">
+<meta name="theme-color" content="#ffffff">
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="Substack" href="https://mcgarrah.substack.com/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#substack"></use></svg>
+      <span aria-hidden="true">Substack</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Engineering deep dives on infrastructure, distributed systems, and AI/ML — from homelab experiments to enterprise architecture.</div>
+</aside>
+
+
+
+
+
+<div style="background:#e67e00;color:#fff;text-align:center;padding:0.5em 1em;font-size:0.9em;font-weight:bold;">
+  ⚠ DRAFT PREVIEW SITE — unpublished content, may change.
+  <a href="https://mcgarrah.org" style="color:#fff;text-decoration:underline;margin-left:0.5em;">Go to the main site →</a>
+</div>
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+  
+  <nav class="drafts-nav"><a href="/substack/"><svg aria-label="Substack Drafts" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#newspaper"></use></svg><span>Substack Drafts</span>
+    </a><a href="/linkedin/"><svg aria-label="LinkedIn Drafts" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg><span>LinkedIn Drafts</span>
+    </a></nav>
+  
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/jellyfin-media-integrity-deployment-operations/">Jellyfin Media Integrity Scanner: Deployment & Operations</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-08-17T00:00:00+00:00">August 17, 2026</time><span class="reading-time">18 min read</span></header>
+
+  <p>The plugin is built — scanner core, SQLite persistence, REST API, admin dashboard. Now it needs to run reliably in production without causing problems. This article covers the deployment story: installing the plugin, configuring it for shared storage, monitoring its operation, and automating the release pipeline.</p>
+
+<!-- excerpt-end -->
+
+<p>This is Part 5 of the <a href="/jellyfin-media-integrity-scanner-introduction/">Jellyfin Media Integrity Scanner</a> development series. The build pipeline, release pipeline, and Proxmox LXC provisioning described below are all live and operational, and <code class="language-plaintext highlighter-rouge">MaxReadRateMbPerSec</code> and the quiet-hours settings in the CephFS/NFS tuning tables are genuinely enforced (see <a href="#cephfs-specific-configuration">CephFS-Specific Configuration</a> for the mechanism). The CI/CD section reflects the real, current workflows — automated <code class="language-plaintext highlighter-rouge">manifest.json</code> version bumps on tagged releases, plus a unit test suite and a Docker-based integration suite gating every build (see <a href="#cicd-pipeline">CI/CD Pipeline</a> for what that testing found). There’s also a real in-app settings page now (see the <a href="/jellyfin-media-integrity-dashboard-api/#update-a-real-settings-page">dashboard article</a>), so the “Configure throttling settings” step in the <a href="#operational-runbook">Operational Runbook</a> no longer means hand-editing an XML file. CephFS OSD-level tuning and Prometheus/Grafana monitoring remain aspirational — see the <a href="/jellyfin-media-integrity-release-and-updates/#future-work">final article’s Future Work section</a> for where those stand.</p>
+
+<h2 id="installation-methods">Installation Methods</h2>
+
+<h3 id="method-1-plugin-repository-recommended">Method 1: Plugin Repository (Recommended)</h3>
+
+<p>Add the custom repository to Jellyfin:</p>
+
+<ol>
+  <li><strong>Dashboard → Plugins → Repositories → Add</strong></li>
+  <li><strong>Name:</strong> <code class="language-plaintext highlighter-rouge">mcgarrah-plugins</code></li>
+  <li><strong>URL:</strong> <code class="language-plaintext highlighter-rouge">https://raw.githubusercontent.com/mcgarrah/jellyfin-plugin-media-integrity-scanner/main/manifest.json</code></li>
+  <li><strong>Save</strong> → Go to <strong>Catalog</strong> → Install <strong>Media Integrity Scanner</strong></li>
+  <li><strong>Restart Jellyfin</strong></li>
+</ol>
+
+<p><strong>If the plugin doesn’t appear in the Catalog after adding the repository, this is almost always the web client, not the server.</strong> Hit exactly this standing up a second test instance: the repository saved correctly, the manifest was reachable (confirmed both from a browser and with <code class="language-plaintext highlighter-rouge">curl</code> from inside the container), and querying the server’s own <code class="language-plaintext highlighter-rouge">/Packages</code> API directly with an authenticated request showed the plugin present in the catalog data all along — correct GUID, correctly tagged with the repository name. The web UI was just holding a stale, cached view of the catalog fetched before the repository was added. A hard refresh of the Catalog page (Ctrl+Shift+R / Cmd+Shift+R, not a normal reload) resolved it immediately. If that doesn’t do it, a full logout/login or a private-browsing window rules out cached session state, and it’s worth checking the Catalog page’s category filter dropdown hasn’t been left on something other than “General” from a previous session.</p>
+
+<h3 id="method-2-manual-dll-installation">Method 2: Manual DLL Installation</h3>
+
+<p>For development or airgapped environments:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Download the latest release</span>
+wget https://github.com/mcgarrah/jellyfin-plugin-media-integrity-scanner/releases/latest/download/media-integrity-scanner.zip
+
+<span class="c"># Extract to plugin directory</span>
+unzip media-integrity-scanner.zip <span class="nt">-d</span> <span class="se">\</span>
+  /var/lib/jellyfin/plugins/MediaIntegrityScanner
+
+<span class="c"># Restart Jellyfin</span>
+systemctl restart jellyfin
+</code></pre></div></div>
+
+<h3 id="method-3-build-from-source">Method 3: Build from Source</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone https://github.com/mcgarrah/jellyfin-plugin-media-integrity-scanner.git
+<span class="nb">cd </span>jellyfin-plugin-media-integrity-scanner
+
+dotnet build <span class="nt">--configuration</span> Release
+dotnet publish <span class="nt">--configuration</span> Release <span class="nt">--output</span> ./publish
+
+<span class="c"># Copy to plugins directory</span>
+<span class="nb">cp</span> <span class="nt">-r</span> ./publish /var/lib/jellyfin/plugins/MediaIntegrityScanner
+
+systemctl restart jellyfin
+</code></pre></div></div>
+
+<h2 id="proxmox-lxc-configuration">Proxmox LXC Configuration</h2>
+
+<p>My Jellyfin runs in an unprivileged Proxmox LXC container. Key considerations:</p>
+
+<h3 id="ffmpeg-availability">FFmpeg Availability</h3>
+
+<p>The <code class="language-plaintext highlighter-rouge">jellyfin-ffmpeg</code> package bundles a compatible ffmpeg build:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Inside the LXC container</span>
+apt <span class="nb">install </span>jellyfin-ffmpeg6
+
+<span class="c"># Verify</span>
+/usr/lib/jellyfin-ffmpeg/ffmpeg <span class="nt">-version</span>
+</code></pre></div></div>
+
+<p>The plugin auto-detects this path. No configuration needed.</p>
+
+<h3 id="resource-limits">Resource Limits</h3>
+
+<p>The LXC container should have adequate resources for background scanning:</p>
+
+<div class="language-ini highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># /etc/pve/lxc/XXX.conf additions for scan workload
+</span><span class="na">lxc.cgroup2.cpu.max:</span><span class="w"> </span><span class="na">200000</span><span class="w"> </span><span class="na">100000</span><span class="w">  </span><span class="c"># 2 cores max
+</span><span class="na">lxc.cgroup2.memory.max:</span><span class="w"> </span><span class="na">4G</span><span class="w">
+</span><span class="na">lxc.cgroup2.io.max:</span><span class="w"> </span><span class="na">/dev/sdX</span><span class="w"> </span><span class="py">rbps</span><span class="p">=</span><span class="s">10485760  # 10MB/s read limit</span>
+</code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">io.max</code> cgroup limit provides a hard ceiling on disk I/O at the container level, complementing the plugin’s application-level throttling.</p>
+
+<h3 id="storage-mount">Storage Mount</h3>
+
+<p>CephFS media storage mounted into the container:</p>
+
+<div class="language-ini highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># /etc/pve/lxc/XXX.conf
+</span><span class="na">mp0:</span><span class="w"> </span><span class="na">/mnt/cephfs/media,</span><span class="py">mp</span><span class="p">=</span><span class="s">/media,ro=0</span>
+</code></pre></div></div>
+
+<p>For integrity scanning, read-only access is sufficient. Consider mounting as read-only to prevent any accidental writes:</p>
+
+<div class="language-ini highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">mp0:</span><span class="w"> </span><span class="na">/mnt/cephfs/media,</span><span class="py">mp</span><span class="p">=</span><span class="s">/media,ro=1</span>
+</code></pre></div></div>
+
+<h2 id="cephfs-specific-configuration">CephFS-Specific Configuration</h2>
+
+<p>CephFS distributed storage requires careful throttling to avoid impacting other clients:</p>
+
+<h3 id="recommended-plugin-settings-for-cephfs">Recommended Plugin Settings for CephFS</h3>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"MaxConcurrentScans"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"DelayBetweenFilesMs"</span><span class="p">:</span><span class="w"> </span><span class="mi">10000</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"MaxReadRateMbPerSec"</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"PauseDuringPlayback"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"UseQuietHoursOnly"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"QuietHoursStart"</span><span class="p">:</span><span class="w"> </span><span class="s2">"01:00"</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"QuietHoursEnd"</span><span class="p">:</span><span class="w"> </span><span class="s2">"07:00"</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<h3 id="why-these-values">Why These Values</h3>
+
+<ul>
+  <li><strong>10-second inter-file delay</strong> — Allows CephFS OSD recovery between reads</li>
+  <li><strong>5 MB/s read cap</strong> — Well below typical OSD throughput, leaves headroom for playback</li>
+  <li><strong>Quiet hours only</strong> — Scanning happens when nobody is watching</li>
+  <li><strong>Single file at a time</strong> — Prevents MDS metadata load spikes</li>
+</ul>
+
+<blockquote>
+  <p><strong>Update (July 31, 2026) — how the read-rate cap and quiet hours actually work:</strong> For a while, <code class="language-plaintext highlighter-rouge">MaxReadRateMbPerSec</code> and the quiet-hours settings were config fields that did nothing — a gap found during a later review. They’re enforced now, but worth understanding the mechanism:</p>
+
+  <ul>
+    <li><strong><code class="language-plaintext highlighter-rouge">MaxReadRateMbPerSec</code> is an average-rate pacer, not a literal in-flight byte cap.</strong> After each file scan, the plugin computes how long the file <em>should</em> have taken at the configured rate (<code class="language-plaintext highlighter-rouge">fileSizeMB ÷ maxReadRateMbPerSec</code>) and pads the wall-clock gap before the next file if the scan finished faster than that. This was a deliberate choice over piping the file through ffmpeg’s stdin for precise byte-level control: stdin piping breaks seekability, and many MP4/MOV files store the <code class="language-plaintext highlighter-rouge">moov</code> atom at the end of the file — probing them over a non-seekable pipe produces a false <code class="language-plaintext highlighter-rouge">"moov atom not found"</code> failure, which is exactly the corruption signature this plugin exists to catch. The padding approach has zero risk to decode correctness and still bounds the long-run average throughput pulled from CephFS.</li>
+    <li><strong><code class="language-plaintext highlighter-rouge">UseQuietHoursOnly</code> gates every scan through <code class="language-plaintext highlighter-rouge">ScanEngine</code></strong>, the same choke point all scan paths (manual, event-driven, and scheduled) already go through — mirroring the existing playback-pause mechanism. If the toggle is on and the current time falls outside the window, the scan waits (polling every 5 minutes) rather than skipping outright, so a manual “scan now” from the dashboard still eventually runs instead of silently no-op’ing.</li>
+  </ul>
+
+  <p>The OS-level <code class="language-plaintext highlighter-rouge">lxc.cgroup2.io.max</code> limit from the <a href="#resource-limits">Resource Limits</a> section above is still the harder guarantee — the plugin’s pacing is a cooperative, application-level complement to it, not a replacement.</p>
+</blockquote>
+
+<h3 id="monitoring-cephfs-impact">Monitoring CephFS Impact</h3>
+
+<p>Watch OSD utilization during scanning:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># On Proxmox host</span>
+ceph osd perf
+
+<span class="c"># Per-OSD bandwidth</span>
+ceph daemon osd.X perf dump | jq <span class="s1">'.osd.op_r_out_bytes'</span>
+
+<span class="c"># Client I/O from the Jellyfin container</span>
+ceph daemon mds.X session <span class="nb">ls</span> | jq <span class="s1">'.[].inst'</span>
+</code></pre></div></div>
+
+<h2 id="nfs-storage-configuration">NFS Storage Configuration</h2>
+
+<p>For NFS-backed media libraries:</p>
+
+<div class="language-json highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">{</span><span class="w">
+  </span><span class="nl">"MaxConcurrentScans"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"DelayBetweenFilesMs"</span><span class="p">:</span><span class="w"> </span><span class="mi">5000</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"MaxReadRateMbPerSec"</span><span class="p">:</span><span class="w"> </span><span class="mi">20</span><span class="p">,</span><span class="w">
+  </span><span class="nl">"PauseDuringPlayback"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div></div>
+
+<p>NFS is more tolerant of sequential reads than CephFS, so the rate limit can be higher. Monitor with <code class="language-plaintext highlighter-rouge">nfsstat</code> on the server side.</p>
+
+<h2 id="monitoring--alerting">Monitoring &amp; Alerting</h2>
+
+<h3 id="prometheus-metrics-future-enhancement">Prometheus Metrics (Future Enhancement)</h3>
+
+<p>The API endpoint provides data suitable for Prometheus scraping:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># prometheus.yml scrape config</span>
+<span class="pi">-</span> <span class="na">job_name</span><span class="pi">:</span> <span class="s1">'</span><span class="s">jellyfin-media-integrity'</span>
+  <span class="na">metrics_path</span><span class="pi">:</span> <span class="s1">'</span><span class="s">/MediaIntegrity/Status'</span>
+  <span class="na">static_configs</span><span class="pi">:</span>
+    <span class="pi">-</span> <span class="na">targets</span><span class="pi">:</span> <span class="pi">[</span><span class="s1">'</span><span class="s">jellyfin-host:8096'</span><span class="pi">]</span>
+  <span class="c1"># Custom relabeling to extract metrics from JSON response</span>
+</code></pre></div></div>
+
+<h3 id="simple-health-check-script">Simple Health Check Script</h3>
+
+<p>Until native Prometheus support is added:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+<span class="c"># /usr/local/bin/check-media-integrity.sh</span>
+
+<span class="nv">API_KEY</span><span class="o">=</span><span class="s2">"your-api-key"</span>
+<span class="nv">JELLYFIN_URL</span><span class="o">=</span><span class="s2">"http://localhost:8096"</span>
+
+<span class="nv">STATUS</span><span class="o">=</span><span class="si">$(</span>curl <span class="nt">-s</span> <span class="s2">"</span><span class="k">${</span><span class="nv">JELLYFIN_URL</span><span class="k">}</span><span class="s2">/MediaIntegrity/Status"</span> <span class="se">\</span>
+  <span class="nt">-H</span> <span class="s2">"X-Emby-Token: </span><span class="k">${</span><span class="nv">API_KEY</span><span class="k">}</span><span class="s2">"</span><span class="si">)</span>
+
+<span class="nv">FAILED</span><span class="o">=</span><span class="si">$(</span><span class="nb">echo</span> <span class="s2">"</span><span class="nv">$STATUS</span><span class="s2">"</span> | jq <span class="s1">'.failedFiles'</span><span class="si">)</span>
+<span class="nv">HEALTH</span><span class="o">=</span><span class="si">$(</span><span class="nb">echo</span> <span class="s2">"</span><span class="nv">$STATUS</span><span class="s2">"</span> | jq <span class="s1">'.healthPercentage'</span><span class="si">)</span>
+
+<span class="k">if</span> <span class="o">[</span> <span class="s2">"</span><span class="nv">$FAILED</span><span class="s2">"</span> <span class="nt">-gt</span> 0 <span class="o">]</span><span class="p">;</span> <span class="k">then
+    </span><span class="nb">echo</span> <span class="s2">"WARNING: </span><span class="nv">$FAILED</span><span class="s2"> media files failed integrity check"</span>
+    <span class="nb">echo</span> <span class="s2">"Library health: </span><span class="k">${</span><span class="nv">HEALTH</span><span class="k">}</span><span class="s2">%"</span>
+    <span class="c"># Send notification (adapt to your alerting system)</span>
+    <span class="c"># curl -d "Media integrity: $FAILED failed files" ntfy.sh/your-topic</span>
+    <span class="nb">exit </span>1
+<span class="k">fi
+
+</span><span class="nb">echo</span> <span class="s2">"OK: Library health </span><span class="k">${</span><span class="nv">HEALTH</span><span class="k">}</span><span class="s2">%"</span>
+<span class="nb">exit </span>0
+</code></pre></div></div>
+
+<h3 id="systemd-timer-for-health-checks">Systemd Timer for Health Checks</h3>
+
+<div class="language-ini highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># /etc/systemd/system/media-integrity-check.timer
+</span><span class="nn">[Unit]</span><span class="w">
+</span><span class="py">Description</span><span class="p">=</span><span class="s">Check media integrity scan results</span>
+<span class="w">
+</span><span class="nn">[Timer]</span><span class="w">
+</span><span class="py">OnCalendar</span><span class="p">=</span><span class="s">*-*-* 08:00:00</span>
+<span class="py">Persistent</span><span class="p">=</span><span class="s">true</span>
+<span class="w">
+</span><span class="nn">[Install]</span><span class="w">
+</span><span class="py">WantedBy</span><span class="p">=</span><span class="s">timers.target</span>
+</code></pre></div></div>
+
+<h2 id="cicd-pipeline">CI/CD Pipeline</h2>
+
+<blockquote>
+  <p><strong>Build environment note (updated July 31, 2026):</strong> The Proxmox LXC build/integration-test container is operational (.NET 9 SDK, <code class="language-plaintext highlighter-rouge">jellyfin-ffmpeg</code>, test Jellyfin instance, sample media). GitHub-hosted Ubuntu runners remain the primary CI path; the LXC is used for local/manual verification.</p>
+
+  <p><strong>Update:</strong> The workflows below are the real, current ones — including two things that were missing for a while: a wired-up unit test suite (<code class="language-plaintext highlighter-rouge">tests/Jellyfin.Plugin.MediaIntegrityScanner.Tests</code>, covering the quiet-hours/read-rate pacing logic from the <a href="/jellyfin-media-integrity-scanner-core/#update-quiet-hours-and-read-rate-throttling">scanner core article</a>), and a real <code class="language-plaintext highlighter-rouge">scripts/update-manifest.py</code> wired into the release workflow (the script existed only as an unimplemented reference in this article before). Note that <code class="language-plaintext highlighter-rouge">dotnet build</code>/<code class="language-plaintext highlighter-rouge">dotnet publish</code> target the plugin’s <code class="language-plaintext highlighter-rouge">.csproj</code> explicitly rather than the solution file — once the test project joined the <code class="language-plaintext highlighter-rouge">.sln</code>, publishing the whole solution would have bundled test binaries into the release artifact.</p>
+
+  <p><strong>Update (August 1, 2026) — the test suite grew a lot, and it found real bugs:</strong> The unit test project grew from 20 tests to 113 across 8 files, covering the database layer, the ffmpeg process wrapper, the API controller, and <code class="language-plaintext highlighter-rouge">ScanEngine</code> itself with mocked dependencies. Separately, the Docker-based integration suite (<code class="language-plaintext highlighter-rouge">tests/run-integration-tests.sh</code> and <code class="language-plaintext highlighter-rouge">integration-test.yml</code>, kept in sync with each other) grew from a basic “plugin loads, config endpoint responds” smoke check into something that actually exercises the scanning pipeline: a settings-page configuration round-trip, both web pages being served, a full scan-and-verify flow (trigger → poll → assert results), item-detail lookups, an item-scoped deep scan, and the cancel endpoint.</p>
+
+  <p>Two things surfaced along the way that are worth knowing about if you’re troubleshooting a similar setup:</p>
+  <ul>
+    <li><strong>The “Verify FFmpeg is available in container” CI step was silently passing without checking anything</strong>, for a long time. It ran <code class="language-plaintext highlighter-rouge">docker exec jellyfin-test ffmpeg -version | head -5</code> — since <code class="language-plaintext highlighter-rouge">jellyfin-ffmpeg</code> isn’t symlinked onto <code class="language-plaintext highlighter-rouge">PATH</code> in the <code class="language-plaintext highlighter-rouge">jellyfin/jellyfin</code> image (it only lives at <code class="language-plaintext highlighter-rouge">/usr/lib/jellyfin-ffmpeg/ffmpeg</code>), that command actually fails, but piping into <code class="language-plaintext highlighter-rouge">head</code> without <code class="language-plaintext highlighter-rouge">pipefail</code> means the pipeline’s reported exit code is <code class="language-plaintext highlighter-rouge">head</code>’s, not <code class="language-plaintext highlighter-rouge">ffmpeg</code>’s — so the step went green anyway. Fixed by checking the real path and adding <code class="language-plaintext highlighter-rouge">set -euo pipefail</code>, a good reminder that any <code class="language-plaintext highlighter-rouge">cmd | head</code>/<code class="language-plaintext highlighter-rouge">| tail</code> in CI is worth a second look for whether it’s masking the thing you actually meant to check.</li>
+    <li><strong>Writing that integration suite found two real, previously-undetected bugs in the plugin itself</strong> — the dashboard was reading JSON field names in the wrong casing (see the <a href="/jellyfin-media-integrity-dashboard-api/#update-the-dashboard-was-reading-the-wrong-json-casing">dashboard article</a>), and the deep-scan “skip if already scanned” check never looked at scan phase (see the <a href="/jellyfin-media-integrity-scanner-core/#update-the-skip-check-didnt-know-about-scan-phase">scanner core article</a>). Both had shipped silently for a while; both were only caught because the integration tests started actually asserting on real response data instead of just HTTP status codes.</li>
+  </ul>
+
+  <p><strong>Update (August 2, 2026) — a real corruption matrix, and a real-browser test suite:</strong> The integration suite’s test media was, until now, a single always-valid clip — every scan test proved the scanner <em>ran</em>, but none proved it actually <em>detected</em> anything. <code class="language-plaintext highlighter-rouge">tests/generate-test-media.sh</code> now generates seven files: two valid (different container/codec pairs) and five corrupted in distinct, verified-for-real ways — an empty file, random bytes with a video extension, a zeroed header, a truncated copy, and a file with a few KB zeroed out mid-stream. The last two are the interesting pair: both pass a header-only <code class="language-plaintext highlighter-rouge">ffprobe</code> scan (the corruption doesn’t touch <code class="language-plaintext highlighter-rouge">moov</code>/<code class="language-plaintext highlighter-rouge">ftyp</code>) but fail a full <code class="language-plaintext highlighter-rouge">ffmpeg</code> decode — the first automated proof that this plugin’s two-phase scanning design actually does what it claims, rather than just running twice for show.</p>
+
+  <p>Building on top of that, a <a href="https://playwright.dev/">Playwright</a> suite now drives the dashboard and settings pages through a real Chromium session — logging in via the actual web form, triggering a real scan, and asserting the UI reflects it — instead of the integration suite’s curl+grep, which never executes a page’s own JavaScript or its real <code class="language-plaintext highlighter-rouge">ApiClient</code>-backed session. That gap is exactly what caught the dashboard-was-never-reachable bug described in the <a href="/jellyfin-media-integrity-dashboard-api/#update-the-dashboard-was-never-actually-reachable-in-a-real-browser">dashboard article’s update</a>. It runs in its own <code class="language-plaintext highlighter-rouge">playwright-e2e.yml</code> workflow, deliberately kept separate from <code class="language-plaintext highlighter-rouge">build.yml</code>/<code class="language-plaintext highlighter-rouge">integration-test.yml</code> — a real-browser suite is slower and more prone to environmental flakiness than a curl-based check, so its result is independent rather than blocking those other checks.</p>
+
+  <p>One operational gotcha worth keeping in mind for any script that starts a Jellyfin container and installs a plugin into it in the same breath: <strong>the plugin DLL has to land in the bind-mounted config directory <em>before</em> the container’s first boot, not after.</strong> Jellyfin loads plugins once, early in its own startup; copying a DLL in after that point is a no-op until the container is restarted. This is a genuine race, not a hypothetical — reproduced locally by starting the container and copying the DLL in immediately after, which intermittently lost the race and left every <code class="language-plaintext highlighter-rouge">/MediaIntegrity/*</code> route 404ing until an explicit restart. Both CI workflows now copy the plugin in before <code class="language-plaintext highlighter-rouge">docker run</code>/<code class="language-plaintext highlighter-rouge">docker compose up</code>, not after.</p>
+</blockquote>
+
+<h2 id="update-automated-development-releases">Update: Automated Development Releases</h2>
+
+<p>Adding an <a href="/jellyfin-media-integrity-dashboard-api/#update-an-in-plugin-update-checker">in-plugin update checker</a> that can offer a Development channel meant that channel needed something real to point at — a plugin repository manifest that actually gets newer entries as work lands on <code class="language-plaintext highlighter-rouge">main</code>, not just at tagged milestones.</p>
+
+<p>A second workflow, <code class="language-plaintext highlighter-rouge">release-dev.yml</code>, now runs on every push to <code class="language-plaintext highlighter-rouge">main</code> and cuts a real GitHub <strong>pre-release</strong> plus a new <code class="language-plaintext highlighter-rouge">manifest-unstable.json</code>, parallel to the existing tagged-release path but never touching the stable <code class="language-plaintext highlighter-rouge">manifest.json</code>. The tricky part was version numbering: Jellyfin manifest versions have to be a clean 4-part numeric <code class="language-plaintext highlighter-rouge">System.Version</code> — no semver <code class="language-plaintext highlighter-rouge">-dev</code>/<code class="language-plaintext highlighter-rouge">-rc</code> suffix survives round-tripping through it — so the dev workflow keeps Major.Minor.Build from the current stable base and bumps only the fourth (Revision) component using the run’s own unique, ever-increasing run number (<code class="language-plaintext highlighter-rouge">0.1.0.147</code>, say). The human-friendly <code class="language-plaintext highlighter-rouge">v0.1.0-dev.147</code> form still shows up in the GitHub release title and changelog text, just not in the version Jellyfin actually compares against.</p>
+
+<p>One thing deliberately <em>not</em> done: bumping <code class="language-plaintext highlighter-rouge">Directory.Build.props</code> on every single dev push and committing it back. That’s fine for a build artifact (the compiled DLL needs the real version baked in to compare correctly against what’s installed), but committing it every push would spam the repo and collide with the stable release workflow’s own version-bump commits to the same file — so the dev workflow bumps it locally within the CI run only, discards that change, and commits just the manifest update.</p>
+
+<p>Also fixed while wiring this up: the existing stable <code class="language-plaintext highlighter-rouge">release.yml</code> updated <code class="language-plaintext highlighter-rouge">manifest.json</code>’s version on every tag but never actually bumped <code class="language-plaintext highlighter-rouge">Directory.Build.props</code> — meaning the <em>built assembly’s own</em> version number never moved past <code class="language-plaintext highlighter-rouge">0.1.0.0</code>, tag after tag. Harmless before there was any code that cared about the plugin’s own version, but a real problem for an update checker: it would report “update available” forever, even seconds after actually installing one, since the thing it’s comparing against never changes. Both workflows now agree on the version story.</p>
+
+<p>No safe way to dry-run a workflow whose only trigger is “push to main” without literally pushing to main first, so the real test was the first real merge. It worked cleanly on the first attempt: a genuine <code class="language-plaintext highlighter-rouge">v0.1.0-dev.1</code> pre-release appeared with the built zip attached, and <code class="language-plaintext highlighter-rouge">manifest-unstable.json</code> picked up a matching <code class="language-plaintext highlighter-rouge">0.1.0.1</code> entry with the right checksum and source URL, no fix-forward required.</p>
+
+<h3 id="github-actions-build--test">GitHub Actions: Build &amp; Test</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># .github/workflows/build.yml</span>
+<span class="na">name</span><span class="pi">:</span> <span class="s">Build Plugin</span>
+
+<span class="na">on</span><span class="pi">:</span>
+  <span class="na">push</span><span class="pi">:</span>
+    <span class="na">branches</span><span class="pi">:</span> <span class="pi">[</span><span class="nv">main</span><span class="pi">,</span> <span class="nv">dev</span><span class="pi">]</span>
+  <span class="na">pull_request</span><span class="pi">:</span>
+    <span class="na">branches</span><span class="pi">:</span> <span class="pi">[</span><span class="nv">main</span><span class="pi">]</span>
+
+<span class="na">jobs</span><span class="pi">:</span>
+  <span class="na">build</span><span class="pi">:</span>
+    <span class="na">runs-on</span><span class="pi">:</span> <span class="s">ubuntu-latest</span>
+
+    <span class="na">steps</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Checkout</span>
+        <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/checkout@v7</span>
+
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Setup .NET </span><span class="m">9</span>
+        <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/setup-dotnet@v6</span>
+        <span class="na">with</span><span class="pi">:</span>
+          <span class="na">dotnet-version</span><span class="pi">:</span> <span class="s1">'</span><span class="s">9.0.x'</span>
+
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Restore dependencies</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="s">dotnet restore --verbosity normal</span>
+
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Build</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="s">dotnet build --configuration Release --no-restore --verbosity normal</span>
+
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Test</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="s">dotnet test --configuration Release --no-restore --no-build --verbosity normal</span>
+
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Publish</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="s">dotnet publish Jellyfin.Plugin.MediaIntegrityScanner/Jellyfin.Plugin.MediaIntegrityScanner.csproj --configuration Release --output ./artifacts --no-build</span>
+
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">List artifacts</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="s">ls -la ./artifacts/</span>
+
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Upload build artifact</span>
+        <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/upload-artifact@v7</span>
+        <span class="na">with</span><span class="pi">:</span>
+          <span class="na">name</span><span class="pi">:</span> <span class="s">media-integrity-scanner</span>
+          <span class="na">path</span><span class="pi">:</span> <span class="s">./artifacts/</span>
+          <span class="na">retention-days</span><span class="pi">:</span> <span class="m">30</span>
+</code></pre></div></div>
+
+<h3 id="github-actions-release">GitHub Actions: Release</h3>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1"># .github/workflows/release.yml</span>
+<span class="na">name</span><span class="pi">:</span> <span class="s">Release Plugin</span>
+
+<span class="na">on</span><span class="pi">:</span>
+  <span class="na">push</span><span class="pi">:</span>
+    <span class="na">tags</span><span class="pi">:</span> <span class="pi">[</span><span class="s1">'</span><span class="s">v*'</span><span class="pi">]</span>
+
+<span class="na">jobs</span><span class="pi">:</span>
+  <span class="na">release</span><span class="pi">:</span>
+    <span class="na">runs-on</span><span class="pi">:</span> <span class="s">ubuntu-latest</span>
+    <span class="na">permissions</span><span class="pi">:</span>
+      <span class="na">contents</span><span class="pi">:</span> <span class="s">write</span>
+
+    <span class="na">steps</span><span class="pi">:</span>
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Checkout</span>
+        <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/checkout@v7</span>
+
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Setup .NET </span><span class="m">9</span>
+        <span class="na">uses</span><span class="pi">:</span> <span class="s">actions/setup-dotnet@v6</span>
+        <span class="na">with</span><span class="pi">:</span>
+          <span class="na">dotnet-version</span><span class="pi">:</span> <span class="s1">'</span><span class="s">9.0.x'</span>
+
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Restore dependencies</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="s">dotnet restore Jellyfin.Plugin.MediaIntegrityScanner/Jellyfin.Plugin.MediaIntegrityScanner.csproj</span>
+
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Build Release</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="s">dotnet publish Jellyfin.Plugin.MediaIntegrityScanner/Jellyfin.Plugin.MediaIntegrityScanner.csproj --configuration Release --output ./publish</span>
+
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Package</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+          <span class="s">cd publish</span>
+          <span class="s">zip -r ../media-integrity-scanner-$.zip .</span>
+
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Create GitHub Release</span>
+        <span class="na">uses</span><span class="pi">:</span> <span class="s">softprops/action-gh-release@v3</span>
+        <span class="na">with</span><span class="pi">:</span>
+          <span class="na">files</span><span class="pi">:</span> <span class="s">media-integrity-scanner-$.zip</span>
+          <span class="na">generate_release_notes</span><span class="pi">:</span> <span class="kc">true</span>
+
+      <span class="pi">-</span> <span class="na">name</span><span class="pi">:</span> <span class="s">Update manifest.json</span>
+        <span class="na">run</span><span class="pi">:</span> <span class="pi">|</span>
+          <span class="s">python3 scripts/update-manifest.py "$" "media-integrity-scanner-$.zip"</span>
+          <span class="s">git config user.name "github-actions[bot]"</span>
+          <span class="s">git config user.email "github-actions[bot]@users.noreply.github.com"</span>
+          <span class="s">git add manifest.json</span>
+          <span class="s">git commit -m "chore: update manifest.json for $"</span>
+          <span class="s"># Assumes the tag was created from the current tip of main.</span>
+          <span class="s">git push origin HEAD:main</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">scripts/update-manifest.py</code> normalizes the git tag (<code class="language-plaintext highlighter-rouge">v0.2.0</code> → <code class="language-plaintext highlighter-rouge">0.2.0.0</code>), computes the MD5 checksum of the release zip (the convention Jellyfin plugin manifests use), derives <code class="language-plaintext highlighter-rouge">targetAbi</code> from the <code class="language-plaintext highlighter-rouge">Jellyfin.Controller</code> package reference in the <code class="language-plaintext highlighter-rouge">.csproj</code>, and prepends a new version entry to <code class="language-plaintext highlighter-rouge">manifest.json</code> — replacing any existing entry for the same version, so re-running for the same tag is idempotent.</p>
+
+<h2 id="operational-runbook">Operational Runbook</h2>
+
+<h3 id="first-time-setup">First-Time Setup</h3>
+
+<ol>
+  <li>Install plugin via repository or manual DLL</li>
+  <li>Restart Jellyfin</li>
+  <li>Navigate to <strong>Dashboard → Plugins → Media Integrity Scanner</strong></li>
+  <li>Configure throttling settings for your storage backend</li>
+  <li>Optionally enable “Scan on Item Added” for new file validation</li>
+  <li>Run initial header scan from the dashboard (this may take hours for large libraries)</li>
+</ol>
+
+<h3 id="handling-failed-files">Handling Failed Files</h3>
+
+<p>When files are flagged as failed:</p>
+
+<ol>
+  <li>Check the error output in the dashboard detail view</li>
+  <li>Common failures:
+    <ul>
+      <li><code class="language-plaintext highlighter-rouge">"Invalid data found when processing input"</code> → Corrupt container</li>
+      <li><code class="language-plaintext highlighter-rouge">"moov atom not found"</code> → Truncated MP4/MOV</li>
+      <li><code class="language-plaintext highlighter-rouge">"Error while decoding stream"</code> → Corrupt video frames</li>
+    </ul>
+  </li>
+  <li>Attempt repair: <code class="language-plaintext highlighter-rouge">ffmpeg -i broken.mkv -c copy repaired.mkv</code></li>
+  <li>If repair fails: re-download or re-rip the source</li>
+  <li>After fix: trigger a rescan from the dashboard</li>
+</ol>
+
+<h3 id="database-maintenance">Database Maintenance</h3>
+
+<p>The SQLite database grows slowly. Occasional maintenance:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Location</span>
+<span class="nb">ls</span> /var/lib/jellyfin/plugins/MediaIntegrityScanner/data/
+
+<span class="c"># Vacuum to reclaim space (while Jellyfin is stopped)</span>
+sqlite3 media-integrity.db <span class="s2">"VACUUM;"</span>
+
+<span class="c"># Check database integrity</span>
+sqlite3 media-integrity.db <span class="s2">"PRAGMA integrity_check;"</span>
+</code></pre></div></div>
+
+<h3 id="upgrading-the-plugin">Upgrading the Plugin</h3>
+
+<ol>
+  <li>Check the repository for new releases</li>
+  <li>Jellyfin’s plugin auto-update handles it if installed via repository</li>
+  <li>For manual installs: replace the DLL files and restart</li>
+</ol>
+
+<h2 id="whats-next">What’s Next</h2>
+
+<p>The plugin is deployed, monitored, and releasing on a real CI/CD pipeline — but v0.1.0 wasn’t the end of the story. The <a href="/jellyfin-media-integrity-release-and-updates/">final article</a> covers what production use and real testing turned up afterward: an update checker, session-aware auto-restart, a packaging bug that broke non-Linux installs, and a full future-work list of what’s still being evaluated.</p>
+
+<h2 id="resources">Resources</h2>
+
+<ul>
+  <li><strong>Repository:</strong> <a href="https://github.com/mcgarrah/jellyfin-plugin-media-integrity-scanner">github.com/mcgarrah/jellyfin-plugin-media-integrity-scanner</a></li>
+  <li><strong>Issues &amp; Feature Requests:</strong> <a href="https://github.com/mcgarrah/jellyfin-plugin-media-integrity-scanner/issues">GitHub Issues</a></li>
+  <li><strong>Jellyfin Plugin Template:</strong> <a href="https://github.com/jellyfin/jellyfin-plugin-template">github.com/jellyfin/jellyfin-plugin-template</a></li>
+  <li><strong>CephFS Performance Tuning:</strong> <a href="https://docs.ceph.com/en/latest/cephfs/">docs.ceph.com/en/latest/cephfs/</a></li>
+  <li><strong>Jellyfin API Docs:</strong> <a href="https://api.jellyfin.org/">api.jellyfin.org</a></li>
+</ul>
+
+<h2 id="series-navigation">Series Navigation</h2>
+
+<ol>
+  <li><a href="/jellyfin-media-integrity-scanner-introduction/">Introduction &amp; Problem Statement</a></li>
+  <li><a href="/jellyfin-media-integrity-architecture-design/">Architecture &amp; Design Decisions</a></li>
+  <li><a href="/jellyfin-media-integrity-scanner-core/">Building the Scanner Core</a></li>
+  <li><a href="/jellyfin-media-integrity-dashboard-api/">The Dashboard &amp; API</a></li>
+  <li><strong>Deployment &amp; Operations</strong> (this post)</li>
+  <li><a href="/jellyfin-media-integrity-release-and-updates/">v0.1.1 Release: Update Checker &amp; Auto-Update</a></li>
+</ol>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/jellyfin/">jellyfin</a>, 
+        
+          <a href="/tags/media-integrity/">media-integrity</a>, 
+        
+          <a href="/tags/proxmox/">proxmox</a>, 
+        
+          <a href="/tags/ceph/">ceph</a>, 
+        
+          <a href="/tags/deployment/">deployment</a>, 
+        
+          <a href="/tags/ci-cd/">ci-cd</a>, 
+        
+          <a href="/tags/monitoring/">monitoring</a>, 
+        
+          <a href="/tags/github-actions/">github-actions</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/homelab/">homelab</a>, 
+        
+          <a href="/categories/media-server/">media-server</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://mcgarrah.substack.com/" rel="me">Substack</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Engineering deep dives on infrastructure, distributed systems, and AI/ML — from homelab experiments to enterprise architecture.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://mcgarrah.substack.com/" ><svg aria-label="Substack" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#substack"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

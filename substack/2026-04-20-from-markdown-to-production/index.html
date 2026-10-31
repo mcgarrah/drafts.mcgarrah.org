@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>From Markdown to Production: Building a Technical Blog That Actually Works | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="From Markdown to Production: Building a Technical Blog That Actually Works" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="From Markdown to Production: Building a Technical Blog That Actually Works Subtitle: Jekyll, GitHub Pages, and the Engineering Behind Writing About Engineering Author: McGarrah Planned: April 20, 2026 URL: TBD Tags: Software Engineering, Technical Writing, Web Development, Open Source, Blogging I’ve been writing about technology since 2004. The platforms changed — WordPress, Blogger, hand-rolled HTML — but the habit stuck. In 2023 I moved everything to Jekyll on GitHub Pages, and what started as “just a blog” turned into a software engineering project with CI/CD pipelines, SEO automation, GDPR compliance, PDF generation, and custom Ruby plugins. If you’ve ever wondered why a technical blog needs infrastructure, the answer is the same as why a homelab needs monitoring: because anything worth running is worth running well. This is a companion to my earlier piece, From Homelabs to Machine Learning, which covered the infrastructure side. This one covers the other half — the writing platform, the development workflow, and why treating a blog like a software project teaches you skills that transfer directly to professional engineering. Thanks for reading! Subscribe for free to receive new posts and support my work. Why Build a Blog Like Software? A technical blog is a software product. It has users (readers), requirements (accessibility, SEO, performance), a deployment pipeline (GitHub Actions), dependencies (Ruby gems, npm packages), and bugs (broken links, rendering issues, sitemap bloat). Treating it that way teaches you: CI/CD pipelines that validate every commit before deployment Static site generation — the same build-once-serve-everywhere pattern behind CDNs and JAMstack Plugin architecture — extending a framework without forking it SEO as a system — structured data, canonical URLs, and automated health checks Privacy engineering — GDPR compliance that actually works without breaking functionality Documentation as code — every article is a Markdown file in Git with full version history These aren’t blog skills. They’re software engineering skills practiced on a project you control completely. The Platform: Jekyll on GitHub Pages Jekyll is a Ruby-based static site generator. You write Markdown, Jekyll compiles it to HTML, and GitHub Pages serves it for free. No database, no server, no WordPress security patches at 2 AM. The complete feature reference — Everything the blog can do: Mermaid diagrams, KaTeX math, collapsible sections, code highlighting with copy buttons, YouTube embeds, and more. Publishing this week at mcgarrah.org. Building This Blog: Jekyll on GitHub Pages from Zero to 130+ Posts — The setup guide: repository creation, custom domains, theme selection, GitHub Actions CI/CD, and what I’d do differently if I started over. Running GitHub Pages Jekyll Locally — Local development setup. You need this before you can iterate quickly. Coming soon: a deep dive into what happens when you skip two years of dependency updates — Ruby, Bundler, and Jekyll all moved on without me, and the cascading breakage was educational. Writing Features That Required Engineering Every feature I added to the blog was driven by a specific need in a specific article. The features accumulated into something much larger than I planned. Diagrams for Infrastructure Posts My Ceph architecture posts needed network topology diagrams. Rather than screenshot Visio drawings, I integrated Mermaid.js for diagrams rendered from text at build time. Mermaid Diagram Rendering Challenges in Jekyll — Getting Mermaid to work reliably in Jekyll required solving Liquid template conflicts, script loading order, and dark mode compatibility. I’m also publishing articles on the small polish features that add up — copy buttons on code blocks, reading time estimates — and a meta-debugging story about what happens when your blog post about Liquid templates gets processed by Liquid templates. PDF Exports for the Resume My online resume needed downloadable PDF and DOCX versions. Rather than maintaining separate files, I built a Jekyll plugin that generates them at build time using Pandoc. Jekyll Pandoc Exports Plugin — The plugin architecture: hooking into Jekyll’s build lifecycle to run Pandoc on rendered HTML. Pandoc Exports Resume Integration — Integrating the plugin with the resume site’s specific layout and styling requirements. SEO as a System SEO isn’t a checkbox — it’s a system that needs monitoring. I learned this after months of Google AdSense rejections that turned out to be structural issues with canonical URLs, sitemap bloat, and missing structured data. The debugging started with a completely opaque rejection message — “your site isn’t ready to show ads” — and no actionable feedback. Seven hours of systematic investigation later, I’d found sitemap 404 errors, a missing contact page, and navigation bugs that Google never explicitly identified. Google AdSense Approval Failure: Debugging the ‘Site Isn’t Ready’ Rejection — The full debugging story: 20 unpublished posts leaking into the sitemap, the published: false gotcha in jekyll-sitemap, and why migrating from WordPress cost me my existing AdSense approval. Jekyll SEO Sitemap and Canonical URL Fixes — Fixing the plumbing: canonical URLs that pointed to the wrong domain, sitemaps with duplicate entries. Jekyll SEO Health Checks — Automated validation in CI: every push checks canonical URLs, sitemap XML, meta tags, structured data, and broken links. Jekyll Sitemap Bloat: Tags, Categories, and Pagination — Tag and category pages were inflating the sitemap with hundreds of low-value URLs. Fixing it required understanding what search engines actually want. Improving E-E-A-T for Jekyll and AdSense — Google’s Experience, Expertise, Authoritativeness, and Trustworthiness signals, and how to implement them in a static site. GDPR Compliance Google AdSense requires GDPR cookie consent for EU visitors. Building it correctly meant detecting user regions, conditionally loading scripts, and not breaking Google’s own verification crawler in the process. Implementing GDPR Compliance for Jekyll and AdSense — The full implementation: EU detection via timezone and IP geolocation, consent storage, conditional script loading. Fixing AdSense Verification Without Breaking GDPR — My GDPR implementation was too aggressive — it hid the AdSense script from Google’s verification bot. The architectural fix that separated verification from ad serving. Site Optimization Performance matters for both user experience and SEO. A static site should be fast, but “static” doesn’t mean “automatically optimized.” Jekyll Website Optimization Part 1 — Structure, performance, and the first round of improvements. Jekyll Website Optimization Part 2 — Further refinements after measuring real-world performance. SASS Circular Dependency Nightmare — What started as adding a print stylesheet turned into a multi-hour debugging session that exposed fundamental architecture problems in the SASS module hierarchy. The fix — extracting variables into a standalone module — is the same separation-of-concerns pattern you’d apply to any software dependency graph. Adding Google Custom Search to Jekyll — Site search without a backend. Google Custom Search handles the indexing; Jekyll provides the search page. Managing Multiple Sites The blog and resume are separate Jekyll sites in separate repositories, served under the same domain. This creates interesting challenges around sitemaps, themes, and whether to merge them. Managing Multiple Jekyll Sites: Sitemap Challenges — Two Jekyll sites, one domain, two sitemaps. How to make search engines understand the relationship. Merging Two Jekyll Websites: Architectural Analysis — I evaluated merging the blog and resume into one site. The analysis of why I didn’t is more useful than the merge would have been. The Ruby Plugin Side Jekyll’s plugin system lets you extend the build process with Ruby. I’ve written custom generators for tag pages, category pages, and Pandoc exports. Ruby Gem Release Automation — Automating the release pipeline for the Pandoc exports gem. CI/CD for a Ruby gem is its own education. Jekyll Theme Missing Head and Body Tags — Debugging a theme issue where the HTML structure was technically invalid but browsers rendered it anyway. The kind of bug that only shows up when you add structured data validation. Coming soon: a detailed walkthrough of the custom Ruby generator that creates individual pages for every tag and category — build-time code generation that’s invisible to readers but essential for navigation. The Development Workflow The blog itself has a development workflow that mirrors professional software projects — CI/CD, comments, content pipelines, and local development tooling. I have a series of articles publishing over the next few weeks covering: Automated CI/CD — GitHub Actions builds, SEO validation, and deployment on every push Comments without a database — GitHub Discussions-backed comments via Giscus on a static site Content distribution — how content flows from draft to published to syndicated across platforms Content plumbing — the invisible infrastructure of URL structure, reading time estimates, and excerpt handling VS Code integration — local Jekyll development tooling that led to discovering and fixing bugs in an abandoned extension, which became its own open-source project These articles will be live on mcgarrah.org throughout May. Subscribe to the RSS feed if you’d like to follow along as they publish. The Connection to Professional Engineering If this looks like a lot of engineering for “just a blog,” that’s the point. Every skill here transfers directly: Jekyll plugins teach you framework extension patterns — the same approach used in Django middleware, Express.js middleware, and Kubernetes operators GitHub Actions CI/CD is the same pipeline technology running production deployments at every company using GitHub SEO structured data is JSON-LD — the same linked data format used in knowledge graphs and ML training data annotation GDPR compliance is privacy engineering — increasingly required in ML systems that handle personal data Static site generation is the build-once-deploy-everywhere pattern behind every CDN, every serverless function, and every ML model serving endpoint Open-source contribution — finding a bug in a VS Code extension, diagnosing it, writing the fix, and publishing a maintained fork is the same workflow used in enterprise open-source The blog is where I practice these skills on my own terms. The enterprise is where I apply them at scale. What’s Next The blog continues to evolve. Here’s what’s in the pipeline: VS Code extension fork — I found three bugs in the Jekyll Run VS Code extension, and the maintainer hasn’t committed in five years. I’m forking it as “Run Jekyll” with bug fixes, new features (Clean and Doctor commands), and a real test suite. The debugging story alone spans seven articles. Draft preview site — Building a password-protected preview at drafts.mcgarrah.org so reviewers can see unpublished content and leave feedback via Giscus before articles go live. Staticrypt encryption on GitHub Pages, automated via GitHub Actions. Jekyll deep dives — More articles on the internal plumbing: Liquid template gotchas, Jekyll enhancements without plugins, and the formatting conventions that keep 140+ posts consistent. Infrastructure crossover — The Proxmox cluster is getting Caddy reverse proxies, ZFS boot mirror procedures, and eventually Kubernetes. The blog may move from GitHub Pages to self-hosted when the K8s cluster is production-ready. If you’re interested in the infrastructure side, my earlier piece From Homelabs to Machine Learning covers the Proxmox, Ceph, and networking foundation. The next Substack installment covers what happens when that storage infrastructure fails — and how Ceph’s self-healing saved my data. About Me I’m Michael McGarrah — a cloud architect and data scientist with 25+ years in enterprise infrastructure. I hold an M.S. in Computer Science (AI/ML) from Georgia Tech, a B.S. in Computer Science from NC State, and I’m currently pursuing an Executive MBA at UNC Wilmington. You can find more of my writing at mcgarrah.org, my detailed resume at mcgarrah.org/resume, and my profiles on LinkedIn, Substack, GitHub, and Google Scholar." />
+<meta property="og:description" content="From Markdown to Production: Building a Technical Blog That Actually Works Subtitle: Jekyll, GitHub Pages, and the Engineering Behind Writing About Engineering Author: McGarrah Planned: April 20, 2026 URL: TBD Tags: Software Engineering, Technical Writing, Web Development, Open Source, Blogging I’ve been writing about technology since 2004. The platforms changed — WordPress, Blogger, hand-rolled HTML — but the habit stuck. In 2023 I moved everything to Jekyll on GitHub Pages, and what started as “just a blog” turned into a software engineering project with CI/CD pipelines, SEO automation, GDPR compliance, PDF generation, and custom Ruby plugins. If you’ve ever wondered why a technical blog needs infrastructure, the answer is the same as why a homelab needs monitoring: because anything worth running is worth running well. This is a companion to my earlier piece, From Homelabs to Machine Learning, which covered the infrastructure side. This one covers the other half — the writing platform, the development workflow, and why treating a blog like a software project teaches you skills that transfer directly to professional engineering. Thanks for reading! Subscribe for free to receive new posts and support my work. Why Build a Blog Like Software? A technical blog is a software product. It has users (readers), requirements (accessibility, SEO, performance), a deployment pipeline (GitHub Actions), dependencies (Ruby gems, npm packages), and bugs (broken links, rendering issues, sitemap bloat). Treating it that way teaches you: CI/CD pipelines that validate every commit before deployment Static site generation — the same build-once-serve-everywhere pattern behind CDNs and JAMstack Plugin architecture — extending a framework without forking it SEO as a system — structured data, canonical URLs, and automated health checks Privacy engineering — GDPR compliance that actually works without breaking functionality Documentation as code — every article is a Markdown file in Git with full version history These aren’t blog skills. They’re software engineering skills practiced on a project you control completely. The Platform: Jekyll on GitHub Pages Jekyll is a Ruby-based static site generator. You write Markdown, Jekyll compiles it to HTML, and GitHub Pages serves it for free. No database, no server, no WordPress security patches at 2 AM. The complete feature reference — Everything the blog can do: Mermaid diagrams, KaTeX math, collapsible sections, code highlighting with copy buttons, YouTube embeds, and more. Publishing this week at mcgarrah.org. Building This Blog: Jekyll on GitHub Pages from Zero to 130+ Posts — The setup guide: repository creation, custom domains, theme selection, GitHub Actions CI/CD, and what I’d do differently if I started over. Running GitHub Pages Jekyll Locally — Local development setup. You need this before you can iterate quickly. Coming soon: a deep dive into what happens when you skip two years of dependency updates — Ruby, Bundler, and Jekyll all moved on without me, and the cascading breakage was educational. Writing Features That Required Engineering Every feature I added to the blog was driven by a specific need in a specific article. The features accumulated into something much larger than I planned. Diagrams for Infrastructure Posts My Ceph architecture posts needed network topology diagrams. Rather than screenshot Visio drawings, I integrated Mermaid.js for diagrams rendered from text at build time. Mermaid Diagram Rendering Challenges in Jekyll — Getting Mermaid to work reliably in Jekyll required solving Liquid template conflicts, script loading order, and dark mode compatibility. I’m also publishing articles on the small polish features that add up — copy buttons on code blocks, reading time estimates — and a meta-debugging story about what happens when your blog post about Liquid templates gets processed by Liquid templates. PDF Exports for the Resume My online resume needed downloadable PDF and DOCX versions. Rather than maintaining separate files, I built a Jekyll plugin that generates them at build time using Pandoc. Jekyll Pandoc Exports Plugin — The plugin architecture: hooking into Jekyll’s build lifecycle to run Pandoc on rendered HTML. Pandoc Exports Resume Integration — Integrating the plugin with the resume site’s specific layout and styling requirements. SEO as a System SEO isn’t a checkbox — it’s a system that needs monitoring. I learned this after months of Google AdSense rejections that turned out to be structural issues with canonical URLs, sitemap bloat, and missing structured data. The debugging started with a completely opaque rejection message — “your site isn’t ready to show ads” — and no actionable feedback. Seven hours of systematic investigation later, I’d found sitemap 404 errors, a missing contact page, and navigation bugs that Google never explicitly identified. Google AdSense Approval Failure: Debugging the ‘Site Isn’t Ready’ Rejection — The full debugging story: 20 unpublished posts leaking into the sitemap, the published: false gotcha in jekyll-sitemap, and why migrating from WordPress cost me my existing AdSense approval. Jekyll SEO Sitemap and Canonical URL Fixes — Fixing the plumbing: canonical URLs that pointed to the wrong domain, sitemaps with duplicate entries. Jekyll SEO Health Checks — Automated validation in CI: every push checks canonical URLs, sitemap XML, meta tags, structured data, and broken links. Jekyll Sitemap Bloat: Tags, Categories, and Pagination — Tag and category pages were inflating the sitemap with hundreds of low-value URLs. Fixing it required understanding what search engines actually want. Improving E-E-A-T for Jekyll and AdSense — Google’s Experience, Expertise, Authoritativeness, and Trustworthiness signals, and how to implement them in a static site. GDPR Compliance Google AdSense requires GDPR cookie consent for EU visitors. Building it correctly meant detecting user regions, conditionally loading scripts, and not breaking Google’s own verification crawler in the process. Implementing GDPR Compliance for Jekyll and AdSense — The full implementation: EU detection via timezone and IP geolocation, consent storage, conditional script loading. Fixing AdSense Verification Without Breaking GDPR — My GDPR implementation was too aggressive — it hid the AdSense script from Google’s verification bot. The architectural fix that separated verification from ad serving. Site Optimization Performance matters for both user experience and SEO. A static site should be fast, but “static” doesn’t mean “automatically optimized.” Jekyll Website Optimization Part 1 — Structure, performance, and the first round of improvements. Jekyll Website Optimization Part 2 — Further refinements after measuring real-world performance. SASS Circular Dependency Nightmare — What started as adding a print stylesheet turned into a multi-hour debugging session that exposed fundamental architecture problems in the SASS module hierarchy. The fix — extracting variables into a standalone module — is the same separation-of-concerns pattern you’d apply to any software dependency graph. Adding Google Custom Search to Jekyll — Site search without a backend. Google Custom Search handles the indexing; Jekyll provides the search page. Managing Multiple Sites The blog and resume are separate Jekyll sites in separate repositories, served under the same domain. This creates interesting challenges around sitemaps, themes, and whether to merge them. Managing Multiple Jekyll Sites: Sitemap Challenges — Two Jekyll sites, one domain, two sitemaps. How to make search engines understand the relationship. Merging Two Jekyll Websites: Architectural Analysis — I evaluated merging the blog and resume into one site. The analysis of why I didn’t is more useful than the merge would have been. The Ruby Plugin Side Jekyll’s plugin system lets you extend the build process with Ruby. I’ve written custom generators for tag pages, category pages, and Pandoc exports. Ruby Gem Release Automation — Automating the release pipeline for the Pandoc exports gem. CI/CD for a Ruby gem is its own education. Jekyll Theme Missing Head and Body Tags — Debugging a theme issue where the HTML structure was technically invalid but browsers rendered it anyway. The kind of bug that only shows up when you add structured data validation. Coming soon: a detailed walkthrough of the custom Ruby generator that creates individual pages for every tag and category — build-time code generation that’s invisible to readers but essential for navigation. The Development Workflow The blog itself has a development workflow that mirrors professional software projects — CI/CD, comments, content pipelines, and local development tooling. I have a series of articles publishing over the next few weeks covering: Automated CI/CD — GitHub Actions builds, SEO validation, and deployment on every push Comments without a database — GitHub Discussions-backed comments via Giscus on a static site Content distribution — how content flows from draft to published to syndicated across platforms Content plumbing — the invisible infrastructure of URL structure, reading time estimates, and excerpt handling VS Code integration — local Jekyll development tooling that led to discovering and fixing bugs in an abandoned extension, which became its own open-source project These articles will be live on mcgarrah.org throughout May. Subscribe to the RSS feed if you’d like to follow along as they publish. The Connection to Professional Engineering If this looks like a lot of engineering for “just a blog,” that’s the point. Every skill here transfers directly: Jekyll plugins teach you framework extension patterns — the same approach used in Django middleware, Express.js middleware, and Kubernetes operators GitHub Actions CI/CD is the same pipeline technology running production deployments at every company using GitHub SEO structured data is JSON-LD — the same linked data format used in knowledge graphs and ML training data annotation GDPR compliance is privacy engineering — increasingly required in ML systems that handle personal data Static site generation is the build-once-deploy-everywhere pattern behind every CDN, every serverless function, and every ML model serving endpoint Open-source contribution — finding a bug in a VS Code extension, diagnosing it, writing the fix, and publishing a maintained fork is the same workflow used in enterprise open-source The blog is where I practice these skills on my own terms. The enterprise is where I apply them at scale. What’s Next The blog continues to evolve. Here’s what’s in the pipeline: VS Code extension fork — I found three bugs in the Jekyll Run VS Code extension, and the maintainer hasn’t committed in five years. I’m forking it as “Run Jekyll” with bug fixes, new features (Clean and Doctor commands), and a real test suite. The debugging story alone spans seven articles. Draft preview site — Building a password-protected preview at drafts.mcgarrah.org so reviewers can see unpublished content and leave feedback via Giscus before articles go live. Staticrypt encryption on GitHub Pages, automated via GitHub Actions. Jekyll deep dives — More articles on the internal plumbing: Liquid template gotchas, Jekyll enhancements without plugins, and the formatting conventions that keep 140+ posts consistent. Infrastructure crossover — The Proxmox cluster is getting Caddy reverse proxies, ZFS boot mirror procedures, and eventually Kubernetes. The blog may move from GitHub Pages to self-hosted when the K8s cluster is production-ready. If you’re interested in the infrastructure side, my earlier piece From Homelabs to Machine Learning covers the Proxmox, Ceph, and networking foundation. The next Substack installment covers what happens when that storage infrastructure fails — and how Ceph’s self-healing saved my data. About Me I’m Michael McGarrah — a cloud architect and data scientist with 25+ years in enterprise infrastructure. I hold an M.S. in Computer Science (AI/ML) from Georgia Tech, a B.S. in Computer Science from NC State, and I’m currently pursuing an Executive MBA at UNC Wilmington. You can find more of my writing at mcgarrah.org, my detailed resume at mcgarrah.org/resume, and my profiles on LinkedIn, Substack, GitHub, and Google Scholar." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/substack/2026-04-20-from-markdown-to-production/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/substack/2026-04-20-from-markdown-to-production/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-04-20T00:00:00+00:00" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="From Markdown to Production: Building a Technical Blog That Actually Works" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah","url":"https://mcgarrah.org"},"dateModified":"2026-04-20T00:00:00+00:00","datePublished":"2026-04-20T00:00:00+00:00","description":"From Markdown to Production: Building a Technical Blog That Actually Works Subtitle: Jekyll, GitHub Pages, and the Engineering Behind Writing About Engineering Author: McGarrah Planned: April 20, 2026 URL: TBD Tags: Software Engineering, Technical Writing, Web Development, Open Source, Blogging I’ve been writing about technology since 2004. The platforms changed — WordPress, Blogger, hand-rolled HTML — but the habit stuck. In 2023 I moved everything to Jekyll on GitHub Pages, and what started as “just a blog” turned into a software engineering project with CI/CD pipelines, SEO automation, GDPR compliance, PDF generation, and custom Ruby plugins. If you’ve ever wondered why a technical blog needs infrastructure, the answer is the same as why a homelab needs monitoring: because anything worth running is worth running well. This is a companion to my earlier piece, From Homelabs to Machine Learning, which covered the infrastructure side. This one covers the other half — the writing platform, the development workflow, and why treating a blog like a software project teaches you skills that transfer directly to professional engineering. Thanks for reading! Subscribe for free to receive new posts and support my work. Why Build a Blog Like Software? A technical blog is a software product. It has users (readers), requirements (accessibility, SEO, performance), a deployment pipeline (GitHub Actions), dependencies (Ruby gems, npm packages), and bugs (broken links, rendering issues, sitemap bloat). Treating it that way teaches you: CI/CD pipelines that validate every commit before deployment Static site generation — the same build-once-serve-everywhere pattern behind CDNs and JAMstack Plugin architecture — extending a framework without forking it SEO as a system — structured data, canonical URLs, and automated health checks Privacy engineering — GDPR compliance that actually works without breaking functionality Documentation as code — every article is a Markdown file in Git with full version history These aren’t blog skills. They’re software engineering skills practiced on a project you control completely. The Platform: Jekyll on GitHub Pages Jekyll is a Ruby-based static site generator. You write Markdown, Jekyll compiles it to HTML, and GitHub Pages serves it for free. No database, no server, no WordPress security patches at 2 AM. The complete feature reference — Everything the blog can do: Mermaid diagrams, KaTeX math, collapsible sections, code highlighting with copy buttons, YouTube embeds, and more. Publishing this week at mcgarrah.org. Building This Blog: Jekyll on GitHub Pages from Zero to 130+ Posts — The setup guide: repository creation, custom domains, theme selection, GitHub Actions CI/CD, and what I’d do differently if I started over. Running GitHub Pages Jekyll Locally — Local development setup. You need this before you can iterate quickly. Coming soon: a deep dive into what happens when you skip two years of dependency updates — Ruby, Bundler, and Jekyll all moved on without me, and the cascading breakage was educational. Writing Features That Required Engineering Every feature I added to the blog was driven by a specific need in a specific article. The features accumulated into something much larger than I planned. Diagrams for Infrastructure Posts My Ceph architecture posts needed network topology diagrams. Rather than screenshot Visio drawings, I integrated Mermaid.js for diagrams rendered from text at build time. Mermaid Diagram Rendering Challenges in Jekyll — Getting Mermaid to work reliably in Jekyll required solving Liquid template conflicts, script loading order, and dark mode compatibility. I’m also publishing articles on the small polish features that add up — copy buttons on code blocks, reading time estimates — and a meta-debugging story about what happens when your blog post about Liquid templates gets processed by Liquid templates. PDF Exports for the Resume My online resume needed downloadable PDF and DOCX versions. Rather than maintaining separate files, I built a Jekyll plugin that generates them at build time using Pandoc. Jekyll Pandoc Exports Plugin — The plugin architecture: hooking into Jekyll’s build lifecycle to run Pandoc on rendered HTML. Pandoc Exports Resume Integration — Integrating the plugin with the resume site’s specific layout and styling requirements. SEO as a System SEO isn’t a checkbox — it’s a system that needs monitoring. I learned this after months of Google AdSense rejections that turned out to be structural issues with canonical URLs, sitemap bloat, and missing structured data. The debugging started with a completely opaque rejection message — “your site isn’t ready to show ads” — and no actionable feedback. Seven hours of systematic investigation later, I’d found sitemap 404 errors, a missing contact page, and navigation bugs that Google never explicitly identified. Google AdSense Approval Failure: Debugging the ‘Site Isn’t Ready’ Rejection — The full debugging story: 20 unpublished posts leaking into the sitemap, the published: false gotcha in jekyll-sitemap, and why migrating from WordPress cost me my existing AdSense approval. Jekyll SEO Sitemap and Canonical URL Fixes — Fixing the plumbing: canonical URLs that pointed to the wrong domain, sitemaps with duplicate entries. Jekyll SEO Health Checks — Automated validation in CI: every push checks canonical URLs, sitemap XML, meta tags, structured data, and broken links. Jekyll Sitemap Bloat: Tags, Categories, and Pagination — Tag and category pages were inflating the sitemap with hundreds of low-value URLs. Fixing it required understanding what search engines actually want. Improving E-E-A-T for Jekyll and AdSense — Google’s Experience, Expertise, Authoritativeness, and Trustworthiness signals, and how to implement them in a static site. GDPR Compliance Google AdSense requires GDPR cookie consent for EU visitors. Building it correctly meant detecting user regions, conditionally loading scripts, and not breaking Google’s own verification crawler in the process. Implementing GDPR Compliance for Jekyll and AdSense — The full implementation: EU detection via timezone and IP geolocation, consent storage, conditional script loading. Fixing AdSense Verification Without Breaking GDPR — My GDPR implementation was too aggressive — it hid the AdSense script from Google’s verification bot. The architectural fix that separated verification from ad serving. Site Optimization Performance matters for both user experience and SEO. A static site should be fast, but “static” doesn’t mean “automatically optimized.” Jekyll Website Optimization Part 1 — Structure, performance, and the first round of improvements. Jekyll Website Optimization Part 2 — Further refinements after measuring real-world performance. SASS Circular Dependency Nightmare — What started as adding a print stylesheet turned into a multi-hour debugging session that exposed fundamental architecture problems in the SASS module hierarchy. The fix — extracting variables into a standalone module — is the same separation-of-concerns pattern you’d apply to any software dependency graph. Adding Google Custom Search to Jekyll — Site search without a backend. Google Custom Search handles the indexing; Jekyll provides the search page. Managing Multiple Sites The blog and resume are separate Jekyll sites in separate repositories, served under the same domain. This creates interesting challenges around sitemaps, themes, and whether to merge them. Managing Multiple Jekyll Sites: Sitemap Challenges — Two Jekyll sites, one domain, two sitemaps. How to make search engines understand the relationship. Merging Two Jekyll Websites: Architectural Analysis — I evaluated merging the blog and resume into one site. The analysis of why I didn’t is more useful than the merge would have been. The Ruby Plugin Side Jekyll’s plugin system lets you extend the build process with Ruby. I’ve written custom generators for tag pages, category pages, and Pandoc exports. Ruby Gem Release Automation — Automating the release pipeline for the Pandoc exports gem. CI/CD for a Ruby gem is its own education. Jekyll Theme Missing Head and Body Tags — Debugging a theme issue where the HTML structure was technically invalid but browsers rendered it anyway. The kind of bug that only shows up when you add structured data validation. Coming soon: a detailed walkthrough of the custom Ruby generator that creates individual pages for every tag and category — build-time code generation that’s invisible to readers but essential for navigation. The Development Workflow The blog itself has a development workflow that mirrors professional software projects — CI/CD, comments, content pipelines, and local development tooling. I have a series of articles publishing over the next few weeks covering: Automated CI/CD — GitHub Actions builds, SEO validation, and deployment on every push Comments without a database — GitHub Discussions-backed comments via Giscus on a static site Content distribution — how content flows from draft to published to syndicated across platforms Content plumbing — the invisible infrastructure of URL structure, reading time estimates, and excerpt handling VS Code integration — local Jekyll development tooling that led to discovering and fixing bugs in an abandoned extension, which became its own open-source project These articles will be live on mcgarrah.org throughout May. Subscribe to the RSS feed if you’d like to follow along as they publish. The Connection to Professional Engineering If this looks like a lot of engineering for “just a blog,” that’s the point. Every skill here transfers directly: Jekyll plugins teach you framework extension patterns — the same approach used in Django middleware, Express.js middleware, and Kubernetes operators GitHub Actions CI/CD is the same pipeline technology running production deployments at every company using GitHub SEO structured data is JSON-LD — the same linked data format used in knowledge graphs and ML training data annotation GDPR compliance is privacy engineering — increasingly required in ML systems that handle personal data Static site generation is the build-once-deploy-everywhere pattern behind every CDN, every serverless function, and every ML model serving endpoint Open-source contribution — finding a bug in a VS Code extension, diagnosing it, writing the fix, and publishing a maintained fork is the same workflow used in enterprise open-source The blog is where I practice these skills on my own terms. The enterprise is where I apply them at scale. What’s Next The blog continues to evolve. Here’s what’s in the pipeline: VS Code extension fork — I found three bugs in the Jekyll Run VS Code extension, and the maintainer hasn’t committed in five years. I’m forking it as “Run Jekyll” with bug fixes, new features (Clean and Doctor commands), and a real test suite. The debugging story alone spans seven articles. Draft preview site — Building a password-protected preview at drafts.mcgarrah.org so reviewers can see unpublished content and leave feedback via Giscus before articles go live. Staticrypt encryption on GitHub Pages, automated via GitHub Actions. Jekyll deep dives — More articles on the internal plumbing: Liquid template gotchas, Jekyll enhancements without plugins, and the formatting conventions that keep 140+ posts consistent. Infrastructure crossover — The Proxmox cluster is getting Caddy reverse proxies, ZFS boot mirror procedures, and eventually Kubernetes. The blog may move from GitHub Pages to self-hosted when the K8s cluster is production-ready. If you’re interested in the infrastructure side, my earlier piece From Homelabs to Machine Learning covers the Proxmox, Ceph, and networking foundation. The next Substack installment covers what happens when that storage infrastructure fails — and how Ceph’s self-healing saved my data. About Me I’m Michael McGarrah — a cloud architect and data scientist with 25+ years in enterprise infrastructure. I hold an M.S. in Computer Science (AI/ML) from Georgia Tech, a B.S. in Computer Science from NC State, and I’m currently pursuing an Executive MBA at UNC Wilmington. You can find more of my writing at mcgarrah.org, my detailed resume at mcgarrah.org/resume, and my profiles on LinkedIn, Substack, GitHub, and Google Scholar.","headline":"From Markdown to Production: Building a Technical Blog That Actually Works","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/substack/2026-04-20-from-markdown-to-production/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/substack/2026-04-20-from-markdown-to-production/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+
+<!-- Favicons -->
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="shortcut icon" href="/favicon.ico">
+<meta name="theme-color" content="#ffffff">
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="Substack" href="https://mcgarrah.substack.com/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#substack"></use></svg>
+      <span aria-hidden="true">Substack</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Engineering deep dives on infrastructure, distributed systems, and AI/ML — from homelab experiments to enterprise architecture.</div>
+</aside>
+
+
+
+
+
+<div style="background:#e67e00;color:#fff;text-align:center;padding:0.5em 1em;font-size:0.9em;font-weight:bold;">
+  ⚠ DRAFT PREVIEW SITE — unpublished content, may change.
+  <a href="https://mcgarrah.org" style="color:#fff;text-decoration:underline;margin-left:0.5em;">Go to the main site →</a>
+</div>
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+  
+  <nav class="drafts-nav"><a href="/substack/"><svg aria-label="Substack Drafts" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#newspaper"></use></svg><span>Substack Drafts</span>
+    </a><a href="/linkedin/"><svg aria-label="LinkedIn Drafts" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg><span>LinkedIn Drafts</span>
+    </a></nav>
+  
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/substack/2026-04-20-from-markdown-to-production/">From Markdown to Production: Building a Technical Blog That Actually Works</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-04-20T00:00:00+00:00">April 20, 2026</time><span class="reading-time">9 min read</span></header>
+
+  <h1 id="from-markdown-to-production-building-a-technical-blog-that-actually-works">From Markdown to Production: Building a Technical Blog That Actually Works</h1>
+
+<p><strong>Subtitle:</strong> Jekyll, GitHub Pages, and the Engineering Behind Writing About Engineering</p>
+
+<p><strong>Author:</strong> McGarrah</p>
+
+<p><strong>Planned:</strong> April 20, 2026</p>
+
+<p><strong>URL:</strong> TBD</p>
+
+<p><strong>Tags:</strong> Software Engineering, Technical Writing, Web Development, Open Source, Blogging</p>
+
+<hr />
+
+<p>I’ve been writing about technology since 2004. The platforms changed — WordPress, Blogger, hand-rolled HTML — but the habit stuck. In 2023 I moved everything to Jekyll on GitHub Pages, and what started as “just a blog” turned into a software engineering project with CI/CD pipelines, SEO automation, GDPR compliance, PDF generation, and custom Ruby plugins.</p>
+
+<p>If you’ve ever wondered why a technical blog needs infrastructure, the answer is the same as why a homelab needs monitoring: because anything worth running is worth running well.</p>
+
+<p>This is a companion to my earlier piece, <a href="https://mcgarrah.substack.com/p/from-homelabs-to-machine-learning">From Homelabs to Machine Learning</a>, which covered the infrastructure side. This one covers the other half — the writing platform, the development workflow, and why treating a blog like a software project teaches you skills that transfer directly to professional engineering.</p>
+
+<p><em>Thanks for reading! Subscribe for free to receive new posts and support my work.</em></p>
+
+<h2 id="why-build-a-blog-like-software">Why Build a Blog Like Software?</h2>
+
+<p>A technical blog is a software product. It has users (readers), requirements (accessibility, SEO, performance), a deployment pipeline (GitHub Actions), dependencies (Ruby gems, npm packages), and bugs (broken links, rendering issues, sitemap bloat).</p>
+
+<p>Treating it that way teaches you:</p>
+
+<ul>
+  <li><strong>CI/CD pipelines</strong> that validate every commit before deployment</li>
+  <li><strong>Static site generation</strong> — the same build-once-serve-everywhere pattern behind CDNs and JAMstack</li>
+  <li><strong>Plugin architecture</strong> — extending a framework without forking it</li>
+  <li><strong>SEO as a system</strong> — structured data, canonical URLs, and automated health checks</li>
+  <li><strong>Privacy engineering</strong> — GDPR compliance that actually works without breaking functionality</li>
+  <li><strong>Documentation as code</strong> — every article is a Markdown file in Git with full version history</li>
+</ul>
+
+<p>These aren’t blog skills. They’re software engineering skills practiced on a project you control completely.</p>
+
+<h2 id="the-platform-jekyll-on-github-pages">The Platform: Jekyll on GitHub Pages</h2>
+
+<p>Jekyll is a Ruby-based static site generator. You write Markdown, Jekyll compiles it to HTML, and GitHub Pages serves it for free. No database, no server, no WordPress security patches at 2 AM.</p>
+
+<ul>
+  <li><strong>The complete feature reference</strong> — Everything the blog can do: Mermaid diagrams, KaTeX math, collapsible sections, code highlighting with copy buttons, YouTube embeds, and more. Publishing this week at <a href="https://mcgarrah.org">mcgarrah.org</a>.</li>
+  <li><a href="https://mcgarrah.org/setting-up-jekyll-blog-github-pages/">Building This Blog: Jekyll on GitHub Pages from Zero to 130+ Posts</a> — The setup guide: repository creation, custom domains, theme selection, GitHub Actions CI/CD, and what I’d do differently if I started over.</li>
+  <li><a href="https://mcgarrah.org/github-pages-jekyll-locally/">Running GitHub Pages Jekyll Locally</a> — Local development setup. You need this before you can iterate quickly.</li>
+</ul>
+
+<p>Coming soon: a deep dive into what happens when you skip two years of dependency updates — Ruby, Bundler, and Jekyll all moved on without me, and the cascading breakage was educational.</p>
+
+<h2 id="writing-features-that-required-engineering">Writing Features That Required Engineering</h2>
+
+<p>Every feature I added to the blog was driven by a specific need in a specific article. The features accumulated into something much larger than I planned.</p>
+
+<h3 id="diagrams-for-infrastructure-posts">Diagrams for Infrastructure Posts</h3>
+
+<p>My <a href="https://mcgarrah.org/proxmox-ceph-homelab-settings/">Ceph architecture posts</a> needed network topology diagrams. Rather than screenshot Visio drawings, I integrated Mermaid.js for diagrams rendered from text at build time.</p>
+
+<ul>
+  <li><a href="https://mcgarrah.org/jekyll-mermaid-diagram-rendering-challenges/">Mermaid Diagram Rendering Challenges in Jekyll</a> — Getting Mermaid to work reliably in Jekyll required solving Liquid template conflicts, script loading order, and dark mode compatibility.</li>
+</ul>
+
+<p>I’m also publishing articles on the small polish features that add up — copy buttons on code blocks, reading time estimates — and a meta-debugging story about what happens when your blog post about Liquid templates gets processed <em>by</em> Liquid templates.</p>
+
+<h3 id="pdf-exports-for-the-resume">PDF Exports for the Resume</h3>
+
+<p>My <a href="https://mcgarrah.org/resume/">online resume</a> needed downloadable PDF and DOCX versions. Rather than maintaining separate files, I built a Jekyll plugin that generates them at build time using Pandoc.</p>
+
+<ul>
+  <li><a href="https://mcgarrah.org/jekyll-pandoc-exports-plugin/">Jekyll Pandoc Exports Plugin</a> — The plugin architecture: hooking into Jekyll’s build lifecycle to run Pandoc on rendered HTML.</li>
+  <li><a href="https://mcgarrah.org/jekyll-pandoc-exports-resume-integration/">Pandoc Exports Resume Integration</a> — Integrating the plugin with the resume site’s specific layout and styling requirements.</li>
+</ul>
+
+<h3 id="seo-as-a-system">SEO as a System</h3>
+
+<p>SEO isn’t a checkbox — it’s a system that needs monitoring. I learned this after months of Google AdSense rejections that turned out to be structural issues with canonical URLs, sitemap bloat, and missing structured data.</p>
+
+<p>The debugging started with a completely opaque rejection message — “your site isn’t ready to show ads” — and no actionable feedback. Seven hours of systematic investigation later, I’d found sitemap 404 errors, a missing contact page, and navigation bugs that Google never explicitly identified.</p>
+
+<ul>
+  <li><a href="https://mcgarrah.org/adsense-approval-failure-remediation/">Google AdSense Approval Failure: Debugging the ‘Site Isn’t Ready’ Rejection</a> — The full debugging story: 20 unpublished posts leaking into the sitemap, the <code class="language-plaintext highlighter-rouge">published: false</code> gotcha in jekyll-sitemap, and why migrating from WordPress cost me my existing AdSense approval.</li>
+  <li><a href="https://mcgarrah.org/jekyll-seo-sitemap-canonical-url-fixes/">Jekyll SEO Sitemap and Canonical URL Fixes</a> — Fixing the plumbing: canonical URLs that pointed to the wrong domain, sitemaps with duplicate entries.</li>
+  <li><a href="https://mcgarrah.org/jekyll-seo-health-checks/">Jekyll SEO Health Checks</a> — Automated validation in CI: every push checks canonical URLs, sitemap XML, meta tags, structured data, and broken links.</li>
+  <li><a href="https://mcgarrah.org/jekyll-sitemap-bloat-tags-categories-pagination/">Jekyll Sitemap Bloat: Tags, Categories, and Pagination</a> — Tag and category pages were inflating the sitemap with hundreds of low-value URLs. Fixing it required understanding what search engines actually want.</li>
+  <li><a href="https://mcgarrah.org/improving-eeat-jekyll-adsense/">Improving E-E-A-T for Jekyll and AdSense</a> — Google’s Experience, Expertise, Authoritativeness, and Trustworthiness signals, and how to implement them in a static site.</li>
+</ul>
+
+<h3 id="gdpr-compliance">GDPR Compliance</h3>
+
+<p>Google AdSense requires GDPR cookie consent for EU visitors. Building it correctly meant detecting user regions, conditionally loading scripts, and not breaking Google’s own verification crawler in the process.</p>
+
+<ul>
+  <li><a href="https://mcgarrah.org/implementing-gdpr-compliance-jekyll-adsense/">Implementing GDPR Compliance for Jekyll and AdSense</a> — The full implementation: EU detection via timezone and IP geolocation, consent storage, conditional script loading.</li>
+  <li><a href="https://mcgarrah.org/adsense-verification-gdpr-script-loading-fix/">Fixing AdSense Verification Without Breaking GDPR</a> — My GDPR implementation was too aggressive — it hid the AdSense script from Google’s verification bot. The architectural fix that separated verification from ad serving.</li>
+</ul>
+
+<h2 id="site-optimization">Site Optimization</h2>
+
+<p>Performance matters for both user experience and SEO. A static site should be fast, but “static” doesn’t mean “automatically optimized.”</p>
+
+<ul>
+  <li><a href="https://mcgarrah.org/jekyll-website-optimization-part-1/">Jekyll Website Optimization Part 1</a> — Structure, performance, and the first round of improvements.</li>
+  <li><a href="https://mcgarrah.org/jekyll-website-optimization-part-2/">Jekyll Website Optimization Part 2</a> — Further refinements after measuring real-world performance.</li>
+  <li><a href="https://mcgarrah.org/sass-circular-dependency-nightmare/">SASS Circular Dependency Nightmare</a> — What started as adding a print stylesheet turned into a multi-hour debugging session that exposed fundamental architecture problems in the SASS module hierarchy. The fix — extracting variables into a standalone module — is the same separation-of-concerns pattern you’d apply to any software dependency graph.</li>
+  <li><a href="https://mcgarrah.org/adding-google-custom-search-jekyll/">Adding Google Custom Search to Jekyll</a> — Site search without a backend. Google Custom Search handles the indexing; Jekyll provides the search page.</li>
+</ul>
+
+<h2 id="managing-multiple-sites">Managing Multiple Sites</h2>
+
+<p>The blog and resume are separate Jekyll sites in separate repositories, served under the same domain. This creates interesting challenges around sitemaps, themes, and whether to merge them.</p>
+
+<ul>
+  <li><a href="https://mcgarrah.org/managing-multiple-jekyll-sites-sitemap-challenges/">Managing Multiple Jekyll Sites: Sitemap Challenges</a> — Two Jekyll sites, one domain, two sitemaps. How to make search engines understand the relationship.</li>
+  <li><a href="https://mcgarrah.org/merging-two-jekyll-websites-architectural-analysis/">Merging Two Jekyll Websites: Architectural Analysis</a> — I evaluated merging the blog and resume into one site. The analysis of why I didn’t is more useful than the merge would have been.</li>
+</ul>
+
+<h2 id="the-ruby-plugin-side">The Ruby Plugin Side</h2>
+
+<p>Jekyll’s plugin system lets you extend the build process with Ruby. I’ve written custom generators for tag pages, category pages, and Pandoc exports.</p>
+
+<ul>
+  <li><a href="https://mcgarrah.org/ruby-gem-release-automation/">Ruby Gem Release Automation</a> — Automating the release pipeline for the Pandoc exports gem. CI/CD for a Ruby gem is its own education.</li>
+  <li><a href="https://mcgarrah.org/jekyll-theme-missing-head-body-tags/">Jekyll Theme Missing Head and Body Tags</a> — Debugging a theme issue where the HTML structure was technically invalid but browsers rendered it anyway. The kind of bug that only shows up when you add structured data validation.</li>
+</ul>
+
+<p>Coming soon: a detailed walkthrough of the custom Ruby generator that creates individual pages for every tag and category — build-time code generation that’s invisible to readers but essential for navigation.</p>
+
+<h2 id="the-development-workflow">The Development Workflow</h2>
+
+<p>The blog itself has a development workflow that mirrors professional software projects — CI/CD, comments, content pipelines, and local development tooling. I have a series of articles publishing over the next few weeks covering:</p>
+
+<ul>
+  <li><strong>Automated CI/CD</strong> — GitHub Actions builds, SEO validation, and deployment on every push</li>
+  <li><strong>Comments without a database</strong> — GitHub Discussions-backed comments via Giscus on a static site</li>
+  <li><strong>Content distribution</strong> — how content flows from draft to published to syndicated across platforms</li>
+  <li><strong>Content plumbing</strong> — the invisible infrastructure of URL structure, reading time estimates, and excerpt handling</li>
+  <li><strong>VS Code integration</strong> — local Jekyll development tooling that led to discovering and fixing bugs in an abandoned extension, which became its own open-source project</li>
+</ul>
+
+<p>These articles will be live on <a href="https://mcgarrah.org">mcgarrah.org</a> throughout May. Subscribe to the <a href="https://mcgarrah.org/feed.xml">RSS feed</a> if you’d like to follow along as they publish.</p>
+
+<h2 id="the-connection-to-professional-engineering">The Connection to Professional Engineering</h2>
+
+<p>If this looks like a lot of engineering for “just a blog,” that’s the point. Every skill here transfers directly:</p>
+
+<ul>
+  <li><strong>Jekyll plugins</strong> teach you framework extension patterns — the same approach used in Django middleware, Express.js middleware, and Kubernetes operators</li>
+  <li><strong>GitHub Actions CI/CD</strong> is the same pipeline technology running production deployments at every company using GitHub</li>
+  <li><strong>SEO structured data</strong> is JSON-LD — the same linked data format used in knowledge graphs and ML training data annotation</li>
+  <li><strong>GDPR compliance</strong> is privacy engineering — increasingly required in ML systems that handle personal data</li>
+  <li><strong>Static site generation</strong> is the build-once-deploy-everywhere pattern behind every CDN, every serverless function, and every ML model serving endpoint</li>
+  <li><strong>Open-source contribution</strong> — finding a bug in a VS Code extension, diagnosing it, writing the fix, and publishing a maintained fork is the same workflow used in enterprise open-source</li>
+</ul>
+
+<p>The blog is where I practice these skills on my own terms. The enterprise is where I apply them at scale.</p>
+
+<h2 id="whats-next">What’s Next</h2>
+
+<p>The blog continues to evolve. Here’s what’s in the pipeline:</p>
+
+<ul>
+  <li><strong>VS Code extension fork</strong> — I found three bugs in the Jekyll Run VS Code extension, and the maintainer hasn’t committed in five years. I’m forking it as “Run Jekyll” with bug fixes, new features (Clean and Doctor commands), and a real test suite. The debugging story alone spans seven articles.</li>
+  <li><strong>Draft preview site</strong> — Building a password-protected preview at <code class="language-plaintext highlighter-rouge">drafts.mcgarrah.org</code> so reviewers can see unpublished content and leave feedback via Giscus before articles go live. Staticrypt encryption on GitHub Pages, automated via GitHub Actions.</li>
+  <li><strong>Jekyll deep dives</strong> — More articles on the internal plumbing: Liquid template gotchas, Jekyll enhancements without plugins, and the formatting conventions that keep 140+ posts consistent.</li>
+  <li><strong>Infrastructure crossover</strong> — The <a href="https://mcgarrah.org/proxmox-ceph-guide/">Proxmox cluster</a> is getting Caddy reverse proxies, ZFS boot mirror procedures, and eventually Kubernetes. The blog may move from GitHub Pages to self-hosted when the K8s cluster is production-ready.</li>
+</ul>
+
+<p>If you’re interested in the infrastructure side, my earlier piece <a href="https://mcgarrah.substack.com/p/from-homelabs-to-machine-learning">From Homelabs to Machine Learning</a> covers the Proxmox, Ceph, and networking foundation. The next Substack installment covers what happens when that storage infrastructure fails — and how Ceph’s self-healing saved my data.</p>
+
+<h2 id="about-me">About Me</h2>
+
+<p>I’m Michael McGarrah — a cloud architect and data scientist with 25+ years in enterprise infrastructure. I hold an M.S. in Computer Science (AI/ML) from Georgia Tech, a B.S. in Computer Science from NC State, and I’m currently pursuing an Executive MBA at UNC Wilmington.</p>
+
+<p>You can find more of my writing at <a href="https://mcgarrah.org">mcgarrah.org</a>, my detailed resume at <a href="https://mcgarrah.org/resume">mcgarrah.org/resume</a>, and my profiles on <a href="https://www.linkedin.com/in/michaelmcgarrah/">LinkedIn</a>, <a href="https://mcgarrah.substack.com/">Substack</a>, <a href="https://github.com/mcgarrah">GitHub</a>, and <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ">Google Scholar</a>.</p>
+
+
+  <div class="post-tags-categories">
+    
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://mcgarrah.substack.com/" rel="me">Substack</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Engineering deep dives on infrastructure, distributed systems, and AI/ML — from homelab experiments to enterprise architecture.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://mcgarrah.substack.com/" ><svg aria-label="Substack" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#substack"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>
