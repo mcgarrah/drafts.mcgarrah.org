@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Caddy Reverse Proxy for Local Multi-Site Jekyll Development | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Caddy Reverse Proxy for Local Multi-Site Jekyll Development" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="How to run multiple Jekyll sites locally under one domain with correct path routing using Caddy reverse proxy, including livereload through the proxy, handle vs handle_path path-ownership semantics, and the architectural principles behind development-production parity." />
+<meta property="og:description" content="How to run multiple Jekyll sites locally under one domain with correct path routing using Caddy reverse proxy, including livereload through the proxy, handle vs handle_path path-ownership semantics, and the architectural principles behind development-production parity." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/caddy-reverse-proxy-local-multi-site-jekyll/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/caddy-reverse-proxy-local-multi-site-jekyll/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:image" content="https://drafts.mcgarrah.org/assets/images/og/caddy-reverse-proxy-local-multi-site-jekyll.png" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-05-23T00:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta property="twitter:image" content="https://drafts.mcgarrah.org/assets/images/og/caddy-reverse-proxy-local-multi-site-jekyll.png" />
+<meta property="twitter:title" content="Caddy Reverse Proxy for Local Multi-Site Jekyll Development" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah","url":"https://mcgarrah.org"},"dateModified":"2026-05-23T00:00:00+00:00","datePublished":"2026-05-23T00:00:00+00:00","description":"How to run multiple Jekyll sites locally under one domain with correct path routing using Caddy reverse proxy, including livereload through the proxy, handle vs handle_path path-ownership semantics, and the architectural principles behind development-production parity.","headline":"Caddy Reverse Proxy for Local Multi-Site Jekyll Development","image":"https://drafts.mcgarrah.org/assets/images/og/caddy-reverse-proxy-local-multi-site-jekyll.png","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/caddy-reverse-proxy-local-multi-site-jekyll/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/caddy-reverse-proxy-local-multi-site-jekyll/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+
+<!-- Favicons -->
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="shortcut icon" href="/favicon.ico">
+<meta name="theme-color" content="#ffffff">
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="Substack" href="https://mcgarrah.substack.com/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#substack"></use></svg>
+      <span aria-hidden="true">Substack</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Engineering deep dives on infrastructure, distributed systems, and AI/ML — from homelab experiments to enterprise architecture.</div>
+</aside>
+
+
+
+
+
+<div style="background:#e67e00;color:#fff;text-align:center;padding:0.5em 1em;font-size:0.9em;font-weight:bold;">
+  ⚠ DRAFT PREVIEW SITE — unpublished content, may change.
+  <a href="https://mcgarrah.org" style="color:#fff;text-decoration:underline;margin-left:0.5em;">Go to the main site →</a>
+</div>
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+  
+  <nav class="drafts-nav"><a href="/substack/"><svg aria-label="Substack Drafts" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#newspaper"></use></svg><span>Substack Drafts</span>
+    </a><a href="/linkedin/"><svg aria-label="LinkedIn Drafts" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg><span>LinkedIn Drafts</span>
+    </a></nav>
+  
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/caddy-reverse-proxy-local-multi-site-jekyll/">Caddy Reverse Proxy for Local Multi-Site Jekyll Development</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-05-23T00:00:00+00:00">May 23, 2026</time><span class="reading-time">8 min read</span></header>
+
+  <p>In production, my blog serves from the webroot (<code class="language-plaintext highlighter-rouge">mcgarrah.org/</code>) and my resume lives at <code class="language-plaintext highlighter-rouge">mcgarrah.org/resume/</code> — two separate Jekyll repositories deployed to the same GitHub Pages domain. Links between them use absolute paths: the blog’s navigation links to <code class="language-plaintext highlighter-rouge">/resume/</code>, the resume’s header links back to <code class="language-plaintext highlighter-rouge">/</code>. GitHub Pages merges both repos under one domain and the routing is invisible.</p>
+
+<p>Locally, that routing does not exist. Each site runs its own <code class="language-plaintext highlighter-rouge">bundle exec jekyll serve</code> on its own port — and suddenly every cross-site link is broken. Click “Resume” in the blog nav and you get a 404. Click the blog link in the resume header and you land on the wrong server.</p>
+
+<p>This is the same class of problem you encounter in any microservices architecture: services that communicate via path-based routing in production need that same routing replicated in development, or integration testing becomes impossible. The question is how lightweight you can make that routing layer without sacrificing developer experience — specifically, livereload.</p>
+
+<!-- excerpt-end -->
+
+<h2 id="the-problem">The Problem</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Site</th>
+      <th>Production URL</th>
+      <th>Local URL</th>
+      <th>baseurl</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Blog</td>
+      <td><code class="language-plaintext highlighter-rouge">mcgarrah.org/</code></td>
+      <td><code class="language-plaintext highlighter-rouge">localhost:4001/</code></td>
+      <td><code class="language-plaintext highlighter-rouge">""</code> (empty)</td>
+    </tr>
+    <tr>
+      <td>Resume</td>
+      <td><code class="language-plaintext highlighter-rouge">mcgarrah.org/resume/</code></td>
+      <td><code class="language-plaintext highlighter-rouge">localhost:4002/resume/</code></td>
+      <td><code class="language-plaintext highlighter-rouge">"/resume"</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Cross-site links use absolute paths (<code class="language-plaintext highlighter-rouge">/resume/</code>, <code class="language-plaintext highlighter-rouge">/resume/print/</code>). In production these resolve correctly because both sites share a domain. Locally, the blog’s WEBrick server has no idea <code class="language-plaintext highlighter-rouge">/resume/</code> exists — it is a completely separate process. The routing layer that GitHub Pages provides for free must be replicated locally.</p>
+
+<h2 id="options-evaluated">Options Evaluated</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Approach</th>
+      <th>Livereload?</th>
+      <th>Cross-platform?</th>
+      <th>Complexity</th>
+      <th>Verdict</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Caddy reverse proxy</strong></td>
+      <td>✅ Both sites</td>
+      <td>✅ macOS + WSL2</td>
+      <td>Single binary, 4-line config</td>
+      <td><strong>Selected</strong></td>
+    </tr>
+    <tr>
+      <td>Symlink <code class="language-plaintext highlighter-rouge">_site/</code></td>
+      <td>❌ Blog only</td>
+      <td>✅</td>
+      <td>Zero deps, fragile</td>
+      <td>One-off verification only</td>
+    </tr>
+    <tr>
+      <td>Python <code class="language-plaintext highlighter-rouge">http.server</code></td>
+      <td>❌</td>
+      <td>✅</td>
+      <td>Zero deps</td>
+      <td>Final link checking only</td>
+    </tr>
+    <tr>
+      <td>Jekyll multisite build</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>High (config merge)</td>
+      <td><a href="/merging-two-jekyll-websites-architectural-analysis/">Explicitly rejected</a></td>
+    </tr>
+    <tr>
+      <td>Traefik / mitmproxy</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>Overkill</td>
+      <td>Not justified</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="why-caddy">Why Caddy</h3>
+
+<p><a href="https://caddyserver.com/">Caddy</a> won on five criteria: single binary (no runtime dependencies), four-line config, cross-platform behavior (identical on macOS and WSL2), already in my toolchain for <a href="/caddy-reverse-proxy-proxmox-web-ui/">Proxmox</a> and <a href="/caddy-reverse-proxy-ceph-dashboard/">Ceph</a> proxying, and extensible — adding a third site is one more <code class="language-plaintext highlighter-rouge">handle</code> block.</p>
+
+<p>The rejected alternatives each fail on developer experience. The symlink approach breaks on every <code class="language-plaintext highlighter-rouge">jekyll build</code> and offers no livereload for the resume. Python’s <code class="language-plaintext highlighter-rouge">http.server</code> is static — no incremental rebuilds. The multisite config merges two independent Gemfiles, plugin sets, and Sass namespaces into one build, creating coupling that defeats the purpose of separate repositories. The architectural boundary between the sites is intentional.</p>
+
+<h2 id="implementation">Implementation</h2>
+
+<h3 id="the-caddyfile">The Caddyfile</h3>
+
+<p>Lives in the blog repo root (since the blog owns the webroot):</p>
+
+<pre><code class="language-caddyfile">:8080 {
+    # Only log errors — keeps terminal quiet during normal use,
+    # but surfaces routing problems (502s, timeouts) immediately
+    log {
+        output stdout
+        format console
+        level ERROR
+    }
+
+    # Gzip responses — Jekyll's WEBrick does not compress, so
+    # Caddy adds it. Useful for testing real-world page weights
+    # and catching bloated assets during development.
+    encode gzip
+
+    handle /resume/* {
+        reverse_proxy localhost:4002
+    }
+
+    handle /resume {
+        redir /resume/ permanent
+    }
+
+    handle {
+        reverse_proxy localhost:4001
+    }
+}
+</code></pre>
+
+<h3 id="path-ownership-handle-vs-handle_path">Path Ownership: <code class="language-plaintext highlighter-rouge">handle</code> vs <code class="language-plaintext highlighter-rouge">handle_path</code></h3>
+
+<p>One subtlety that bit me initially: Caddy’s <code class="language-plaintext highlighter-rouge">handle_path</code> strips the matched prefix before forwarding. That sounds helpful — but the resume’s Jekyll server is configured with <code class="language-plaintext highlighter-rouge">baseurl: "/resume"</code>, meaning it <em>expects</em> requests to arrive with the <code class="language-plaintext highlighter-rouge">/resume</code> prefix. If Caddy strips it, the resume server receives <code class="language-plaintext highlighter-rouge">/print/</code> when it expects <code class="language-plaintext highlighter-rouge">/resume/print/</code> — and returns a 404.</p>
+
+<p>The fix is <code class="language-plaintext highlighter-rouge">handle</code> (not <code class="language-plaintext highlighter-rouge">handle_path</code>), which forwards the full path including <code class="language-plaintext highlighter-rouge">/resume</code> to the resume server. The server already knows how to route requests under its own baseurl.</p>
+
+<p>The rule of thumb:</p>
+
+<ul>
+  <li><strong><code class="language-plaintext highlighter-rouge">handle_path</code></strong> — downstream serves at root, doesn’t know about the prefix (strip it)</li>
+  <li><strong><code class="language-plaintext highlighter-rouge">handle</code></strong> — downstream is configured with the prefix (preserve it)</li>
+</ul>
+
+<p>Getting this wrong produces 404s that <em>look</em> like the proxy is working — you see the resume’s styled 404 page, not Caddy’s error — which makes the bug confusing to diagnose. This is the same path-ownership question you encounter in Kubernetes Ingress controllers, AWS ALB path-based routing, and API gateway configurations. Documenting which layer owns the prefix prevents a class of routing bugs that are notoriously difficult to debug in production.</p>
+
+<h3 id="livereload-through-the-proxy">Livereload Through the Proxy</h3>
+
+<p>My initial assumption was that livereload would break through Caddy. It does not — and understanding why reveals useful Jekyll internals.</p>
+
+<p>Jekyll’s <code class="language-plaintext highlighter-rouge">--livereload</code> injects a <code class="language-plaintext highlighter-rouge">&lt;script&gt;</code> tag into every served page. That script opens a WebSocket connection to <code class="language-plaintext highlighter-rouge">ws://localhost:35729/livereload</code>. The critical detail: <strong>this is a direct connection to the Jekyll server’s livereload port, not a request through the HTTP port that Caddy proxies.</strong> The browser makes two independent connections:</p>
+
+<ol>
+  <li><code class="language-plaintext highlighter-rouge">localhost:8080</code> → Caddy → Jekyll (page content via HTTP)</li>
+  <li><code class="language-plaintext highlighter-rouge">localhost:35729</code> → Jekyll directly (reload notifications via WebSocket)</li>
+</ol>
+
+<p>Caddy never sees the WebSocket traffic. Livereload works transparently with zero proxy configuration.</p>
+
+<p>The only constraint when running two Jekyll servers simultaneously: each needs its own livereload port. Jekyll defaults to 35729, so the second server must use <code class="language-plaintext highlighter-rouge">--livereload-port 35730</code>. Without this, the second server fails to bind and livereload silently stops working for one site — no error message, just no refresh.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Blog: default livereload port</span>
+bundle <span class="nb">exec </span>jekyll serve <span class="nt">--livereload</span> <span class="nt">--livereload-port</span> 35729
+
+<span class="c"># Resume: offset to avoid collision</span>
+bundle <span class="nb">exec </span>jekyll serve <span class="nt">--livereload</span> <span class="nt">--livereload-port</span> 35730
+</code></pre></div></div>
+
+<p>The <code class="language-plaintext highlighter-rouge">--livereload-port</code> flag is poorly documented Jekyll lore. It exists specifically for multi-server scenarios but is rarely mentioned because most people run one Jekyll server at a time.</p>
+
+<p>I verified the full stack: both sites return 200 through Caddy, both inject their respective livereload scripts (<code class="language-plaintext highlighter-rouge">port=35729</code> and <code class="language-plaintext highlighter-rouge">port=35730</code>), both WebSocket ports accept connections, and touching a file in either repo triggers an independent incremental rebuild with automatic browser refresh. The developer experience is identical to standalone <code class="language-plaintext highlighter-rouge">jekyll serve</code> — with correct cross-site linking.</p>
+
+<h3 id="the-startup-script">The Startup Script</h3>
+
+<p>Rather than managing three terminal windows, <code class="language-plaintext highlighter-rouge">jekyll-caddy.sh</code> orchestrates all services:</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>./jekyll-caddy.sh
+</code></pre></div></div>
+
+<p>The script validates prerequisites before starting anything:</p>
+
+<ul>
+  <li>Git repo identity (confirms <code class="language-plaintext highlighter-rouge">mcgarrah.github.io</code> and <code class="language-plaintext highlighter-rouge">resume</code> by name)</li>
+  <li>Ruby &gt;= 3.2, Jekyll &gt;= 4.3.2, bundler, Caddy binary</li>
+  <li>Gems installed in both repos (<code class="language-plaintext highlighter-rouge">bundle check</code>)</li>
+  <li>Ports 4001, 4002, 8080 available</li>
+  <li>Builds <code class="language-plaintext highlighter-rouge">_site/</code> automatically if missing</li>
+</ul>
+
+<p>Then starts all three processes with the same flags as <code class="language-plaintext highlighter-rouge">jekyll-start.sh</code> (<code class="language-plaintext highlighter-rouge">--trace --drafts --future --unpublished --incremental --livereload</code>), using ports 4001/4002 to avoid colliding with a standalone <code class="language-plaintext highlighter-rouge">jekyll-start.sh</code> on the default 4000.</p>
+
+<div class="language-text highlighter-rouge"><div class="highlight"><pre class="highlight"><code>═══════════════════════════════════════════════════════════════
+  Local development environment ready
+
+  Blog:      http://localhost:8080/
+  Resume:    http://localhost:8080/resume/
+  Print:     http://localhost:8080/resume/print/
+  Machine:   http://localhost:8080/resume/machine/
+
+  Direct (bypass proxy):
+    Blog:    http://localhost:4001/
+    Resume:  http://localhost:4002/resume/
+
+  Press Ctrl+C to stop all services.
+═══════════════════════════════════════════════════════════════
+</code></pre></div></div>
+
+<h2 id="the-architectural-principle">The Architectural Principle</h2>
+
+<p>The pattern here is general: any multi-repo deployment that shares a domain in production needs local routing parity for integration testing. The specific tools (Jekyll, Caddy) are incidental — the principle is:</p>
+
+<ol>
+  <li><strong>Each service owns its own build and deploy lifecycle</strong> — separate repos, separate CI, independent release cadence</li>
+  <li><strong>A routing layer merges them under one origin</strong> — GitHub Pages in production, Caddy locally</li>
+  <li><strong>Cross-service links use absolute paths</strong> — not relative, not port-specific, not environment-aware</li>
+  <li><strong>The routing layer is the thinnest possible</strong> — 4 lines of config, not a full web server</li>
+  <li><strong>Development mirrors production topology</strong> — otherwise you are testing something different from what you deploy</li>
+</ol>
+
+<p>This is the same separation of concerns you apply to microservices behind an API gateway, static assets behind a CDN, or multiple applications behind a load balancer. The development environment should replicate the production routing contract. When it does not, integration bugs hide until deploy — the most expensive place to find them.</p>
+
+<h2 id="closing-thought">Closing Thought</h2>
+
+<p>Back in April I wrote about the <a href="/managing-multiple-jekyll-sites-sitemap-challenges/">sitemap challenges</a> of running two Jekyll sites under one domain, then followed up with an <a href="/merging-two-jekyll-websites-architectural-analysis/">architectural analysis</a> of whether to merge them. The conclusion was clear: keep them separate. Separate repos, separate CI, separate deploy cycles, separate concerns. The resume has a Jinja2/XeLaTeX pipeline, a Pandoc plugin, and structured data requirements that have no business in the blog’s Gemfile.</p>
+
+<p>What those articles did not solve was the developer experience gap. I had made the correct architectural decision — independent services with a shared domain — but had not invested in the local tooling to make that architecture comfortable to work in. Every time I updated a cross-site link, I had to deploy to production to verify it worked. That is the kind of friction that accumulates into avoidance: you stop making cross-site improvements because testing them is annoying.</p>
+
+<p>This Caddy setup closes that gap. One script, three services, full livereload, correct routing. I can now iterate on both sites simultaneously with the same feedback loop I get from a single <code class="language-plaintext highlighter-rouge">jekyll serve</code>. The architectural decision to keep the sites separate no longer carries a developer experience tax.</p>
+
+<p>That is the broader lesson: good architecture decisions sometimes need tooling investment to remain good decisions. Without the local proxy, the separation would eventually become painful enough to reconsider — and the merger would be the wrong answer to the wrong problem. The right answer was always “keep the architecture, fix the tooling.”</p>
+
+<h2 id="related-posts">Related Posts</h2>
+
+<ul>
+  <li><a href="/managing-multiple-jekyll-sites-sitemap-challenges/">Managing Multiple Jekyll Sites Under One Domain: Sitemap Challenges</a> — The production-side problems that motivated this work</li>
+  <li><a href="/merging-two-jekyll-websites-architectural-analysis/">Merging Two Jekyll Websites: Architectural Analysis</a> — Why these sites stay separate (and why that decision needs local tooling)</li>
+  <li><a href="/caddy-reverse-proxy-proxmox-web-ui/">Caddy Reverse Proxy for Proxmox Web UI</a> — Same tool, different use case</li>
+  <li><a href="/caddy-reverse-proxy-ceph-dashboard/">Caddy Reverse Proxy for Ceph Dashboard</a> — Pattern reuse across the homelab</li>
+  <li><a href="/resume-site-ground-up-rebuild/">Rebuilding My Resume Site From the Ground Up</a> — The rebuild that motivated this tooling</li>
+</ul>
+
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/jekyll/">jekyll</a>, 
+        
+          <a href="/tags/local-development/">local-development</a>, 
+        
+          <a href="/tags/reverse-proxy/">reverse-proxy</a>, 
+        
+          <a href="/tags/caddy/">caddy</a>, 
+        
+          <a href="/tags/macos/">macos</a>, 
+        
+          <a href="/tags/wsl2/">wsl2</a>, 
+        
+          <a href="/tags/github-pages/">github-pages</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/web-development/">web-development</a>, 
+        
+          <a href="/categories/technical/">technical</a>, 
+        
+          <a href="/categories/jekyll/">jekyll</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://mcgarrah.substack.com/" rel="me">Substack</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Engineering deep dives on infrastructure, distributed systems, and AI/ML — from homelab experiments to enterprise architecture.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://mcgarrah.substack.com/" ><svg aria-label="Substack" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#substack"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>

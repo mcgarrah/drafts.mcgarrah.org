@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Jellyfin Media Integrity Scanner: The Dashboard &amp; API | McGarrah Technical Blog</title>
+<meta name="generator" content="Jekyll v4.4.1" />
+<meta property="og:title" content="Jellyfin Media Integrity Scanner: The Dashboard &amp; API" />
+<meta name="author" content="Michael McGarrah" />
+<meta property="og:locale" content="en" />
+<meta name="description" content="Implementing the REST API and admin dashboard for the Jellyfin Media Integrity Scanner plugin. Covers the ASP.NET Core controller, scan result queries, manual scan triggers, and the HTML/JavaScript dashboard with library health overview. Part 4 of a 6-part development series." />
+<meta property="og:description" content="Implementing the REST API and admin dashboard for the Jellyfin Media Integrity Scanner plugin. Covers the ASP.NET Core controller, scan result queries, manual scan triggers, and the HTML/JavaScript dashboard with library health overview. Part 4 of a 6-part development series." />
+<link rel="canonical" href="https://drafts.mcgarrah.org/jellyfin-media-integrity-dashboard-api/" />
+<meta property="og:url" content="https://drafts.mcgarrah.org/jellyfin-media-integrity-dashboard-api/" />
+<meta property="og:site_name" content="McGarrah Technical Blog" />
+<meta property="og:image" content="https://drafts.mcgarrah.org/assets/images/og/jellyfin-media-integrity-dashboard-api.png" />
+<meta property="og:type" content="article" />
+<meta property="article:published_time" content="2026-08-12T00:00:00+00:00" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta property="twitter:image" content="https://drafts.mcgarrah.org/assets/images/og/jellyfin-media-integrity-dashboard-api.png" />
+<meta property="twitter:title" content="Jellyfin Media Integrity Scanner: The Dashboard &amp; API" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BlogPosting","author":{"@type":"Person","name":"Michael McGarrah","url":"https://mcgarrah.org"},"dateModified":"2026-08-12T00:00:00+00:00","datePublished":"2026-08-12T00:00:00+00:00","description":"Implementing the REST API and admin dashboard for the Jellyfin Media Integrity Scanner plugin. Covers the ASP.NET Core controller, scan result queries, manual scan triggers, and the HTML/JavaScript dashboard with library health overview. Part 4 of a 6-part development series.","headline":"Jellyfin Media Integrity Scanner: The Dashboard &amp; API","image":"https://drafts.mcgarrah.org/assets/images/og/jellyfin-media-integrity-dashboard-api.png","mainEntityOfPage":{"@type":"WebPage","@id":"https://drafts.mcgarrah.org/jellyfin-media-integrity-dashboard-api/"},"publisher":{"@type":"Organization","logo":{"@type":"ImageObject","url":"https://drafts.mcgarrah.org/assets/images/logo.png"},"name":"Michael McGarrah"},"url":"https://drafts.mcgarrah.org/jellyfin-media-integrity-dashboard-api/"}</script>
+<!-- End Jekyll SEO tag -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Jekyll v4.4.1">
+
+<meta name="robots" content="noindex, follow">
+
+
+<link rel="stylesheet" href="/assets/css/index.css">
+
+<link rel="stylesheet" href="/assets/css/cookie-consent.css">
+
+
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = isDarkMode ? 'dark' : 'default';
+  mermaid.initialize({ startOnLoad: true, theme: theme });
+  await mermaid.run({ querySelector: '.language-mermaid' });
+</script>
+
+
+
+<link rel="stylesheet" href="/assets/css/sidebar.css" media="screen and (min-width: 70em)">
+
+
+<!-- AdSense verification script - always present for Google bot verification -->
+<!-- Ad display is controlled by cookie-consent.js based on user consent -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" crossorigin="anonymous"></script>
+<script>window.adsbygoogle = window.adsbygoogle || [];</script>
+
+
+
+<!-- Google Analytics - Loaded conditionally based on consent -->
+<script>
+  // Initialize dataLayer for consent mode
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  
+  // Analytics script and config will be loaded by consent manager
+</script>
+
+
+<!-- Favicons -->
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="shortcut icon" href="/favicon.ico">
+<meta name="theme-color" content="#ffffff">
+</head>
+
+<body>
+<aside style="display: none">
+  <nav><a aria-label="Home" href="/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg>
+      <span aria-hidden="true">Home</span>
+    </a><a aria-label="Archive" href="/archive/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg>
+      <span aria-hidden="true">Archive</span>
+    </a><a aria-label="Tags" href="/tags/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg>
+      <span aria-hidden="true">Tags</span>
+    </a><a aria-label="Categories" href="/categories/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg>
+      <span aria-hidden="true">Categories</span>
+    </a><a aria-label="Search" href="/search/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg>
+      <span aria-hidden="true">Search</span>
+    </a><a aria-label="About" href="/about/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg>
+      <span aria-hidden="true">About</span>
+    </a><a aria-label="Contact" href="/contact/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Contact</span>
+    </a><a aria-label="Privacy" href="/privacy/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg>
+      <span aria-hidden="true">Privacy</span>
+    </a><a aria-label="Mail" href="mailto:mcgarrah@gmail.com" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg>
+      <span aria-hidden="true">Mail</span>
+    </a><a aria-label="Github" href="https://github.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg>
+      <span aria-hidden="true">Github</span>
+    </a><a aria-label="Gitlab" href="https://gitlab.com/mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg>
+      <span aria-hidden="true">Gitlab</span>
+    </a><a aria-label="StackOverflow" href="https://stackoverflow.com/users/2452678/michael-mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg>
+      <span aria-hidden="true">StackOverflow</span>
+    </a><a aria-label="Discord" href="https://discord.com/users/914581392740995073" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg>
+      <span aria-hidden="true">Discord</span>
+    </a><a aria-label="Resume" href="/resume/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg>
+      <span aria-hidden="true">Resume</span>
+    </a><a aria-label="LinkedIn" href="https://www.linkedin.com/in/michaelmcgarrah/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg>
+      <span aria-hidden="true">LinkedIn</span>
+    </a><a aria-label="Substack" href="https://mcgarrah.substack.com/" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#substack"></use></svg>
+      <span aria-hidden="true">Substack</span>
+    </a><a aria-label="ResearchGate" href="https://www.researchgate.net/profile/James-Mcgarrah" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg>
+      <span aria-hidden="true">ResearchGate</span>
+    </a><a aria-label="ORCID" href="https://orcid.org/0000-0001-8935-1293" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg>
+      <span aria-hidden="true">ORCID</span>
+    </a><a aria-label="Google Scholar" href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg>
+      <span aria-hidden="true">Google Scholar</span>
+    </a><a aria-label="Subscribe" href="/feed.xml" >
+      <svg aria-hidden="true" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg>
+      <span aria-hidden="true">Subscribe</span>
+    </a></nav>
+  <div class="description">Engineering deep dives on infrastructure, distributed systems, and AI/ML — from homelab experiments to enterprise architecture.</div>
+</aside>
+
+
+
+
+
+<div style="background:#e67e00;color:#fff;text-align:center;padding:0.5em 1em;font-size:0.9em;font-weight:bold;">
+  ⚠ DRAFT PREVIEW SITE — unpublished content, may change.
+  <a href="https://mcgarrah.org" style="color:#fff;text-decoration:underline;margin-left:0.5em;">Go to the main site →</a>
+</div>
+
+<header>
+  <a href="/" class="title">McGarrah Technical Blog</a>
+  <nav><a href="/" ><svg aria-label="Home" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#blog"></use></svg></a><a href="/archive/" ><svg aria-label="Archive" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#list"></use></svg></a><a href="/tags/" ><svg aria-label="Tags" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#tags"></use></svg></a><a href="/categories/" ><svg aria-label="Categories" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#th-list"></use></svg></a><a href="/search/" ><svg aria-label="Search" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#search"></use></svg></a><a href="/about/" ><svg aria-label="About" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#user"></use></svg></a><a href="/contact/" ><svg aria-label="Contact" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="/privacy/" ><svg aria-label="Privacy" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#lock"></use></svg></a></nav>
+
+  
+  <nav class="drafts-nav"><a href="/substack/"><svg aria-label="Substack Drafts" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#newspaper"></use></svg><span>Substack Drafts</span>
+    </a><a href="/linkedin/"><svg aria-label="LinkedIn Drafts" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg><span>LinkedIn Drafts</span>
+    </a></nav>
+  
+</header>
+
+<article>
+  <header>
+  <h1>
+    <a href="/jellyfin-media-integrity-dashboard-api/">Jellyfin Media Integrity Scanner: The Dashboard & API</a>
+  </h1><span class="post-byline">By <a href="/about/" rel="author">Michael McGarrah</a></span> ·
+  <time datetime="2026-08-12T00:00:00+00:00">August 12, 2026</time><span class="reading-time">17 min read</span></header>
+
+  <p>The <a href="/jellyfin-media-integrity-scanner-core/">scanner core</a> handles the detection work — finding corrupt files and recording results in SQLite. But a scanner that runs silently in the background is only half the solution. Admins need to see what’s broken, when it was scanned, and have the ability to trigger scans on demand.</p>
+
+<!-- excerpt-end -->
+
+<p>This is Part 4 of the <a href="/jellyfin-media-integrity-scanner-introduction/">Jellyfin Media Integrity Scanner</a> development series. The REST API controller and dashboard below are fully implemented and shipping, though two accuracy bugs surfaced during a later review: <code class="language-plaintext highlighter-rouge">GetStatus</code> originally reported <code class="language-plaintext highlighter-rouge">TotalFiles</code>/<code class="language-plaintext highlighter-rouge">PendingFiles</code> straight from the scan-results table, which never reflected the real library size and double-counted items scanned in both phases, and <code class="language-plaintext highlighter-rouge">libraryId</code> on <code class="language-plaintext highlighter-rouge">GET /Results</code> was accepted but silently ignored. Both are covered in the <a href="#update-status-accuracy-and-library-filtering">Status Accuracy and Library Filtering update</a> further down.</p>
+
+<h2 id="rest-api-controller">REST API Controller</h2>
+
+<p><code class="language-plaintext highlighter-rouge">MediaIntegrityController</code> exposes the scan engine over Jellyfin’s own ASP.NET Core pipeline. Every route requires the <code class="language-plaintext highlighter-rouge">RequiresElevation</code> policy (admin-only), and the controller itself stays thin — it wires HTTP verbs to <code class="language-plaintext highlighter-rouge">IScanEngine</code>/database calls without implementing any scanning logic of its own:</p>
+
+<div class="language-csharp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="p">[</span><span class="n">ApiController</span><span class="p">]</span>
+<span class="p">[</span><span class="nf">Route</span><span class="p">(</span><span class="s">"MediaIntegrity"</span><span class="p">)]</span>
+<span class="p">[</span><span class="nf">Authorize</span><span class="p">(</span><span class="n">Policy</span> <span class="p">=</span> <span class="s">"RequiresElevation"</span><span class="p">)]</span>
+<span class="k">public</span> <span class="k">class</span> <span class="nc">MediaIntegrityController</span> <span class="p">:</span> <span class="n">ControllerBase</span>
+<span class="p">{</span>
+    <span class="p">[</span><span class="nf">HttpGet</span><span class="p">(</span><span class="s">"Status"</span><span class="p">)]</span>
+    <span class="k">public</span> <span class="k">async</span> <span class="n">Task</span><span class="p">&lt;</span><span class="n">ActionResult</span><span class="p">&lt;</span><span class="n">ScanStatusResponse</span><span class="p">&gt;&gt;</span> <span class="nf">GetStatus</span><span class="p">()</span> <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+
+    <span class="p">[</span><span class="nf">HttpGet</span><span class="p">(</span><span class="s">"Results"</span><span class="p">)]</span>
+    <span class="k">public</span> <span class="k">async</span> <span class="n">Task</span><span class="p">&lt;</span><span class="n">ActionResult</span><span class="p">&lt;</span><span class="n">PagedResultResponse</span><span class="p">&gt;&gt;</span> <span class="nf">GetResults</span><span class="p">(</span>
+        <span class="n">ScanStatus</span><span class="p">?</span> <span class="n">status</span><span class="p">,</span> <span class="kt">int</span> <span class="n">page</span> <span class="p">=</span> <span class="m">1</span><span class="p">,</span> <span class="kt">int</span> <span class="n">pageSize</span> <span class="p">=</span> <span class="m">50</span><span class="p">,</span> <span class="kt">string</span><span class="p">?</span> <span class="n">libraryId</span> <span class="p">=</span> <span class="k">null</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+
+    <span class="p">[</span><span class="nf">HttpGet</span><span class="p">(</span><span class="s">"Results/{itemId}"</span><span class="p">)]</span>
+    <span class="k">public</span> <span class="k">async</span> <span class="n">Task</span><span class="p">&lt;</span><span class="n">ActionResult</span><span class="p">&lt;</span><span class="n">ItemScanDetail</span><span class="p">&gt;&gt;</span> <span class="nf">GetItemDetail</span><span class="p">(</span><span class="kt">string</span> <span class="n">itemId</span><span class="p">)</span> <span class="p">{</span> <span class="cm">/* ... */</span> <span class="p">}</span>
+
+    <span class="p">[</span><span class="nf">HttpPost</span><span class="p">(</span><span class="s">"Scan"</span><span class="p">)]</span>
+    <span class="k">public</span> <span class="k">async</span> <span class="n">Task</span><span class="p">&lt;</span><span class="n">ActionResult</span><span class="p">&gt;</span> <span class="nf">TriggerScan</span><span class="p">([</span><span class="n">FromBody</span><span class="p">]</span> <span class="n">ScanRequest</span> <span class="n">request</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">_scanner</span><span class="p">.</span><span class="n">IsScanning</span><span class="p">)</span>
+        <span class="p">{</span>
+            <span class="k">return</span> <span class="nf">Conflict</span><span class="p">(</span><span class="s">"A scan is already in progress."</span><span class="p">);</span>
+        <span class="p">}</span>
+
+        <span class="c1">// Fire-and-forget: the request returns immediately and the caller</span>
+        <span class="c1">// polls GetStatus/GetResults, rather than holding a connection open</span>
+        <span class="c1">// for a scan that can take hours on a large library.</span>
+        <span class="n">_</span> <span class="p">=</span> <span class="n">Task</span><span class="p">.</span><span class="nf">Run</span><span class="p">(()</span> <span class="p">=&gt;</span> <span class="n">request</span><span class="p">.</span><span class="n">ItemId</span> <span class="p">!=</span> <span class="k">null</span>
+            <span class="p">?</span> <span class="n">_scanner</span><span class="p">.</span><span class="nf">ScanItemAsync</span><span class="p">(</span><span class="n">_library</span><span class="p">.</span><span class="nf">GetItemById</span><span class="p">(</span><span class="n">Guid</span><span class="p">.</span><span class="nf">Parse</span><span class="p">(</span><span class="n">request</span><span class="p">.</span><span class="n">ItemId</span><span class="p">)),</span>
+                <span class="n">request</span><span class="p">.</span><span class="n">DeepScan</span> <span class="p">?</span> <span class="n">ScanPhase</span><span class="p">.</span><span class="n">FullDecode</span> <span class="p">:</span> <span class="n">ScanPhase</span><span class="p">.</span><span class="n">Header</span><span class="p">,</span> <span class="n">CancellationToken</span><span class="p">.</span><span class="n">None</span><span class="p">)</span>
+            <span class="p">:</span> <span class="n">_scanner</span><span class="p">.</span><span class="nf">ScanLibraryAsync</span><span class="p">(</span><span class="n">request</span><span class="p">.</span><span class="n">LibraryId</span><span class="p">,</span>
+                <span class="n">request</span><span class="p">.</span><span class="n">DeepScan</span> <span class="p">?</span> <span class="n">ScanPhase</span><span class="p">.</span><span class="n">FullDecode</span> <span class="p">:</span> <span class="n">ScanPhase</span><span class="p">.</span><span class="n">Header</span><span class="p">,</span> <span class="n">CancellationToken</span><span class="p">.</span><span class="n">None</span><span class="p">));</span>
+
+        <span class="k">return</span> <span class="nf">Accepted</span><span class="p">();</span>
+    <span class="p">}</span>
+
+    <span class="p">[</span><span class="nf">HttpPost</span><span class="p">(</span><span class="s">"Cancel"</span><span class="p">)]</span>
+    <span class="k">public</span> <span class="n">ActionResult</span> <span class="nf">CancelScan</span><span class="p">()</span> <span class="p">{</span> <span class="n">_scanner</span><span class="p">.</span><span class="nf">Cancel</span><span class="p">();</span> <span class="k">return</span> <span class="nf">Ok</span><span class="p">();</span> <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">TriggerScan</code>’s early <code class="language-plaintext highlighter-rouge">Conflict</code> return is the API-level half of the same single-scan-at-a-time guarantee <code class="language-plaintext highlighter-rouge">ScanEngine</code>’s semaphore already enforces internally (see the <a href="/jellyfin-media-integrity-scanner-core/#the-scan-engine">scanner core article</a>) — rejecting a second request at the HTTP layer gives an admin an immediate, meaningful <code class="language-plaintext highlighter-rouge">409</code> instead of a call that silently queues behind the running scan.</p>
+
+<p>Full file: <a href="https://github.com/mcgarrah/jellyfin-plugin-media-integrity-scanner/blob/main/Jellyfin.Plugin.MediaIntegrityScanner/Api/MediaIntegrityController.cs"><code class="language-plaintext highlighter-rouge">Api/MediaIntegrityController.cs</code></a>.</p>
+
+<h3 id="requestresponse-models">Request/Response Models</h3>
+
+<div class="language-csharp highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">public</span> <span class="k">class</span> <span class="nc">ScanStatusResponse</span>
+<span class="p">{</span>
+    <span class="k">public</span> <span class="kt">bool</span> <span class="n">IsScanning</span> <span class="p">{</span> <span class="k">get</span><span class="p">;</span> <span class="k">set</span><span class="p">;</span> <span class="p">}</span>
+    <span class="k">public</span> <span class="kt">int</span> <span class="n">TotalFiles</span> <span class="p">{</span> <span class="k">get</span><span class="p">;</span> <span class="k">set</span><span class="p">;</span> <span class="p">}</span>
+    <span class="k">public</span> <span class="kt">int</span> <span class="n">PassedFiles</span> <span class="p">{</span> <span class="k">get</span><span class="p">;</span> <span class="k">set</span><span class="p">;</span> <span class="p">}</span>
+    <span class="k">public</span> <span class="kt">int</span> <span class="n">FailedFiles</span> <span class="p">{</span> <span class="k">get</span><span class="p">;</span> <span class="k">set</span><span class="p">;</span> <span class="p">}</span>
+    <span class="k">public</span> <span class="kt">double</span> <span class="n">HealthPercentage</span> <span class="p">{</span> <span class="k">get</span><span class="p">;</span> <span class="k">set</span><span class="p">;</span> <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="k">public</span> <span class="k">class</span> <span class="nc">ScanRequest</span>
+<span class="p">{</span>
+    <span class="k">public</span> <span class="kt">string</span><span class="p">?</span> <span class="n">ItemId</span> <span class="p">{</span> <span class="k">get</span><span class="p">;</span> <span class="k">set</span><span class="p">;</span> <span class="p">}</span>
+    <span class="k">public</span> <span class="kt">string</span><span class="p">?</span> <span class="n">LibraryId</span> <span class="p">{</span> <span class="k">get</span><span class="p">;</span> <span class="k">set</span><span class="p">;</span> <span class="p">}</span>
+    <span class="k">public</span> <span class="kt">bool</span> <span class="n">DeepScan</span> <span class="p">{</span> <span class="k">get</span><span class="p">;</span> <span class="k">set</span><span class="p">;</span> <span class="p">}</span> <span class="p">=</span> <span class="k">false</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>Plain DTOs — no behavior, just the shape the dashboard’s JavaScript reads and writes. That shape is exactly what’s wrong in the <a href="#update-the-dashboard-was-reading-the-wrong-json-casing">JSON casing bug</a> further down.</p>
+
+<h2 id="admin-dashboard">Admin Dashboard</h2>
+
+<p>The dashboard is a single embedded HTML page: CSS for a stat-card grid and results table, then vanilla JavaScript that polls the API above and renders it. No framework, no build step — Jellyfin serves the file exactly as committed, via <code class="language-plaintext highlighter-rouge">GetPages()</code>.</p>
+
+<div class="language-html highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nt">&lt;div</span> <span class="na">class=</span><span class="s">"stats-grid"</span> <span class="na">id=</span><span class="s">"stats-grid"</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;div</span> <span class="na">class=</span><span class="s">"stat-card"</span><span class="nt">&gt;</span>
+        <span class="nt">&lt;div</span> <span class="na">class=</span><span class="s">"stat-label"</span><span class="nt">&gt;</span>Library Health<span class="nt">&lt;/div&gt;</span>
+        <span class="nt">&lt;div</span> <span class="na">class=</span><span class="s">"stat-value status-pass"</span> <span class="na">id=</span><span class="s">"health-pct"</span><span class="nt">&gt;</span>—<span class="nt">&lt;/div&gt;</span>
+    <span class="nt">&lt;/div&gt;</span>
+    <span class="c">&lt;!-- Total Files / Passed / Failed / Pending / Status cards follow the same pattern --&gt;</span>
+<span class="nt">&lt;/div&gt;</span>
+
+<span class="nt">&lt;script&gt;</span>
+    <span class="kd">const</span> <span class="nx">API_BASE</span> <span class="o">=</span> <span class="nx">ApiClient</span><span class="p">.</span><span class="nf">getUrl</span><span class="p">(</span><span class="dl">'</span><span class="s1">MediaIntegrity</span><span class="dl">'</span><span class="p">);</span>
+
+    <span class="k">async</span> <span class="kd">function</span> <span class="nf">loadStatus</span><span class="p">()</span> <span class="p">{</span>
+        <span class="kd">const</span> <span class="nx">resp</span> <span class="o">=</span> <span class="k">await</span> <span class="nx">ApiClient</span><span class="p">.</span><span class="nf">fetch</span><span class="p">({</span> <span class="na">url</span><span class="p">:</span> <span class="nx">API_BASE</span> <span class="o">+</span> <span class="dl">'</span><span class="s1">/Status</span><span class="dl">'</span><span class="p">,</span> <span class="na">type</span><span class="p">:</span> <span class="dl">'</span><span class="s1">GET</span><span class="dl">'</span> <span class="p">});</span>
+        <span class="kd">const</span> <span class="nx">data</span> <span class="o">=</span> <span class="nx">JSON</span><span class="p">.</span><span class="nf">parse</span><span class="p">(</span><span class="nx">resp</span><span class="p">);</span>
+        <span class="nb">document</span><span class="p">.</span><span class="nf">getElementById</span><span class="p">(</span><span class="dl">'</span><span class="s1">health-pct</span><span class="dl">'</span><span class="p">).</span><span class="nx">textContent</span> <span class="o">=</span> <span class="nx">data</span><span class="p">.</span><span class="nx">healthPercentage</span> <span class="o">+</span> <span class="dl">'</span><span class="s1">%</span><span class="dl">'</span><span class="p">;</span>
+        <span class="nb">document</span><span class="p">.</span><span class="nf">getElementById</span><span class="p">(</span><span class="dl">'</span><span class="s1">scan-status</span><span class="dl">'</span><span class="p">).</span><span class="nx">textContent</span> <span class="o">=</span> <span class="nx">data</span><span class="p">.</span><span class="nx">isScanning</span> <span class="p">?</span> <span class="dl">'</span><span class="s1">Scanning...</span><span class="dl">'</span> <span class="p">:</span> <span class="dl">'</span><span class="s1">Idle</span><span class="dl">'</span><span class="p">;</span>
+        <span class="c1">// ...remaining stat cards set the same way</span>
+    <span class="p">}</span>
+
+    <span class="k">async</span> <span class="kd">function</span> <span class="nf">triggerScan</span><span class="p">(</span><span class="nx">deep</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">await</span> <span class="nx">ApiClient</span><span class="p">.</span><span class="nf">fetch</span><span class="p">({</span>
+            <span class="na">url</span><span class="p">:</span> <span class="nx">API_BASE</span> <span class="o">+</span> <span class="dl">'</span><span class="s1">/Scan</span><span class="dl">'</span><span class="p">,</span> <span class="na">type</span><span class="p">:</span> <span class="dl">'</span><span class="s1">POST</span><span class="dl">'</span><span class="p">,</span>
+            <span class="na">data</span><span class="p">:</span> <span class="nx">JSON</span><span class="p">.</span><span class="nf">stringify</span><span class="p">({</span> <span class="na">deepScan</span><span class="p">:</span> <span class="nx">deep</span> <span class="p">}),</span> <span class="na">contentType</span><span class="p">:</span> <span class="dl">'</span><span class="s1">application/json</span><span class="dl">'</span>
+        <span class="p">});</span>
+        <span class="nf">setTimeout</span><span class="p">(</span><span class="nx">loadStatus</span><span class="p">,</span> <span class="mi">1000</span><span class="p">);</span>
+    <span class="p">}</span>
+
+    <span class="nf">loadStatus</span><span class="p">();</span>
+    <span class="nf">loadResults</span><span class="p">();</span>
+    <span class="nf">setInterval</span><span class="p">(</span><span class="nx">loadStatus</span><span class="p">,</span> <span class="mi">10000</span><span class="p">);</span>
+<span class="nt">&lt;/script&gt;</span>
+</code></pre></div></div>
+
+<p>Two things worth calling out that aren’t obvious from the excerpt above. First, <code class="language-plaintext highlighter-rouge">ApiClient</code> is a global object <em>Jellyfin’s own admin dashboard</em> injects into the page — this plugin never defines it, which turns out to matter a lot (see <a href="#update-the-dashboard-was-never-actually-reachable-in-a-real-browser">how classic Jellyfin pages actually load</a> further down). Second, the full file’s <code class="language-plaintext highlighter-rouge">renderResults</code> (not shown) builds the results table with one template-literal row per item, keyed off small <code class="language-plaintext highlighter-rouge">getStatusClass</code>/<code class="language-plaintext highlighter-rouge">getStatusLabel</code> helpers that map the numeric <code class="language-plaintext highlighter-rouge">ScanStatus</code> enum to a CSS class and label.</p>
+
+<p>Full file: <a href="https://github.com/mcgarrah/jellyfin-plugin-media-integrity-scanner/blob/main/Jellyfin.Plugin.MediaIntegrityScanner/Web/integrity_dashboard.html"><code class="language-plaintext highlighter-rouge">Web/integrity_dashboard.html</code></a>.</p>
+
+<p>That <code class="language-plaintext highlighter-rouge">setInterval(loadStatus, 10000)</code> at the bottom is doing more work than it looks like. A new file landing in a watched folder while someone’s mid-episode doesn’t show up as a quick blip — the scan sits waiting for playback to end before it ever touches ffmpeg, and the dashboard keeps polling <code class="language-plaintext highlighter-rouge">IsScanning</code> through the whole wait:</p>
+
+<pre><code class="language-mermaid">%%{init: {"theme": "base", "themeVariables": {
+  "actorBkg": "#17221f",
+  "actorBorder": "#3e6e67",
+  "actorTextColor": "#e7ede9",
+  "actorLineColor": "#3e6e67",
+  "signalColor": "#5c6b75",
+  "signalTextColor": "#2a2a2a",
+  "labelBoxBkgColor": "#2a2013",
+  "labelBoxBorderColor": "#e3a857",
+  "labelTextColor": "#f4d9a8",
+  "loopTextColor": "#2a2a2a",
+  "noteBkgColor": "#1d2b27",
+  "noteBorderColor": "#3e6e67",
+  "noteTextColor": "#e7ede9",
+  "activationBorderColor": "#5fa88f",
+  "activationBkgColor": "#16332c",
+  "sequenceNumberColor": "#101a18",
+  "fontFamily": "monospace",
+  "fontSize": "13px"
+}}}%%
+sequenceDiagram
+    participant JF as Jellyfin Core
+    participant LM as LibraryMonitor
+    participant SE as ScanEngine
+    participant SM as SessionManager
+    participant DB as scan_results
+
+    JF-&gt;&gt;LM: ItemAdded (new episode copied in)
+    activate LM
+    LM-&gt;&gt;LM: ScanOnItemAdded == true?
+    LM-&gt;&gt;SE: ScanItemAsync(item, Header)
+    deactivate LM
+    activate SE
+    SE-&gt;&gt;SE: acquire concurrency slot
+    SE-&gt;&gt;SM: any session with NowPlayingItem?
+    SM--&gt;&gt;SE: yes, someone is watching
+    loop every 30 seconds
+        SE-&gt;&gt;SM: still playing?
+        SM--&gt;&gt;SE: yes
+    end
+    Note over SE: playback ends
+    SM--&gt;&gt;SE: no
+    SE-&gt;&gt;SE: apply DelayBetweenFilesMs
+    SE-&gt;&gt;SE: ffprobe the file
+    SE-&gt;&gt;DB: SaveResultAsync(Pass, Header)
+    deactivate SE
+    Note over DB: the dashboard's next&lt;br/&gt;GET /Status reflects the new file
+</code></pre>
+
+<p>None of that shows up as a distinct dashboard state — <code class="language-plaintext highlighter-rouge">IsScanning</code> is just <code class="language-plaintext highlighter-rouge">true</code> for however long the wait plus the actual scan takes, which is why the “Status” card can sit on “Scanning…” for a lot longer than the file itself would ever take to check.</p>
+
+<h2 id="api-usage-examples">API Usage Examples</h2>
+
+<h3 id="check-library-health-from-the-command-line">Check library health from the command line</h3>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Get overall status</span>
+curl <span class="nt">-s</span> http://localhost:8096/MediaIntegrity/Status <span class="se">\</span>
+  <span class="nt">-H</span> <span class="s2">"X-Emby-Token: YOUR_API_KEY"</span> | jq <span class="nb">.</span>
+
+<span class="c"># Get failed files only</span>
+curl <span class="nt">-s</span> <span class="s2">"http://localhost:8096/MediaIntegrity/Results?status=2"</span> <span class="se">\</span>
+  <span class="nt">-H</span> <span class="s2">"X-Emby-Token: YOUR_API_KEY"</span> | jq <span class="s1">'.items[].filePath'</span>
+
+<span class="c"># Trigger a header scan</span>
+curl <span class="nt">-X</span> POST http://localhost:8096/MediaIntegrity/Scan <span class="se">\</span>
+  <span class="nt">-H</span> <span class="s2">"X-Emby-Token: YOUR_API_KEY"</span> <span class="se">\</span>
+  <span class="nt">-H</span> <span class="s2">"Content-Type: application/json"</span> <span class="se">\</span>
+  <span class="nt">-d</span> <span class="s1">'{"deepScan": false}'</span>
+</code></pre></div></div>
+
+<h2 id="update-status-accuracy-and-library-filtering">Update: Status Accuracy and Library Filtering</h2>
+
+<p>Two things in the original <code class="language-plaintext highlighter-rouge">GetStatus</code>/<code class="language-plaintext highlighter-rouge">GetResults</code> design didn’t hold up once real libraries were scanned:</p>
+
+<p><strong><code class="language-plaintext highlighter-rouge">TotalFiles</code>/<code class="language-plaintext highlighter-rouge">PendingFiles</code> were derived entirely from the <code class="language-plaintext highlighter-rouge">scan_results</code> table</strong> — <code class="language-plaintext highlighter-rouge">COUNT(*)</code> over rows that are only ever written as Pass/Fail/Error (nothing ever inserts a “Pending” row), so <code class="language-plaintext highlighter-rouge">PendingFiles</code> was always <code class="language-plaintext highlighter-rouge">0</code>, and <code class="language-plaintext highlighter-rouge">TotalFiles</code> always equaled <code class="language-plaintext highlighter-rouge">ScannedFiles</code>, even on a freshly-installed library with thousands of files that hadn’t been scanned yet. Worse, an item scanned in both phases (header + deep) produced two rows in <code class="language-plaintext highlighter-rouge">scan_results</code>, so <code class="language-plaintext highlighter-rouge">COUNT(*)</code> double-counted it.</p>
+
+<p>The fix: <code class="language-plaintext highlighter-rouge">GetStatisticsAsync</code> now dedupes by <code class="language-plaintext highlighter-rouge">item_id</code>, keeping only the highest-<code class="language-plaintext highlighter-rouge">scan_phase</code> (most authoritative) row per item via a <code class="language-plaintext highlighter-rouge">ROW_NUMBER() OVER (PARTITION BY item_id ...)</code> window query, and adds a distinct <code class="language-plaintext highlighter-rouge">ErroredFiles</code> bucket (previously errors counted toward the total but vanished from the pass/fail breakdown). The controller then derives the real <code class="language-plaintext highlighter-rouge">TotalFiles</code> from <code class="language-plaintext highlighter-rouge">ILibraryManager.GetItemList(...)</code> — the same query shape <code class="language-plaintext highlighter-rouge">ScanEngine</code> and the scheduled tasks already use — and computes <code class="language-plaintext highlighter-rouge">PendingFiles = TotalFiles - ScannedFiles</code>. The dashboard grew an “Errored” stat card to match.</p>
+
+<p><strong><code class="language-plaintext highlighter-rouge">libraryId</code> on <code class="language-plaintext highlighter-rouge">GET /Results</code> was a no-op.</strong> The API accepted the parameter, the XML doc even said “not yet implemented,” and the SQL query never touched it. Fixed by resolving <code class="language-plaintext highlighter-rouge">libraryId</code> to the set of item IDs currently in that library (via the same <code class="language-plaintext highlighter-rouge">ILibraryManager</code> query, scoped with <code class="language-plaintext highlighter-rouge">ParentId</code>) in the controller, then passing that set down to a parameterized <code class="language-plaintext highlighter-rouge">item_id IN (...)</code> clause — keeping the database layer free of any dependency on Jellyfin’s library structure.</p>
+
+<h2 id="update-a-real-settings-page">Update: A Real Settings Page</h2>
+
+<p>Every field in <code class="language-plaintext highlighter-rouge">PluginConfiguration</code> — throttling, quiet hours, ffmpeg path overrides, the on-add/on-remove toggles — could originally only be changed by hand-editing the plugin’s XML config file on disk. There was no in-app way to configure it at all, which meant Jellyfin’s admin dashboard technically listed the plugin as “configurable” without actually offering a working configuration UI.</p>
+
+<p>Fixed with a second web page (<code class="language-plaintext highlighter-rouge">integrity_settings.html</code>), registered alongside the dashboard via a second <code class="language-plaintext highlighter-rouge">PluginPageInfo</code> entry in <code class="language-plaintext highlighter-rouge">GetPages()</code>. It’s a straightforward form over all twelve config properties, using the same <code class="language-plaintext highlighter-rouge">ApiClient.getPluginConfiguration</code>/<code class="language-plaintext highlighter-rouge">updatePluginConfiguration</code> JS calls Jellyfin’s own plugin pages use to load and save. One gotcha worth flagging: the settings page’s JS has to address the plugin by its <strong>dashless</strong> GUID (<code class="language-plaintext highlighter-rouge">c8f4a3b21d5e4f6a9b7c2e8d0f1a3b5c</code>, no hyphens) — Jellyfin 10.11.11’s <code class="language-plaintext highlighter-rouge">/Plugins/{id}/Configuration</code> routes 404 on the canonical hyphenated form. The dashboard and settings pages now cross-link to each other via <code class="language-plaintext highlighter-rouge">configurationpage?name=...</code>.</p>
+
+<h2 id="update-the-dashboard-was-reading-the-wrong-json-casing">Update: The Dashboard Was Reading the Wrong JSON Casing</h2>
+
+<p>This one is worth calling out plainly: <strong>the dashboard likely never rendered real data in any live browser session.</strong> Its JS reads <code class="language-plaintext highlighter-rouge">data.isScanning</code>, <code class="language-plaintext highlighter-rouge">data.totalFiles</code>, <code class="language-plaintext highlighter-rouge">item.filePath</code>, and so on — camelCase, which is the ASP.NET Core default for JSON responses. But Jellyfin’s host doesn’t apply that default to controller output; it serializes using the raw C# property names, so a real <code class="language-plaintext highlighter-rouge">/MediaIntegrity/Status</code> response looks like <code class="language-plaintext highlighter-rouge">{"IsScanning":false,"TotalFiles":1,...}</code> — PascalCase. Every field read in <code class="language-plaintext highlighter-rouge">loadStatus</code>, <code class="language-plaintext highlighter-rouge">renderResults</code>, and <code class="language-plaintext highlighter-rouge">renderPagination</code> was silently reading <code class="language-plaintext highlighter-rouge">undefined</code>.</p>
+
+<p>This surfaced only once an integration test piped a real response through <code class="language-plaintext highlighter-rouge">jq</code> and the PascalCase keys were staring back. Worth noting the asymmetry: incoming request bodies deserialize case-<em>insensitively</em> (the dashboard’s own <code class="language-plaintext highlighter-rouge">triggerScan()</code> already sent <code class="language-plaintext highlighter-rouge">{ deepScan: deep }</code> and it correctly bound to <code class="language-plaintext highlighter-rouge">ScanRequest.DeepScan</code>), so only the outgoing side needed the fix. The settings page above was unaffected, since its JS was written by copying the C# <code class="language-plaintext highlighter-rouge">PluginConfiguration</code> property names directly — which happened to already be PascalCase.</p>
+
+<p>Every <code class="language-plaintext highlighter-rouge">data.</code>/<code class="language-plaintext highlighter-rouge">item.</code> field access in the dashboard is now PascalCase, verified against a real Jellyfin 10.11.11 instance end-to-end (trigger a scan, poll status, render results) rather than just by reading the diff.</p>
+
+<h2 id="update-the-dashboard-was-never-actually-reachable-in-a-real-browser">Update: The Dashboard Was Never Actually Reachable in a Real Browser</h2>
+
+<p>The PascalCase fix above turned out not to be the whole story. Building a Playwright suite to drive this plugin’s pages through an actual browser — not curl+grep, not a REST call — surfaced something more fundamental: <strong>both config pages had likely never rendered at all in a genuine admin session.</strong></p>
+
+<p>Jellyfin’s classic (non-React) admin dashboard doesn’t navigate to a plugin’s config page the way a browser normally would. It fetches the page’s HTML via AJAX through an internal <code class="language-plaintext highlighter-rouge">loadView</code>/<code class="language-plaintext highlighter-rouge">ViewManager</code> mechanism and injects the result as a <em>fragment</em> into the already-running single-page app — which is what supplies the global <code class="language-plaintext highlighter-rouge">ApiClient</code>/<code class="language-plaintext highlighter-rouge">Dashboard</code> objects this page’s own JS depends on. Both <code class="language-plaintext highlighter-rouge">integrity_dashboard.html</code> and <code class="language-plaintext highlighter-rouge">integrity_settings.html</code> were written as full standalone documents (<code class="language-plaintext highlighter-rouge">&lt;!DOCTYPE html&gt;&lt;html&gt;&lt;head&gt;...&lt;body&gt;</code>), and that structural mismatch broke two different ways depending on how you reached the page:</p>
+
+<ul>
+  <li>A direct URL (<code class="language-plaintext highlighter-rouge">.../configurationpage?name=...</code>) forces a real top-level page load, which never gets <code class="language-plaintext highlighter-rouge">ApiClient</code> injected: <code class="language-plaintext highlighter-rouge">ReferenceError: ApiClient is not defined</code>.</li>
+  <li>A genuine in-app click on the plugin’s own auto-generated “Settings” link instead throws inside <em>Jellyfin’s own bundled code</em> — <code class="language-plaintext highlighter-rouge">Cannot read properties of undefined (reading 'classList')</code> in <code class="language-plaintext highlighter-rouge">Object.loadView</code> — because it’s trying to graft a full document into the DOM where it expects a content fragment.</li>
+</ul>
+
+<p>Both are the same root cause, confirmed via two distinct real stack traces, not two separate bugs. There’s no public documentation for the expected fragment shape (this plugin ships with no external API access during development), so it was reverse-engineered by inspecting a real rendered session: wrap the content in <code class="language-plaintext highlighter-rouge">&lt;div id="...Page" data-role="page" class="page type-interior pluginConfigurationPage"&gt;&lt;div data-role="content" class="content-primary"&gt;...&lt;/div&gt;&lt;/div&gt;</code>, with no <code class="language-plaintext highlighter-rouge">&lt;!DOCTYPE&gt;</code>/<code class="language-plaintext highlighter-rouge">&lt;html&gt;</code>/<code class="language-plaintext highlighter-rouge">&lt;head&gt;</code>/<code class="language-plaintext highlighter-rouge">&lt;body&gt;</code>/<code class="language-plaintext highlighter-rouge">&lt;title&gt;</code> wrapper.</p>
+
+<p>Fixing the structure surfaced two smaller, related issues in the same pass:</p>
+<ul>
+  <li>The pages’ own internal cross-links (dashboard’s “Settings »”, settings’ “« Back to Dashboard”) used plain relative <code class="language-plaintext highlighter-rouge">href</code>s with no SPA hash prefix — clicking either one forced the exact same full-page-load path and reproduced <code class="language-plaintext highlighter-rouge">ApiClient is not defined</code>, even after the fragment fix. Jellyfin’s own auto-generated links use <code class="language-plaintext highlighter-rouge">href="#/configurationpage?name=..."</code>; ours needed the same <code class="language-plaintext highlighter-rouge">#/</code> prefix.</li>
+  <li>Those same nav links, positioned with <code class="language-plaintext highlighter-rouge">float: right</code>, sat directly underneath Jellyfin’s fixed app-bar header on this Jellyfin version’s React-based chrome — a real click-target problem for actual users, confirmed by bounding-box inspection, not just a browser-automation artifact. Fixed with more top padding on the page container.</li>
+</ul>
+
+<p>Worth flagging as expected behavior rather than a bug: Jellyfin’s <code class="language-plaintext highlighter-rouge">ViewManager</code> hides a previously-visited page (<code class="language-plaintext highlighter-rouge">display:none</code>) instead of removing it from the DOM when you navigate back to it, re-injecting a fresh copy — including a fresh copy of the page’s own <code class="language-plaintext highlighter-rouge">&lt;script&gt;</code> block — on every visit. Each visit’s <code class="language-plaintext highlighter-rouge">setInterval(loadStatus, 10000)</code> polling loop keeps running on the hidden, stale copy too. Harmless for a user (only the visible copy is ever read), but worth knowing if you’re writing your own plugin-page tests against a classic Jellyfin dashboard page: scope element lookups to the visible page rather than a bare <code class="language-plaintext highlighter-rouge">#id</code>, since Jellyfin doesn’t guarantee that ID stays unique for long.</p>
+
+<h2 id="update-an-in-plugin-update-checker">Update: An In-Plugin Update Checker</h2>
+
+<p>Running a demo instance on an LXC surfaced an obvious gap: nothing told an admin a newer build existed, and updating meant manually rebuilding and redeploying the DLL by hand. The fix leans on Jellyfin’s own machinery rather than reinventing it — the same <code class="language-plaintext highlighter-rouge">IInstallationManager</code> interface Dashboard &gt; Plugins &gt; Catalog uses internally to list and install plugin versions, injected into a new plugin service exactly the way <code class="language-plaintext highlighter-rouge">ILibraryManager</code> already is in the controller. Its shape (confirmed by reflecting against the real Jellyfin 10.11.11 server assemblies rather than guessing from memory, since this plugin has no live internet access during development) is close to what you’d expect: <code class="language-plaintext highlighter-rouge">GetAvailablePackages</code> returns everything Jellyfin currently knows about across every registered plugin repository, <code class="language-plaintext highlighter-rouge">FilterPackages</code> narrows that down to one plugin by GUID, and <code class="language-plaintext highlighter-rouge">InstallPackage</code> triggers a real install using the exact same code path the Catalog page’s own “Update” button does.</p>
+
+<p><strong>The one hard constraint this whole feature sits on top of</strong>: <code class="language-plaintext highlighter-rouge">IInstallationManager</code> only ever sees packages from repositories an admin has <em>already registered</em> under Dashboard &gt; Plugins &gt; Repositories. A plugin has no way to discover its own updates from a manifest Jellyfin doesn’t know about — and this plugin deliberately doesn’t write to that registration list on its own behalf, since it’s global server config, not this plugin’s own. That’s a one-time, explicit setup step for whoever runs it, documented on the settings page itself rather than hidden.</p>
+
+<p>That constraint is also what shaped the <strong>stable vs. development channel</strong> design. Since a registered repository can list many versions, and Jellyfin doesn’t have a first-class idea of “channels,” this plugin publishes two separate manifests — the existing <code class="language-plaintext highlighter-rouge">manifest.json</code> (stable, updated on tagged releases) and a new <code class="language-plaintext highlighter-rouge">manifest-unstable.json</code> (development builds, cut automatically on every push to <code class="language-plaintext highlighter-rouge">main</code> — more on that in the <a href="/jellyfin-media-integrity-deployment-operations/#update-automated-development-releases">deployment article</a>). Each <code class="language-plaintext highlighter-rouge">VersionInfo</code> Jellyfin returns carries a <code class="language-plaintext highlighter-rouge">RepositoryUrl</code> stamped from whichever registered repository it came from, so the plugin classifies “stable” vs. “dev” by matching that URL against two configurable settings fields, rather than trusting a repository’s free-text display name (which an admin could label anything).</p>
+
+<p>One assumption that turned out to be wrong, caught only by hitting the real endpoints rather than trusting the usual ASP.NET Core default: <strong>Jellyfin serializes this plugin’s new channel enum as its string name</strong> (<code class="language-plaintext highlighter-rouge">"Stable"</code>/<code class="language-plaintext highlighter-rouge">"Development"</code>), not the underlying <code class="language-plaintext highlighter-rouge">0</code>/<code class="language-plaintext highlighter-rouge">1</code> a bare <code class="language-plaintext highlighter-rouge">System.Text.Json</code> setup would produce. Both the dashboard’s new version banner and the settings page’s channel dropdown are written against that string, confirmed by POSTing both a string and (hypothetically) an int body directly against the live endpoint rather than assuming either would work.</p>
+
+<p>The dashboard now shows the running version plus, when a newer one exists for the configured channel, an “Update Available” banner with a one-click “Update Now” button; settings gained the channel dropdown and the two manifest-URL overrides. A daily scheduled task keeps the check result cached so opening the dashboard doesn’t fire a network call every time.</p>
+
+<h2 id="whats-next">What’s Next</h2>
+
+<p>The <a href="/jellyfin-media-integrity-deployment-operations/">next article</a> covers deployment and operations: installing the plugin in Proxmox LXC containers, configuring for CephFS storage, setting up monitoring/alerting, and the CI/CD pipeline for plugin releases.</p>
+
+<h2 id="series-navigation">Series Navigation</h2>
+
+<ol>
+  <li><a href="/jellyfin-media-integrity-scanner-introduction/">Introduction &amp; Problem Statement</a></li>
+  <li><a href="/jellyfin-media-integrity-architecture-design/">Architecture &amp; Design Decisions</a></li>
+  <li><a href="/jellyfin-media-integrity-scanner-core/">Building the Scanner Core</a></li>
+  <li><strong>The Dashboard &amp; API</strong> (this post)</li>
+  <li><a href="/jellyfin-media-integrity-deployment-operations/">Deployment &amp; Operations</a></li>
+  <li><a href="/jellyfin-media-integrity-release-and-updates/">v0.1.1 Release: Update Checker &amp; Auto-Update</a></li>
+</ol>
+
+
+  <div class="post-tags-categories">
+    
+      <div class="tags">
+        <strong>Tags:</strong>
+        
+          <a href="/tags/jellyfin/">jellyfin</a>, 
+        
+          <a href="/tags/media-integrity/">media-integrity</a>, 
+        
+          <a href="/tags/rest-api/">rest-api</a>, 
+        
+          <a href="/tags/dashboard/">dashboard</a>, 
+        
+          <a href="/tags/html/">html</a>, 
+        
+          <a href="/tags/javascript/">javascript</a>, 
+        
+          <a href="/tags/plugin-development/">plugin-development</a>
+        
+      </div>
+    
+    
+      <div class="categories">
+        <strong>Categories:</strong>
+        
+          <a href="/categories/homelab/">homelab</a>, 
+        
+          <a href="/categories/media-server/">media-server</a>
+        
+      </div>
+    
+  </div>
+
+  <hr>
+  <div class="author-bio">
+  <strong>About the Author:</strong>
+  <a href="/about/">Michael McGarrah</a> is a Cloud Architect with 25+ years in enterprise infrastructure, machine learning, and system administration. He holds an M.S. in Computer Science (AI/ML) from Georgia Tech and a B.S. in Computer Science from NC State University, and is currently pursuing an Executive MBA at UNC Wilmington.
+  <span class="author-links">
+    <a href="https://www.linkedin.com/in/michaelmcgarrah/" rel="me">LinkedIn</a> ·
+    <a href="https://mcgarrah.substack.com/" rel="me">Substack</a> ·
+    <a href="https://github.com/mcgarrah" rel="me">GitHub</a> ·
+    <a href="https://orcid.org/0000-0001-8935-1293" rel="me">ORCID</a> ·
+    <a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ" rel="me">Google Scholar</a> ·
+    <a href="/resume/">Resume</a>
+  </span>
+</div>
+
+
+  <section class="page__comments">
+  <script src="https://giscus.app/client.js"
+          data-repo="mcgarrah/drafts.mcgarrah.org"
+          data-repo-id="R_kgDOSG6Quw"
+          data-category="Draft Reviews"
+          data-category-id="DIC_kwDOSG6Qu84C7PMZ"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="preferred_color_scheme"
+          data-lang="en"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+  </script>
+</section></article>
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Select all <code> elements that are direct children of <pre> elements.
+  var codeElements = document.querySelectorAll('pre > code');
+
+  codeElements.forEach(function(codeElement, index) {
+    var preElement = codeElement.parentNode; // This is the <pre> tag
+
+    // Ensure this pre element hasn't already been processed by a class marker
+    if (preElement.classList.contains('copy-button-added')) {
+      return;
+    }
+
+    // Determine the "button container": the element to make relative and append the button to.
+    // It's usually a <figure class="highlight"> or <div class="highlight"> wrapping the <pre>,
+    // or the <pre> itself if it has class="highlight", or just the <pre> if no highlight class.
+    var buttonContainer = preElement.closest('figure.highlight, div.highlight');
+    if (!buttonContainer) {
+      // If not within a figure.highlight or div.highlight, the preElement itself is the prime candidate.
+      buttonContainer = preElement;
+    }
+
+    // Ensure the preElement (target for copy) has an ID
+    if (!preElement.id) {
+      preElement.id = 'codeblock-for-copy-' + index;
+    }
+
+    // Make the buttonContainer relative for absolute positioning of the button.
+    // Avoid styling body if it's an unlikely fallback.
+    if (buttonContainer && buttonContainer.tagName !== 'BODY') {
+      if (getComputedStyle(buttonContainer).position === 'static') {
+        buttonContainer.style.position = 'relative';
+      }
+    } else if (buttonContainer && buttonContainer.tagName === 'BODY') {
+      // This case should ideally not happen if preElement is always wrapped or is the pre itself.
+      // If body is the container, we can't make it relative easily. Button might misbehave.
+      // Consider just appending to preElement's parent in such a rare case without relative positioning.
+    }
+
+
+    // Create the button
+    var button = document.createElement('button');
+    button.className = 'btn btn-copy'; // Main styling from SASS
+    button.innerHTML = 'Copy';
+    button.setAttribute('data-clipboard-target', '#' + preElement.id);
+
+    // Explicitly set styles for position and appearance
+    button.style.position = 'absolute';
+    button.style.top = '0.5em';
+    button.style.right = '0.5em';
+    button.style.zIndex = '10';
+    button.style.padding = '0.25em 0.5em';
+    button.style.fontSize = '0.8em';
+
+    // Append button to the determined container
+    if (buttonContainer) {
+        buttonContainer.appendChild(button);
+    } else {
+        // Highly unlikely fallback if buttonContainer couldn't be determined (e.g. pre is direct child of body)
+        preElement.parentNode.insertBefore(button, preElement.nextSibling); // Place after pre
+    }
+
+    preElement.classList.add('copy-button-added'); // Mark as processed
+  });
+
+  // Initialize ClipboardJS (only if buttons were added)
+  if (document.querySelector('.btn-copy')) {
+    var clipboard = new ClipboardJS('.btn-copy');
+
+    clipboard.on('success', function(e) {
+      e.trigger.innerHTML = 'Copied!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+      e.clearSelection();
+    });
+
+    clipboard.on('error', function(e) {
+      e.trigger.innerHTML = 'Error!';
+      setTimeout(function() { e.trigger.innerHTML = 'Copy'; }, 2000);
+    });
+  }
+});
+</script>
+
+
+
+<footer>
+  <div>Engineering deep dives on infrastructure, distributed systems, and AI/ML — from homelab experiments to enterprise architecture.</div>
+  <nav><a href="mailto:mcgarrah@gmail.com" ><svg aria-label="Mail" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#envelope"></use></svg></a><a href="https://github.com/mcgarrah"  rel="me"><svg aria-label="Github" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#github"></use></svg></a><a href="https://gitlab.com/mcgarrah"  rel="me"><svg aria-label="Gitlab" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#gitlab"></use></svg></a><a href="https://stackoverflow.com/users/2452678/michael-mcgarrah"  rel="me"><svg aria-label="StackOverflow" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#stack-overflow"></use></svg></a><a href="https://discord.com/users/914581392740995073" ><svg aria-label="Discord" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#discord"></use></svg></a><a href="/resume/" ><svg aria-label="Resume" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#file"></use></svg></a><a href="https://www.linkedin.com/in/michaelmcgarrah/"  rel="me"><svg aria-label="LinkedIn" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#linkedin"></use></svg></a><a href="https://mcgarrah.substack.com/" ><svg aria-label="Substack" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#substack"></use></svg></a><a href="https://www.researchgate.net/profile/James-Mcgarrah"  rel="me"><svg aria-label="ResearchGate" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#researchgate"></use></svg></a><a href="https://orcid.org/0000-0001-8935-1293"  rel="me"><svg aria-label="ORCID" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#orcid"></use></svg></a><a href="https://scholar.google.com/citations?user=Lt7T2SwAAAAJ"  rel="me"><svg aria-label="Google Scholar" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#graduation-cap"></use></svg></a><a href="/feed.xml" ><svg aria-label="Subscribe" class="icon"><use xlink:href="/assets/fontawesome/icons.svg#rss"></use></svg></a></nav>
+
+</footer>
+
+
+<div id="cookie-consent-banner" class="cookie-consent-banner" style="display: none;">
+  <div class="cookie-consent-content">
+    <p>🇪🇺 This site uses cookies to improve your experience and for analytics. As an EU visitor, you can control your privacy preferences. <a href="/privacy/">Read our Privacy Policy</a></p>
+    <div class="cookie-consent-buttons">
+      <button id="cookie-accept" class="cookie-btn cookie-accept">Accept All</button>
+      <button id="cookie-necessary" class="cookie-btn cookie-necessary">Necessary Only</button>
+      <button id="cookie-decline" class="cookie-btn cookie-decline">Decline</button>
+    </div>
+  </div>
+</div>
+<script src="/assets/js/cookie-consent.js"></script>
+</body>
+</html>
